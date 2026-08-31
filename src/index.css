@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-base: #000000;
+    --bg-surface: #0c0d10;
+    --bg-surface-elevated: #14161a;
+    --bg-surface-hover: #1c1e24;
+    --border-subtle: #22252c;
+    --border-medium: #30343e;
+    --text-primary: #ffffff;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --accent-primary: #ffffff;
+    --accent-dim: rgba(255, 255, 255, 0.08);
+  }
+
+  body {
+    background-color: #000000;
+    color: #f4f4f5;
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    letter-spacing: -0.012em;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+/* Custom minimal monochrome scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: #000000;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #242730;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3f4350;
+}
+
+/* Crisp monochrome elevation glow */
+.glow-arc-subtle {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 8px 30px rgba(0, 0, 0, 0.8);
+}
+
+.glow-surface {
+  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.8);
+}
