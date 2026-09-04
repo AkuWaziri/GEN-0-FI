@@ -43,13 +43,56 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
     isDemoMode,
   } = useWallet();
 
-  // Dynamic greeting based on current local time
-  const getGreeting = () => {
+  // Dynamic greeting and color based on current local time:
+  // Morning (5am - 12pm): Blue, Afternoon (12pm - 5pm): Orange, Evening (5pm - 9pm): Yellow, Night (9pm - 5am): Purple
+  const getGreetingInfo = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
+    if (hour >= 5 && hour < 12) {
+      return {
+        text: 'Good morning',
+        colorClass: 'text-blue-400',
+        dotClass: 'bg-blue-400',
+        glowClass: 'shadow-[0_0_8px_rgba(96,165,250,0.6)]',
+      };
+    }
+    if (hour >= 12 && hour < 17) {
+      return {
+        text: 'Good afternoon',
+        colorClass: 'text-orange-400',
+        dotClass: 'bg-orange-400',
+        glowClass: 'shadow-[0_0_8px_rgba(251,146,60,0.6)]',
+      };
+    }
+    if (hour >= 17 && hour < 21) {
+      return {
+        text: 'Good evening',
+        colorClass: 'text-yellow-400',
+        dotClass: 'bg-yellow-400',
+        glowClass: 'shadow-[0_0_8px_rgba(250,204,21,0.6)]',
+      };
+    }
+    return {
+      text: 'Good night',
+      colorClass: 'text-purple-400',
+      dotClass: 'bg-purple-400',
+      glowClass: 'shadow-[0_0_8px_rgba(192,132,252,0.6)]',
+    };
   };
+
+  const greeting = getGreetingInfo();
+
+  // Synchronized active balance: uses whichever source holds the live verified balance
+  const activeBalanceUSDC =
+    balanceUSDC && balanceUSDC !== '0.00'
+      ? balanceUSDC
+      : walletSummary?.balanceUSDC && walletSummary.balanceUSDC !== '0.00'
+      ? walletSummary.balanceUSDC
+      : balanceUSDC || walletSummary?.balanceUSDC || '0.00';
+
+  const totalTransactions = walletSummary?.txCount ?? transactions.length;
+  const contractInteractionsCount =
+    walletSummary?.activeContractsCount ??
+    transactions.filter((t) => t.isContractInteraction || t.direction === 'contract_interaction').length;
 
   if (!isConnected || !address) {
     return (
@@ -99,9 +142,12 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
       {/* Top Section Greeting & Wallet Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-zinc-900">
         <div>
-          <span className="text-[10px] font-mono font-medium text-zinc-500 tracking-wider uppercase">
-            {getGreeting()}
-          </span>
+          <div className="flex items-center gap-2 mb-1">
+            <span className={`w-2 h-2 rounded-full ${greeting.dotClass} ${greeting.glowClass}`} />
+            <span className={`text-xs font-mono font-semibold tracking-wider uppercase ${greeting.colorClass}`}>
+              {greeting.text}
+            </span>
+          </div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
             Financial Overview
           </h1>
@@ -113,132 +159,165 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
         </div>
       </div>
 
-      {/* Main Balance & Key Metrics Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
-        {/* Main Balance Card (5 cols on lg, 4 cols on xl) */}
-        <div className="lg:col-span-5 xl:col-span-4 p-5 sm:p-6 rounded-xl bg-[#0d0f12] border border-zinc-800 flex flex-col justify-between relative overflow-hidden shadow-sm glow-arc-subtle">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-medium">
-              USDC Balance
-            </span>
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-zinc-900 border border-zinc-700 text-zinc-300">
-              Native Gas
-            </span>
-          </div>
+      {/* Main Balance Card - Prominent 58.0364 USDC Display */}
+      <div className="p-6 sm:p-7 rounded-2xl bg-[#0d0f12] border border-zinc-800 relative overflow-hidden shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono uppercase tracking-wider text-zinc-400 font-semibold">
+                Current USDC Balance
+              </span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-zinc-900 border border-zinc-700 text-zinc-300">
+                Native Gas Asset
+              </span>
+            </div>
 
-          <div className="my-4">
             {isLoadingData ? (
-              <div className="space-y-2">
-                <Skeleton className="h-10 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
+              <div className="py-2 space-y-2">
+                <Skeleton className="h-12 w-64" />
+                <Skeleton className="h-4 w-40" />
               </div>
             ) : (
               <div>
-                <div className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight flex items-baseline gap-2 font-mono">
-                  <span>${balanceUSDC}</span>
-                  <span className="text-sm font-semibold text-zinc-400">USDC</span>
+                <div className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight flex items-baseline gap-3 font-mono">
+                  <span>{activeBalanceUSDC}</span>
+                  <span className="text-xl sm:text-2xl font-bold text-zinc-400">USDC</span>
                 </div>
-                <div className="text-xs text-zinc-400 mt-1.5 flex items-center gap-1.5 font-mono">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                  <span>Arc Testnet • 18 Decimals</span>
+                <div className="text-xs text-zinc-400 mt-2 flex items-center gap-2 font-mono">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Arc Testnet • 18 Decimals Verified Onchain</span>
                 </div>
               </div>
             )}
           </div>
 
-          <div className="pt-3 border-t border-zinc-800/80 flex items-center justify-between text-xs text-zinc-400">
-            <span className="text-[11px] text-zinc-400">Total Transactions</span>
-            <span className="font-mono font-semibold text-white">
-              {isLoadingData ? '...' : walletSummary?.txCount || transactions.length}
-            </span>
-          </div>
-        </div>
-
-        {/* Compact Intelligence Summary Metrics (7 cols on lg, 8 cols on xl) */}
-        <div className="lg:col-span-7 xl:col-span-8 p-5 sm:p-6 rounded-xl bg-[#0d0f12] border border-zinc-800 flex flex-col justify-between shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-medium">
-              Onchain Activity Summary
-            </span>
+          <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2.5 pt-4 sm:pt-0 border-t sm:border-t-0 border-zinc-800/80">
             <button
               onClick={() => refreshData()}
-              className="text-xs text-zinc-400 hover:text-white flex items-center gap-1 cursor-pointer font-mono"
+              disabled={isRefreshing}
+              className="py-2 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-xs font-semibold text-white flex items-center gap-2 cursor-pointer transition-colors shadow-sm disabled:opacity-50"
             >
-              <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin text-white' : ''}`} />
-              <span>Sync</span>
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span>{isRefreshing ? 'Syncing...' : 'Sync Live Data'}</span>
             </button>
-          </div>
-
-          {isLoadingData ? (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              <Skeleton className="h-16 rounded-lg" />
-              <Skeleton className="h-16 rounded-lg" />
-              <Skeleton className="h-16 rounded-lg" />
-              <Skeleton className="h-16 rounded-lg" />
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
-              {/* Received */}
-              <div className="p-3 sm:p-3.5 rounded-lg bg-[#131519] border border-zinc-800/80 flex flex-col justify-between">
-                <div className="flex items-center gap-1.5 text-xs text-zinc-400 mb-1">
-                  <ArrowDownLeft className="w-3.5 h-3.5 text-white" />
-                  <span className="font-medium text-[11px]">Received</span>
-                </div>
-                <div className="text-sm sm:text-base font-bold text-white font-mono truncate">
-                  ${walletSummary?.receivedTotalUSDC || '0.00'}
-                </div>
-                <div className="text-[10px] text-zinc-500 font-mono mt-0.5">USDC In</div>
-              </div>
-
-              {/* Sent */}
-              <div className="p-3 sm:p-3.5 rounded-lg bg-[#131519] border border-zinc-800/80 flex flex-col justify-between">
-                <div className="flex items-center gap-1.5 text-xs text-zinc-400 mb-1">
-                  <ArrowUpRight className="w-3.5 h-3.5 text-zinc-400" />
-                  <span className="font-medium text-[11px]">Sent</span>
-                </div>
-                <div className="text-sm sm:text-base font-bold text-zinc-200 font-mono truncate">
-                  ${walletSummary?.sentTotalUSDC || '0.00'}
-                </div>
-                <div className="text-[10px] text-zinc-500 font-mono mt-0.5">USDC Out</div>
-              </div>
-
-              {/* Gas Spent */}
-              <div className="p-3 sm:p-3.5 rounded-lg bg-[#131519] border border-zinc-800/80 flex flex-col justify-between">
-                <div className="flex items-center gap-1.5 text-xs text-zinc-400 mb-1">
-                  <Flame className="w-3.5 h-3.5 text-zinc-400" />
-                  <span className="font-medium text-[11px]">Gas Spent</span>
-                </div>
-                <div className="text-sm sm:text-base font-bold text-zinc-300 font-mono truncate">
-                  ${walletSummary?.gasSpentUSDC || '0.000000'}
-                </div>
-                <div className="text-[10px] text-zinc-500 font-mono mt-0.5">USDC Gas</div>
-              </div>
-
-              {/* Active Contracts */}
-              <div className="p-3 sm:p-3.5 rounded-lg bg-[#131519] border border-zinc-800/80 flex flex-col justify-between">
-                <div className="flex items-center gap-1.5 text-xs text-zinc-400 mb-1">
-                  <Code2 className="w-3.5 h-3.5 text-zinc-400" />
-                  <span className="font-medium text-[11px]">Contracts</span>
-                </div>
-                <div className="text-sm sm:text-base font-bold text-white font-mono truncate">
-                  {walletSummary?.activeContractsCount || 0}
-                </div>
-                <div className="text-[10px] text-zinc-500 font-mono mt-0.5">Interactions</div>
-              </div>
-            </div>
-          )}
-
-          <div className="mt-3 pt-2.5 border-t border-zinc-800/80 flex items-center justify-between text-[11px] text-zinc-500 font-mono">
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-white" />
-              Verified on Arc RPC
-            </span>
-            <span className="text-zinc-400">https://rpc.testnet.arc.io</span>
           </div>
         </div>
       </div>
 
-      {/* AI Summary Card */}
+      {/* Prominent Key Financial Metrics Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5 sm:gap-4">
+        {/* Metric 1: Total Amount Received */}
+        <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-medium">
+              Total Received
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-700 flex items-center justify-center text-white">
+              <ArrowDownLeft className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            {isLoadingData ? (
+              <Skeleton className="h-7 w-24" />
+            ) : (
+              <div className="text-lg sm:text-xl font-bold text-white font-mono truncate">
+                {walletSummary?.receivedTotalUSDC || '0.00'} <span className="text-xs text-zinc-400 font-sans">USDC</span>
+              </div>
+            )}
+            <div className="text-[11px] text-zinc-500 font-mono mt-1">Inbound transfers</div>
+          </div>
+        </div>
+
+        {/* Metric 2: Total Amount Sent */}
+        <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-medium">
+              Total Sent
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400">
+              <ArrowUpRight className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            {isLoadingData ? (
+              <Skeleton className="h-7 w-24" />
+            ) : (
+              <div className="text-lg sm:text-xl font-bold text-zinc-200 font-mono truncate">
+                {walletSummary?.sentTotalUSDC || '0.00'} <span className="text-xs text-zinc-400 font-sans">USDC</span>
+              </div>
+            )}
+            <div className="text-[11px] text-zinc-500 font-mono mt-1">Outbound transfers</div>
+          </div>
+        </div>
+
+        {/* Metric 3: Total Gas Spent */}
+        <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-medium">
+              Total Gas Spent
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400">
+              <Flame className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            {isLoadingData ? (
+              <Skeleton className="h-7 w-24" />
+            ) : (
+              <div className="text-lg sm:text-xl font-bold text-zinc-300 font-mono truncate">
+                {walletSummary?.gasSpentUSDC || '0.000000'} <span className="text-xs text-zinc-400 font-sans">USDC</span>
+              </div>
+            )}
+            <div className="text-[11px] text-zinc-500 font-mono mt-1">Arc execution fees</div>
+          </div>
+        </div>
+
+        {/* Metric 4: Total Transactions */}
+        <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-medium">
+              Total Transactions
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400">
+              <Activity className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            {isLoadingData ? (
+              <Skeleton className="h-7 w-16" />
+            ) : (
+              <div className="text-lg sm:text-xl font-bold text-white font-mono">
+                {totalTransactions}
+              </div>
+            )}
+            <div className="text-[11px] text-zinc-500 font-mono mt-1">Confirmed on Arc</div>
+          </div>
+        </div>
+
+        {/* Metric 5: Contract Interactions */}
+        <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-medium">
+              Contract Interactions
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400">
+              <Code2 className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            {isLoadingData ? (
+              <Skeleton className="h-7 w-16" />
+            ) : (
+              <div className="text-lg sm:text-xl font-bold text-white font-mono">
+                {contractInteractionsCount}
+              </div>
+            )}
+            <div className="text-[11px] text-zinc-500 font-mono mt-1">Smart contracts</div>
+          </div>
+        </div>
+      </div>
+
+      {/* AI Summary Card - Synchronized with live Arc state */}
       <div
         id="section-ai-wallet-summary"
         className="p-5 sm:p-6 rounded-xl bg-[#0d0f12] border border-zinc-800 shadow-sm relative overflow-hidden"
@@ -270,9 +349,9 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
           <div className="space-y-3">
             <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-normal">
               {aiSummary?.summary ||
-                `Connected to Arc Testnet with ${balanceUSDC} USDC. ${
+                `Connected to Arc Testnet with ${activeBalanceUSDC} USDC. ${
                   transactions.length > 0
-                    ? `Found ${transactions.length} recent transaction(s).`
+                    ? `Found ${transactions.length} confirmed transaction(s).`
                     : 'No outgoing or incoming transactions detected in recent blocks.'
                 }`}
             </p>
@@ -290,8 +369,8 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
 
             <div className="pt-1.5 text-[10px] text-zinc-500 flex items-center justify-between font-mono">
               <span className="flex items-center gap-1.5">
-                <span className="w-1 h-1 rounded-full bg-white" />
-                Grounded on Arc blockchain state
+                <span className="w-1 h-1 rounded-full bg-emerald-400" />
+                Grounded on live Arc blockchain state ({activeBalanceUSDC} USDC)
               </span>
               <span className="text-zinc-400 font-medium">Gemini 3.7 Flash</span>
             </div>
@@ -304,7 +383,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
         <div className="flex items-center justify-between px-0.5">
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-white" />
-            <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">Recent Activity</h2>
+            <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">Recent Onchain Activity</h2>
           </div>
 
           <button
@@ -323,12 +402,20 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
             <Skeleton className="h-14 rounded-xl" />
           </div>
         ) : transactions.length === 0 ? (
-          <div className="p-6 sm:p-8 rounded-xl bg-[#0d0f12] border border-zinc-800 text-center space-y-1.5">
+          <div className="p-6 sm:p-8 rounded-xl bg-[#0d0f12] border border-zinc-800 text-center space-y-2">
             <Activity className="w-6 h-6 text-zinc-600 mx-auto" />
-            <h3 className="text-xs sm:text-sm font-semibold text-white">No activity yet</h3>
+            <h3 className="text-xs sm:text-sm font-semibold text-white">No recent transactions indexed yet</h3>
             <p className="text-xs text-zinc-400 max-w-sm mx-auto">
-              Transactions performed with this address on Arc Testnet will appear here automatically.
+              Confirmed onchain activity with this address on Arc Testnet will appear here automatically.
             </p>
+            <div className="pt-2">
+              <button
+                onClick={() => refreshData()}
+                className="py-1.5 px-4 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-xs font-medium text-zinc-200 cursor-pointer transition-colors"
+              >
+                Scan Arc Blocks
+              </button>
+            </div>
           </div>
         ) : (
           <div className="space-y-2">
@@ -385,7 +472,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
                         {isReceived ? `+${tx.value}` : isSent ? `-${tx.value}` : `${tx.value}`} USDC
                       </div>
                       <div className="text-[10px] text-zinc-500 font-mono">
-                        Gas: ${tx.gasCostUSDC}
+                        Gas: {tx.gasCostUSDC} USDC
                       </div>
                     </div>
 

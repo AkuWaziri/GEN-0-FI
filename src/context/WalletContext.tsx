@@ -1,20 +1,35 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { WagmiProvider, useAccount } from 'wagmi';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { isAddress } from 'viem';
+import { wagmiConfig } from '../config/wagmi';
 import { ARC_TESTNET_CHAIN_ID, formatShortAddress } from '../config/arc';
+import { useWalletConnection, ConnectionState } from '../hooks/useWalletConnection';
+import { useWalletNetwork } from '../hooks/useWalletNetwork';
+import { useArcBalance } from '../hooks/useArcBalance';
 import { defaultArcProvider } from '../services/blockchain/blockchainProvider';
-import { injectedWallet, WalletState } from '../services/wallet/injectedWallet';
 import { AiWalletAnalysis, BlockchainStatus, NormalizedTransaction, WalletSummary } from '../types/blockchain';
-import { DEMO_WALLET_ADDRESS, DEMO_TRANSACTIONS, DEMO_WALLET_SUMMARY, DEMO_AI_ANALYSIS } from '../services/blockchain/demoData';
 
-export const DEMO_ARC_ADDRESS = DEMO_WALLET_ADDRESS;
+// Single shared QueryClient instance for TanStack Query
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
-interface WalletContextType {
+export interface WalletContextType {
   address: string | null;
   shortAddress: string;
   isConnected: boolean;
   isConnecting: boolean;
+  connectionState: ConnectionState;
+  connectorName: string | null;
   chainId: number | null;
   isCorrectNetwork: boolean;
+  detectedNetworkName: string;
   walletName: string | null;
   balanceUSDC: string;
   walletSummary: WalletSummary | null;
@@ -26,10 +41,14 @@ interface WalletContextType {
   isDemoMode: boolean;
   aiSummary: AiWalletAnalysis | null;
   isAiLoading: boolean;
-  connectWallet: () => Promise<boolean>;
+  showWelcomeOverlay: boolean;
+  dismissWelcomeOverlay: () => void;
+  connectWallet: () => Promise<void>;
   disconnectWallet: () => void;
   switchToArc: () => Promise<boolean>;
   refreshData: () => Promise<void>;
+  retryConnection: () => Promise<void>;
+  clearError: () => void;
   inspectAddress: (address: string, isDemo?: boolean) => Promise<void>;
   exitDemoMode: () => void;
   fetchAiSummary: () => Promise<void>;
@@ -37,44 +56,76 @@ interface WalletContextType {
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
-export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [walletState, setWalletState] = useState<WalletState>(injectedWallet.getState());
-  const [demoAddress, setDemoAddress] = useState<string | null>(null);
-  const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
+const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { address: wagmiAddress, isConnected: isWagmiConnected } = useAccount();
+  const connection = useWalletConnection();
+  const network = useWalletNetwork();
 
-  const [balanceUSDC, setBalanceUSDC] = useState<string>('0.00');
+  // Active address is lowercase string
+  const activeAddress = wagmiAddress || null;
+  const isConnected = Boolean(isWagmiConnected && activeAddress);
+  const isCorrectNetwork = Boolean(isConnected && network.isArcTestnet);
+
+  // Real Arc native USDC balance directly from Arc Testnet RPC
+  const arcBalance = useArcBalance(activeAddress || undefined);
+
   const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
   const [transactions, setTransactions] = useState<NormalizedTransaction[]>([]);
   const [networkStatus, setNetworkStatus] = useState<BlockchainStatus | null>(null);
-  
   const [isLoadingData, setIsLoadingData] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const [dataError, setDataError] = useState<string | null>(null);
 
   const [aiSummary, setAiSummary] = useState<AiWalletAnalysis | null>(null);
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
 
-  // Active address is either connected wallet or inspected address
-  const activeAddress = demoAddress || walletState.address;
-  const isConnected = Boolean(isDemoMode || demoAddress || walletState.isConnected);
-  const isCorrectNetwork = Boolean(isDemoMode || demoAddress || walletState.isCorrectNetwork);
-  const chainId = (isDemoMode || demoAddress) ? ARC_TESTNET_CHAIN_ID : walletState.chainId;
-  const walletName = isDemoMode
-    ? 'Demo Inspector (Arc Testnet)'
-    : demoAddress
-    ? 'Manual Inspector (Arc Testnet)'
-    : walletState.walletName;
+  // Single synchronized balance source of truth: whichever has the verified non-zero live balance
+  const synchronizedBalanceUSDC = 
+    (arcBalance.formatted && arcBalance.formatted !== '0.00')
+      ? arcBalance.formatted
+      : (walletSummary?.balanceUSDC && walletSummary.balanceUSDC !== '0.00')
+        ? walletSummary.balanceUSDC
+        : (arcBalance.formatted || walletSummary?.balanceUSDC || '0.00');
 
+  // First-time onboarding welcome state
+  const [showWelcomeOverlay, setShowWelcomeOverlay] = useState<boolean>(false);
+  const hasEverConnectedRef = useRef<boolean>(false);
+  const initialMountRef = useRef<boolean>(true);
 
-  // Listen to injected wallet
+  // Address ref to guard against out-of-order responses on account switch
+  const currentAddressRef = useRef<string | null>(activeAddress);
+  currentAddressRef.current = activeAddress;
+
+  // Track first-time connection vs returning session
   useEffect(() => {
-    const unsub = injectedWallet.subscribe((state) => {
-      setWalletState(state);
-    });
-    return unsub;
+    if (initialMountRef.current) {
+      initialMountRef.current = false;
+      // If already connected upon initial app load (returning user), do NOT show welcome overlay
+      if (isConnected) {
+        hasEverConnectedRef.current = true;
+      }
+      return;
+    }
+
+    // If user wasn't connected and just successfully connected on Arc Testnet, show brief welcome state
+    if (isConnected && isCorrectNetwork && !hasEverConnectedRef.current) {
+      hasEverConnectedRef.current = true;
+      setShowWelcomeOverlay(true);
+
+      // Auto-continue to dashboard after 2 seconds
+      const timer = setTimeout(() => {
+        setShowWelcomeOverlay(false);
+      }, 2400);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isConnected, isCorrectNetwork]);
+
+  const dismissWelcomeOverlay = useCallback(() => {
+    setShowWelcomeOverlay(false);
   }, []);
 
-  // Poll Network Status periodically
+  // Poll Network Status periodically for latency and block number
   useEffect(() => {
     let mounted = true;
     const checkStatus = async () => {
@@ -84,7 +135,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           setNetworkStatus(res);
         }
       } catch (err) {
-        console.warn('Network status query failed:', err);
+        console.warn('Arc Network status query failed:', err);
       }
     };
 
@@ -96,7 +147,56 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   }, []);
 
-  // AI Summary Generator
+  // Fetch real onchain activity and summary for the connected address on Arc Testnet
+  const loadRealBlockchainData = useCallback(async (targetAddr: string, isInitial = false) => {
+    if (!targetAddr || !isAddress(targetAddr)) return;
+
+    if (isInitial) setIsLoadingData(true);
+    else setIsRefreshing(true);
+    setDataError(null);
+
+    try {
+      // 1. Fetch real transaction count & activity
+      const [txs, summary] = await Promise.all([
+        defaultArcProvider.getTransactions(targetAddr, 25).catch(() => []),
+        defaultArcProvider.getWalletSummary(targetAddr).catch(() => null),
+      ]);
+
+      // Guard against race condition if user switched accounts while request was pending
+      if (currentAddressRef.current?.toLowerCase() !== targetAddr.toLowerCase()) {
+        return;
+      }
+
+      setTransactions(txs || []);
+      setWalletSummary(summary);
+    } catch (err: unknown) {
+      if (currentAddressRef.current?.toLowerCase() !== targetAddr.toLowerCase()) {
+        return;
+      }
+      console.warn('Failed to load Arc Testnet onchain activity:', err);
+      setDataError("Couldn't retrieve latest Arc Testnet activity. Live balance remains verified.");
+    } finally {
+      if (currentAddressRef.current?.toLowerCase() === targetAddr.toLowerCase()) {
+        setIsLoadingData(false);
+        setIsRefreshing(false);
+      }
+    }
+  }, []);
+
+  // When active account changes, refresh real Arc Testnet data or reset
+  useEffect(() => {
+    if (activeAddress) {
+      loadRealBlockchainData(activeAddress, true);
+    } else {
+      setTransactions([]);
+      setWalletSummary(null);
+      setAiSummary(null);
+      setIsLoadingData(false);
+      setIsRefreshing(false);
+    }
+  }, [activeAddress, loadRealBlockchainData]);
+
+  // AI Summary Generator for real onchain transactions
   const fetchAiSummary = useCallback(async () => {
     if (!activeAddress) return;
     setIsAiLoading(true);
@@ -106,7 +206,10 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           address: activeAddress,
-          summary: walletSummary,
+          summary: {
+            ...(walletSummary || {}),
+            balanceUSDC: synchronizedBalanceUSDC,
+          },
           recentTransactions: transactions,
         }),
       });
@@ -119,133 +222,54 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } finally {
       setIsAiLoading(false);
     }
-  }, [activeAddress, walletSummary, transactions]);
+  }, [activeAddress, walletSummary, synchronizedBalanceUSDC, transactions]);
 
-  // Load Real Blockchain Data
-  const loadBlockchainData = useCallback(async (targetAddr: string, isInitial = false) => {
-    if (!targetAddr || !isAddress(targetAddr)) return;
-
-    const isDemo = isDemoMode || targetAddr.toLowerCase() === DEMO_WALLET_ADDRESS.toLowerCase();
-
-    if (isDemo && isInitial) {
-      setBalanceUSDC(DEMO_WALLET_SUMMARY.balanceUSDC);
-      setWalletSummary(DEMO_WALLET_SUMMARY);
-      setTransactions(DEMO_TRANSACTIONS);
-      setAiSummary(DEMO_AI_ANALYSIS);
-      setIsLoadingData(false);
-      setIsRefreshing(false);
-      return;
-    }
-
-    if (isInitial) setIsLoadingData(true);
-    else setIsRefreshing(true);
-    setError(null);
-
-    try {
-      // 1. Fetch Real Balance from Arc Testnet
-      const balanceData = await defaultArcProvider.getBalance(targetAddr);
-      setBalanceUSDC(balanceData.formatted);
-
-      // 2. Fetch Real Transactions & Activity
-      const txs = await defaultArcProvider.getTransactions(targetAddr, 30);
-      if (txs.length > 0 || !isDemo) {
-        setTransactions(txs);
-      }
-
-      // 3. Compute Summary
-      const summary = await defaultArcProvider.getWalletSummary(targetAddr);
-      setWalletSummary(summary);
-
-    } catch (err: any) {
-      console.error('Failed to load onchain data:', err);
-      if (isDemo) {
-        setBalanceUSDC(DEMO_WALLET_SUMMARY.balanceUSDC);
-        setWalletSummary(DEMO_WALLET_SUMMARY);
-        setTransactions(DEMO_TRANSACTIONS);
-        setAiSummary(DEMO_AI_ANALYSIS);
-      } else {
-        setError(err.message || 'Unable to load real Arc Testnet data. Please check connection.');
-      }
-    } finally {
-      setIsLoadingData(false);
-      setIsRefreshing(false);
-    }
-  }, [isDemoMode]);
-
-  // Trigger data load when address or network changes
+  // Auto trigger AI summary after data load if walletSummary or transactions update
   useEffect(() => {
-    if (activeAddress && (isCorrectNetwork || isDemoMode)) {
-      loadBlockchainData(activeAddress, true);
-    } else {
-      setBalanceUSDC('0.00');
-      setWalletSummary(null);
-      setTransactions([]);
-      setAiSummary(null);
-    }
-  }, [activeAddress, isCorrectNetwork, isDemoMode, loadBlockchainData]);
-
-  // Auto trigger AI summary after data load
-  useEffect(() => {
-    if (activeAddress && walletSummary && !isAiLoading) {
+    if (activeAddress && (walletSummary || synchronizedBalanceUSDC !== '0.00') && !isAiLoading && !aiSummary) {
       fetchAiSummary();
     }
-  }, [activeAddress, walletSummary?.address, walletSummary?.txCount]);
-
-  const connectWallet = async (): Promise<boolean> => {
-    setIsDemoMode(false);
-    setDemoAddress(null);
-    const success = await injectedWallet.connect();
-    return success;
-  };
-
-  const disconnectWallet = () => {
-    injectedWallet.disconnect();
-    setIsDemoMode(false);
-    setDemoAddress(null);
-    setBalanceUSDC('0.00');
-    setWalletSummary(null);
-    setTransactions([]);
-    setAiSummary(null);
-  };
-
-  const switchToArc = async (): Promise<boolean> => {
-    return await injectedWallet.switchToArcTestnet();
-  };
+  }, [activeAddress, walletSummary?.address, walletSummary?.txCount, synchronizedBalanceUSDC]);
 
   const refreshData = async () => {
     if (activeAddress) {
-      await loadBlockchainData(activeAddress, false);
+      await Promise.all([
+        arcBalance.refetch(),
+        loadRealBlockchainData(activeAddress, false),
+      ]);
       await fetchAiSummary();
     }
   };
 
-  const inspectAddress = async (addr: string, isDemo = false) => {
-    if (!isAddress(addr)) {
-      setError('Please provide a valid 0x EVM address');
-      return;
-    }
-    setError(null);
-    if (isDemo || addr.toLowerCase() === DEMO_WALLET_ADDRESS.toLowerCase()) {
-      setIsDemoMode(true);
-      setDemoAddress(addr);
-      setBalanceUSDC(DEMO_WALLET_SUMMARY.balanceUSDC);
-      setWalletSummary(DEMO_WALLET_SUMMARY);
-      setTransactions(DEMO_TRANSACTIONS);
-      setAiSummary(DEMO_AI_ANALYSIS);
-    } else {
-      setIsDemoMode(false);
-      setDemoAddress(addr);
-    }
+  const disconnectWallet = () => {
+    connection.disconnect();
+    setTransactions([]);
+    setWalletSummary(null);
+    setAiSummary(null);
+    setDataError(null);
+    setShowWelcomeOverlay(false);
   };
 
-  const exitDemoMode = () => {
-    setIsDemoMode(false);
-    setDemoAddress(null);
-    setBalanceUSDC('0.00');
-    setWalletSummary(null);
-    setTransactions([]);
-    setAiSummary(null);
+  const clearError = () => {
+    connection.clearError();
+    network.clearError();
+    setDataError(null);
   };
+
+  const retryConnection = async () => {
+    clearError();
+    await connection.retry();
+  };
+
+  // Compatibility stubs for existing UI components
+  const inspectAddress = async (addr: string) => {
+    if (isAddress(addr)) {
+      await loadRealBlockchainData(addr, true);
+    }
+  };
+  const exitDemoMode = () => {};
+
+  const error = connection.errorMessage || network.error || dataError || arcBalance.errorMessage;
 
   return (
     <WalletContext.Provider
@@ -253,24 +277,31 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         address: activeAddress,
         shortAddress: activeAddress ? formatShortAddress(activeAddress) : '',
         isConnected,
-        isConnecting: walletState.isConnecting,
-        chainId,
+        isConnecting: connection.isConnecting,
+        connectionState: connection.state,
+        connectorName: connection.connectorName || null,
+        chainId: network.chainId || null,
         isCorrectNetwork,
-        walletName,
-        balanceUSDC,
+        detectedNetworkName: network.detectedNetworkName,
+        walletName: connection.connectorName || 'Connected Web3 Wallet',
+        balanceUSDC: synchronizedBalanceUSDC,
         walletSummary,
         transactions,
         networkStatus,
-        isLoadingData,
+        isLoadingData: isLoadingData || arcBalance.isLoading,
         isRefreshing,
-        error: error || walletState.error,
-        isDemoMode,
+        error,
+        isDemoMode: false,
         aiSummary,
         isAiLoading,
-        connectWallet,
+        showWelcomeOverlay,
+        dismissWelcomeOverlay,
+        connectWallet: connection.openConnectModal,
         disconnectWallet,
-        switchToArc,
+        switchToArc: network.switchToArc,
         refreshData,
+        retryConnection,
+        clearError,
         inspectAddress,
         exitDemoMode,
         fetchAiSummary,
@@ -278,6 +309,16 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     >
       {children}
     </WalletContext.Provider>
+  );
+};
+
+export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  return (
+    <WagmiProvider config={wagmiConfig}>
+      <QueryClientProvider client={queryClient}>
+        <WalletContextCore>{children}</WalletContextCore>
+      </QueryClientProvider>
+    </WagmiProvider>
   );
 };
 

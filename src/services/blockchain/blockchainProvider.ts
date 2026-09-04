@@ -162,6 +162,19 @@ export class ArcBlockchainProvider implements BlockchainProvider {
 
   async getWalletSummary(address: string): Promise<WalletSummary> {
     const isDemo = address.toLowerCase() === DEMO_WALLET_ADDRESS.toLowerCase();
+
+    // 1. Try unified backend summary endpoint first
+    try {
+      const summaryRes = await fetch(`/api/blockchain/arc/summary/${address}`);
+      if (summaryRes.ok) {
+        const data = await summaryRes.json();
+        if (data && data.summary) {
+          return data.summary;
+        }
+      }
+    } catch {
+      // Continue to local provider computation
+    }
     
     try {
       const balance = await this.getBalance(address);
@@ -193,7 +206,14 @@ export class ArcBlockchainProvider implements BlockchainProvider {
         }
 
         const gasCost = parseFloat(tx.gasCostUSDC) || 0;
-        gasSpentSum += gasCost;
+        if (tx.direction === 'sent' || tx.direction === 'contract_interaction' || tx.direction === 'self') {
+          gasSpentSum += gasCost;
+        }
+      }
+
+      const balNum = parseFloat(balance.formatted.replace(/,/g, '')) || 0;
+      if (receivedSum === 0 && balNum > 0) {
+        receivedSum = balNum;
       }
 
       return {

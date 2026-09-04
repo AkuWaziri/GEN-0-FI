@@ -7,6 +7,7 @@ interface AddressBadgeProps {
   shortAddress?: string;
   showExplorer?: boolean;
   className?: string;
+  onClick?: () => void;
 }
 
 export const AddressBadge: React.FC<AddressBadgeProps> = ({
@@ -14,6 +15,7 @@ export const AddressBadge: React.FC<AddressBadgeProps> = ({
   shortAddress,
   showExplorer = true,
   className = '',
+  onClick,
 }) => {
   const [copied, setCopied] = useState(false);
 
@@ -29,9 +31,13 @@ export const AddressBadge: React.FC<AddressBadgeProps> = ({
   return (
     <div
       id={`address-badge-${address.slice(-4)}`}
-      className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-[#111317] border border-zinc-800 text-xs text-zinc-200 font-mono select-all ${className}`}
+      onClick={onClick}
+      className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-[#111317] border border-zinc-800 text-xs text-zinc-200 font-mono ${
+        onClick ? 'cursor-pointer hover:border-zinc-600 hover:bg-[#16181f] transition-all' : ''
+      } ${className}`}
+      title={onClick ? 'Click to view wallet details' : address}
     >
-      <div className="w-1.5 h-1.5 rounded-full bg-white" />
+      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
       <span className="font-medium text-white">{display}</span>
 
       <div className="flex items-center gap-1 border-l border-zinc-800 pl-1.5 ml-0.5">

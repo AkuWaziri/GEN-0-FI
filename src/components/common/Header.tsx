@@ -115,7 +115,11 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onSelectTab, onOpenCo
 
         {isConnected && address ? (
           <div className="flex items-center">
-            <AddressBadge address={address} shortAddress={shortAddress} />
+            <AddressBadge
+              address={address}
+              shortAddress={shortAddress}
+              onClick={onOpenConnect}
+            />
           </div>
         ) : (
           <button

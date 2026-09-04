@@ -1,13 +1,107 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script>
+      (function() {
+        try {
+          var g = typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : self);
+          if (!g) return;
+
+          // 1. Pre-define ClientAnalytics stub so third-party wallet SDKs (Coinbase/Base)
+          // do not inject telemetry scripts or attempt to contact private cbhq endpoints.
+          if (!g.ClientAnalytics) {
+            var noop = function() {};
+            g.ClientAnalytics = {
+              init: noop,
+              logEvent: noop,
+              identify: noop,
+              optIn: noop,
+              optOut: noop,
+              Platform: { WEB: 'web', UNKNOWN: 'unknown' },
+              EventSeverity: { LOW: 'low', MEDIUM: 'medium', HIGH: 'high' }
+            };
+          }
+
+          // 2. Filter unhandled console.error logs for non-fatal third-party Analytics SDK telemetry errors
+          var origConsoleError = console.error;
+          console.error = function() {
+            var firstArg = arguments.length > 0 ? String(arguments[0]) : '';
+            if (firstArg.indexOf('Analytics SDK:') !== -1 || (arguments.length > 1 && JSON.stringify(arguments[1] || '').indexOf('AnalyticsSDKApiError') !== -1)) {
+              return; // Silently absorb external telemetry failure
+            }
+            return origConsoleError.apply(console, arguments);
+          };
+
+          // 3. Patch window.fetch to safely intercept cbhq telemetry requests and handle read-only window.fetch
+          var needsPatch = false;
+          try {
+            var orig = g.fetch;
+            g.fetch = orig;
+          } catch (e) {
+            needsPatch = true;
+          }
+
+          var nativeFetch = g.fetch ? g.fetch.bind(g) : null;
+          var safeFetch = function(input, init) {
+            var url = typeof input === 'string' ? input : (input && input.url ? input.url : '');
+            if (url && (url.indexOf('cbhq.net') !== -1 || url.indexOf('analytics-service') !== -1)) {
+              if (typeof Response !== 'undefined') {
+                return Promise.resolve(new Response(JSON.stringify({ status: 'ok' }), {
+                  status: 200,
+                  headers: { 'Content-Type': 'application/json' }
+                }));
+              }
+            }
+            return nativeFetch ? nativeFetch(input, init) : Promise.resolve(new Response());
+          };
+
+          if (needsPatch) {
+            var desc = Object.getOwnPropertyDescriptor(g, 'fetch');
+            var proto = Object.getPrototypeOf(g);
+            while (!desc && proto) {
+              desc = Object.getOwnPropertyDescriptor(proto, 'fetch');
+              proto = Object.getPrototypeOf(proto);
+            }
+            try {
+              Object.defineProperty(g, 'fetch', {
+                get: function() {
+                  return safeFetch;
+                },
+                set: function(fn) {
+                  nativeFetch = fn;
+                },
+                configurable: true,
+                enumerable: true,
+              });
+            } catch (err1) {
+              if (typeof Window !== 'undefined' && Window.prototype) {
+                try {
+                  Object.defineProperty(Window.prototype, 'fetch', {
+                    get: function() {
+                      return safeFetch;
+                    },
+                    set: function(fn) {
+                      nativeFetch = fn;
+                    },
+                    configurable: true,
+                    enumerable: true,
+                  });
+                } catch (err2) {}
+              }
+            }
+          } else if (nativeFetch) {
+            g.fetch = safeFetch;
+          }
+        } catch (outerErr) {}
+      })();
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>GEN-0 FI — Onchain Financial Intelligence</title>
-    <meta name="description" content="Onchain financial intelligence, made simple. Connect your wallet and understand what is happening inside it." />
-    <meta property="og:title" content="GEN-0 FI — Onchain Financial Intelligence" />
-    <meta property="og:description" content="Onchain financial intelligence, made simple. Connect your wallet and understand what is happening inside it." />
+    <meta name="description" content="onchain financial intelligence, made simple. gen-0 fi turns your onchain activity into clear, useful financial intelligence." />
+    <meta property="og:title" content="GEN-0 FI — onchain financial intelligence, made simple." />
+    <meta property="og:description" content="onchain financial intelligence, made simple. gen-0 fi turns your onchain activity into clear, useful financial intelligence." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="preconnect" href="https://fonts.googleapis.com">

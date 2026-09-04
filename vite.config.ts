@@ -6,9 +6,16 @@ import {defineConfig} from 'vite';
 export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
+    define: {
+      'process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID': JSON.stringify(
+        process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || process.env.VITE_WALLETCONNECT_PROJECT_ID || ''
+      ),
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+        'cross-fetch/dist/browser-ponyfill.js': path.resolve(__dirname, 'src/lib/crossFetchShim.ts'),
+        'cross-fetch': path.resolve(__dirname, 'src/lib/crossFetchShim.ts'),
       },
     },
     server: {

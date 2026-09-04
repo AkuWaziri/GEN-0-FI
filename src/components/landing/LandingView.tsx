@@ -1,20 +1,13 @@
 import React from 'react';
 import { Logo } from '../common/Logo';
-import { useWallet, DEMO_ARC_ADDRESS } from '../../context/WalletContext';
 import { ARC_NETWORK_CONFIG } from '../../config/arc';
-import { Wallet, Sparkles, Shield, Cpu, ArrowRight, CheckCircle2, ExternalLink } from 'lucide-react';
+import { Wallet, Sparkles, Shield, Cpu, CheckCircle2, ExternalLink } from 'lucide-react';
 
 interface LandingViewProps {
   onOpenConnect: () => void;
 }
 
 export const LandingView: React.FC<LandingViewProps> = ({ onOpenConnect }) => {
-  const { inspectAddress } = useWallet();
-
-  const handleExploreDemo = async () => {
-    await inspectAddress(DEMO_ARC_ADDRESS, true);
-  };
-
   const pillars = [
     {
       icon: Cpu,
@@ -65,50 +58,54 @@ export const LandingView: React.FC<LandingViewProps> = ({ onOpenConnect }) => {
 
       {/* Hero Section */}
       <main className="w-full px-4 sm:px-8 lg:px-12 py-10 sm:py-16 text-center max-w-6xl mx-auto flex-1 flex flex-col justify-center">
-        {/* Hero Title */}
-        <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white max-w-4xl mx-auto leading-[1.15]">
-          Onchain financial intelligence,{' '}
-          <span className="text-zinc-400">
-            made simple.
-          </span>
-        </h1>
+        {/* Hero Title with Blue Glow */}
+        <div className="relative max-w-4xl mx-auto">
+          {/* Blue glow effect beneath the title */}
+          <div
+            className="absolute left-1/2 -translate-x-1/2 -bottom-4 sm:-bottom-6 w-4/5 max-w-2xl h-16 sm:h-24 bg-blue-500/30 blur-2xl sm:blur-3xl rounded-full pointer-events-none -z-10"
+            aria-hidden="true"
+          />
+          <h1 className="relative text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.15]">
+            Onchain Financial Intelligence,{' '}
+            <span className="text-zinc-400">
+              Made Simple.
+            </span>
+          </h1>
+        </div>
 
         {/* Supporting Copy */}
-        <p className="mt-5 text-base sm:text-lg text-zinc-400 max-w-2xl mx-auto font-normal leading-relaxed">
-          Connect your wallet. See what happened. Understand why it matters.
-        </p>
+        <div className="mt-5 sm:mt-6 space-y-2.5 max-w-2xl mx-auto">
+          <p className="text-base sm:text-xl text-zinc-200 font-medium tracking-tight">
+            Connect your wallet. See what happened. Understand your money.
+          </p>
+          <p className="text-sm sm:text-base text-zinc-400 font-normal leading-relaxed">
+            GEN-0 FI turns your onchain activity into clear, useful financial intelligence.
+          </p>
+        </div>
 
-        {/* CTAs */}
-        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <button
-            id="btn-hero-primary-connect"
-            onClick={onOpenConnect}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 py-3 px-7 rounded-xl bg-white hover:bg-zinc-200 text-sm font-bold text-black transition-all shadow-md cursor-pointer"
-          >
-            <Wallet className="w-4 h-4" />
-            <span>Connect Wallet</span>
-          </button>
-
-          <button
-            id="btn-hero-explore-demo"
-            onClick={handleExploreDemo}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 py-3 px-6 rounded-xl bg-[#111317] hover:bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-sm font-semibold text-zinc-200 transition-all cursor-pointer group"
-          >
-            <span>Explore Demo</span>
-            <ArrowRight className="w-4 h-4 text-zinc-500 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
-          </button>
+        {/* Trust badge with blue shield icon and removed 'you stay in control' */}
+        <div className="mt-6 flex items-center justify-center gap-1.5 text-xs text-zinc-400 font-medium">
+          <Shield className="w-4 h-4 text-blue-400" />
+          <span>Non-custodial</span>
         </div>
 
         {/* 4 Pillars Section */}
         <div className="mt-14 sm:mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 text-left w-full">
           {pillars.map((pillar, idx) => {
             const Icon = pillar.icon;
+            const isShield = pillar.icon === Shield;
             return (
               <div
                 key={idx}
-                className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800/80 hover:border-zinc-600 transition-all group shadow-sm"
+                className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800/80 hover:border-zinc-700 transition-all group shadow-sm"
               >
-                <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-700/80 flex items-center justify-center text-white mb-3 group-hover:scale-105 transition-transform">
+                <div
+                  className={`w-8 h-8 rounded-lg bg-zinc-900 border flex items-center justify-center mb-3 group-hover:scale-105 transition-transform ${
+                    isShield
+                      ? 'border-blue-500/40 text-blue-400'
+                      : 'border-zinc-700/80 text-white'
+                  }`}
+                >
                   <Icon className="w-4 h-4" />
                 </div>
                 <h2 className="text-sm font-semibold text-white mb-1 tracking-tight">{pillar.title}</h2>

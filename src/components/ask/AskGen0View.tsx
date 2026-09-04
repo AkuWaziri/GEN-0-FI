@@ -22,7 +22,7 @@ export const AskGen0View: React.FC = () => {
       role: 'assistant',
       content: isConnected
         ? `Hello! I am GEN-0 FI, your onchain financial intelligence engine. I have direct read access to your verified Arc Testnet activity (${balanceUSDC} USDC, ${transactions.length} recent transactions). What would you like to know about your wallet?`
-        : `Welcome to Ask GEN-0. Please connect your wallet or explore demo mode to ask questions grounded in real Arc Testnet blockchain activity.`,
+        : `Welcome to Ask GEN-0. Please connect your wallet or inspect an address to ask questions grounded in real Arc Testnet blockchain activity.`,
       timestamp: Date.now(),
     },
   ]);

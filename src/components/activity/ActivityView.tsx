@@ -76,7 +76,11 @@ export const ActivityView: React.FC = () => {
       {/* Filter Bar & Search */}
       <div className="p-3 sm:p-4 rounded-xl bg-[#0d0f12] border border-zinc-800 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-sm">
         {/* Filter Pills */}
-        <div className="flex items-center gap-1 p-1 bg-[#131519] rounded-lg border border-zinc-800 self-start md:self-auto overflow-x-auto max-w-full">
+        <div
+          role="tablist"
+          aria-label="Activity filter tabs"
+          className="flex items-center gap-1.5 p-1 bg-[#131519] rounded-xl border border-zinc-800 self-start md:self-auto overflow-x-auto max-w-full"
+        >
           {[
             { id: 'all', label: 'All' },
             { id: 'received', label: 'Received' },
@@ -88,14 +92,25 @@ export const ActivityView: React.FC = () => {
             return (
               <button
                 key={tab.id}
+                id={`activity-filter-${tab.id}`}
+                role="tab"
+                aria-selected={isTabActive}
                 onClick={() => setFilter(tab.id as any)}
-                className={`px-3 py-1.5 rounded-md text-xs transition-all cursor-pointer whitespace-nowrap ${
+                className={`relative px-3.5 py-1.5 rounded-lg text-xs transition-all duration-200 ease-out cursor-pointer whitespace-nowrap select-none ${
                   isTabActive
-                    ? 'bg-white text-black font-bold shadow-sm'
-                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800 font-medium'
+                    ? 'text-white font-semibold bg-blue-500/[0.08] border border-blue-500/25 shadow-[0_0_14px_rgba(59,130,246,0.12)]'
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 border border-transparent font-medium'
                 }`}
               >
-                {tab.label}
+                <span>{tab.label}</span>
+
+                {/* Thin blue indicator beneath active tab */}
+                {isTabActive && (
+                  <span
+                    className="absolute bottom-0 left-2.5 right-2.5 h-[2px] bg-blue-500 rounded-full shadow-[0_0_6px_rgba(59,130,246,0.6)]"
+                    aria-hidden="true"
+                  />
+                )}
               </button>
             );
           })}
@@ -217,7 +232,7 @@ export const ActivityView: React.FC = () => {
                       {isReceived ? `+${tx.value}` : isSent ? `-${tx.value}` : `${tx.value}`} USDC
                     </div>
                     <div className="text-[10px] text-zinc-500 font-mono">
-                      Gas: ${tx.gasCostUSDC}
+                      Gas: {tx.gasCostUSDC} USDC
                     </div>
                   </div>
 

@@ -24,6 +24,91 @@ const arcClient = createPublicClient({
   }),
 });
 
+// Helper: Fetch onchain transactions via ArcScan Blockscout API with fallback to RPC block scan
+async function fetchTransactionsForAddress(address: string, limit = 50): Promise<any[]> {
+  const transactions: any[] = [];
+  const normalizedAddress = address.toLowerCase();
+
+  // 1. Try ArcScan Blockscout API first (indexed historical transactions)
+  try {
+    const arcScanUrl = `https://testnet.arcscan.app/api?module=account&action=txlist&address=${address}&page=1&offset=${limit}&sort=desc`;
+    const scanRes = await fetch(arcScanUrl, { signal: AbortSignal.timeout(6000) });
+    if (scanRes.ok) {
+      const scanData: any = await scanRes.json();
+      if (scanData && scanData.status === '1' && Array.isArray(scanData.result) && scanData.result.length > 0) {
+        for (const tx of scanData.result) {
+          const rawTx: RawTxInput = {
+            hash: tx.hash,
+            blockNumber: BigInt(tx.blockNumber || '0'),
+            from: tx.from,
+            to: tx.to || null,
+            value: BigInt(tx.value || '0'),
+            gas: BigInt(tx.gas || '21000'),
+            gasPrice: BigInt(tx.gasPrice || '25000000000'),
+            gasUsed: BigInt(tx.gasUsed || tx.gas || '21000'),
+            input: tx.input || '0x',
+            timestamp: Number(tx.timeStamp || '0') * 1000,
+            status: tx.isError === '0' ? 1 : 0,
+            contractAddress: tx.contractAddress || null,
+          };
+          transactions.push(normalizeTransaction(rawTx, address));
+        }
+        return transactions;
+      }
+    }
+  } catch (scanErr) {
+    console.warn(`ArcScan txlist lookup error for ${address}, falling back to RPC:`, scanErr);
+  }
+
+  // 2. Fallback: Recent RPC block scanning
+  try {
+    const currentBlock = await arcClient.getBlockNumber();
+    const scanDepth = 40n;
+    const fromBlock = currentBlock > scanDepth ? currentBlock - scanDepth : 0n;
+
+    for (let b = currentBlock; b >= fromBlock && transactions.length < limit; b--) {
+      try {
+        const block = await arcClient.getBlock({
+          blockNumber: b,
+          includeTransactions: true,
+        });
+
+        if (block && block.transactions) {
+          for (const tx of block.transactions) {
+            if (typeof tx === 'object') {
+              const txFrom = (tx.from || '').toLowerCase();
+              const txTo = (tx.to || '').toLowerCase();
+
+              if (txFrom === normalizedAddress || txTo === normalizedAddress) {
+                const rawTx: RawTxInput = {
+                  hash: tx.hash,
+                  blockNumber: block.number,
+                  from: tx.from,
+                  to: tx.to,
+                  value: tx.value,
+                  gas: tx.gas,
+                  gasPrice: tx.gasPrice || 1000000000n,
+                  gasUsed: tx.gas || 21000n,
+                  input: tx.input,
+                  timestamp: Number(block.timestamp) * 1000,
+                  status: 1,
+                };
+                transactions.push(normalizeTransaction(rawTx, address));
+              }
+            }
+          }
+        }
+      } catch {
+        continue;
+      }
+    }
+  } catch (rpcErr) {
+    console.warn(`RPC block scan error for ${address}:`, rpcErr);
+  }
+
+  return transactions;
+}
+
 // Gemini Client setup
 let geminiAi: GoogleGenAI | null = null;
 function getGeminiClient(): GoogleGenAI | null {
@@ -135,68 +220,106 @@ app.get('/api/blockchain/arc/activity/:address', async (req, res) => {
       address: address as `0x${string}`,
     });
 
-    // Query latest blocks to inspect onchain activity
-    const currentBlock = await arcClient.getBlockNumber();
-    const transactions: any[] = [];
-    const normalizedAddress = address.toLowerCase();
-
-    // Scan recent blocks for transaction occurrences
-    // For Arc Testnet RPC, we check up to last 35 blocks or until limit reached
-    const scanDepth = 35n;
-    const fromBlock = currentBlock > scanDepth ? currentBlock - scanDepth : 0n;
-
-    for (let b = currentBlock; b >= fromBlock && transactions.length < limit; b--) {
-      try {
-        const block = await arcClient.getBlock({
-          blockNumber: b,
-          includeTransactions: true,
-        });
-
-        if (block && block.transactions) {
-          for (const tx of block.transactions) {
-            if (typeof tx === 'object') {
-              const txFrom = (tx.from || '').toLowerCase();
-              const txTo = (tx.to || '').toLowerCase();
-
-              if (txFrom === normalizedAddress || txTo === normalizedAddress) {
-                const rawTx: RawTxInput = {
-                  hash: tx.hash,
-                  blockNumber: block.number,
-                  from: tx.from,
-                  to: tx.to,
-                  value: tx.value,
-                  gas: tx.gas,
-                  gasPrice: tx.gasPrice || 1000000000n,
-                  gasUsed: tx.gas || 21000n,
-                  input: tx.input,
-                  timestamp: Number(block.timestamp) * 1000,
-                  status: 1,
-                };
-                const norm = normalizeTransaction(rawTx, address);
-                transactions.push(norm);
-              }
-            }
-          }
-        }
-      } catch (blockErr) {
-        // Continue block scanning even if one block lookup encounters network jitter
-        continue;
-      }
-    }
+    const transactions = await fetchTransactionsForAddress(address, limit);
 
     res.json({
       address,
-      txCount: Number(txCount),
-      scannedBlocksRange: {
-        from: Number(fromBlock),
-        to: Number(currentBlock),
-      },
+      txCount: Math.max(Number(txCount), transactions.length),
       transactions,
     });
   } catch (error: any) {
     console.error(`Error querying activity for ${address}:`, error);
     res.status(500).json({
       error: 'Failed to retrieve transaction activity from Arc RPC',
+      message: error?.message || 'RPC query failed',
+    });
+  }
+});
+
+// -------------------------------------------------------------
+// 3b. UNIFIED LIVE WALLET SUMMARY
+// -------------------------------------------------------------
+app.get('/api/blockchain/arc/summary/:address', async (req, res) => {
+  const { address } = req.params;
+
+  if (!address || !isAddress(address)) {
+    return res.status(400).json({ error: 'Invalid EVM address parameter' });
+  }
+
+  try {
+    // 1. Balance directly from Arc RPC
+    const balanceWei = await arcClient.getBalance({
+      address: address as `0x${string}`,
+    });
+    const formatted = formatUnits(balanceWei, 18);
+    const num = parseFloat(formatted);
+    const displayBalance = num === 0 ? '0.00' : num.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 4,
+    });
+
+    // 2. Transaction Count
+    const txCount = await arcClient.getTransactionCount({
+      address: address as `0x${string}`,
+    });
+
+    // 3. Transactions via ArcScan / RPC
+    const transactions = await fetchTransactionsForAddress(address, 50);
+
+    // 4. Compute financial totals
+    let receivedSum = 0;
+    let sentSum = 0;
+    let gasSpentSum = 0;
+    const counterparties = new Set<string>();
+    const contracts = new Set<string>();
+
+    for (const tx of transactions) {
+      const valNum = parseFloat(tx.value.replace(/,/g, '')) || 0;
+      if (tx.direction === 'received') {
+        receivedSum += valNum;
+        if (tx.from) counterparties.add(tx.from.toLowerCase());
+      } else if (tx.direction === 'sent' || tx.direction === 'contract_interaction') {
+        sentSum += valNum;
+        if (tx.to) counterparties.add(tx.to.toLowerCase());
+      }
+
+      if (tx.isContractInteraction && tx.to) {
+        contracts.add(tx.to.toLowerCase());
+      }
+
+      const gasCost = parseFloat(tx.gasCostUSDC) || 0;
+      if (tx.direction === 'sent' || tx.direction === 'contract_interaction' || tx.direction === 'self') {
+        gasSpentSum += gasCost;
+      }
+    }
+
+    // If transactions history did not index faucet or initial inbound funding but wallet has balance
+    if (receivedSum === 0 && num > 0) {
+      receivedSum = num;
+    }
+
+    const summary = {
+      address,
+      balanceUSDC: displayBalance,
+      rawBalance: balanceWei.toString(),
+      receivedTotalUSDC: receivedSum > 0 ? receivedSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '0.00',
+      sentTotalUSDC: sentSum > 0 ? sentSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '0.00',
+      txCount: Math.max(Number(txCount), transactions.length),
+      gasSpentUSDC: gasSpentSum > 0 ? gasSpentSum.toFixed(6) : '0.000000',
+      activeContractsCount: contracts.size,
+      uniqueCounterpartiesCount: counterparties.size,
+      latestActivityTime: transactions.length > 0 ? transactions[0].timestamp : undefined,
+      isDataAvailable: true,
+    };
+
+    res.json({
+      summary,
+      transactions,
+    });
+  } catch (error: any) {
+    console.error(`Error querying summary for ${address}:`, error);
+    res.status(500).json({
+      error: 'Failed to retrieve wallet summary from Arc RPC',
       message: error?.message || 'RPC query failed',
     });
   }

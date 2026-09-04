@@ -61,7 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
         )}
 
         {/* Navigation Items */}
-        <nav className="space-y-1" aria-label="Main Navigation">
+        <nav className="space-y-1.5" aria-label="Main Navigation" role="tablist">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -69,26 +69,44 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
               <button
                 key={item.id}
                 id={`nav-link-${item.id}`}
+                role="tab"
+                aria-selected={isActive}
                 onClick={() => onSelectTab(item.id)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all cursor-pointer ${
+                className={`relative w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 ease-out cursor-pointer select-none group ${
                   isActive
-                    ? 'bg-zinc-800/90 text-white border border-zinc-700 font-semibold shadow-sm'
-                    : 'text-zinc-400 hover:text-white hover:bg-zinc-900 font-medium'
+                    ? 'bg-blue-500/[0.08] text-white border border-blue-500/25 font-semibold shadow-[0_0_16px_rgba(59,130,246,0.12)]'
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40 border border-transparent font-medium'
                 }`}
               >
                 <div className="flex items-center gap-2.5">
                   <Icon
-                    className={`w-4 h-4 shrink-0 ${
-                      isActive ? 'text-white' : 'text-zinc-500'
+                    className={`w-4 h-4 shrink-0 transition-colors duration-200 ${
+                      isActive
+                        ? 'text-blue-400 drop-shadow-[0_0_6px_rgba(59,130,246,0.35)]'
+                        : 'text-zinc-500 group-hover:text-zinc-300'
                     }`}
                   />
                   <span className="tracking-tight">{item.label}</span>
                 </div>
 
                 {item.badge && (
-                  <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-zinc-900 text-zinc-300 border border-zinc-700">
+                  <span
+                    className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold transition-colors duration-200 ${
+                      isActive
+                        ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                        : 'bg-zinc-900 text-zinc-400 border border-zinc-700/80 group-hover:text-zinc-300'
+                    }`}
+                  >
                     {item.badge}
                   </span>
+                )}
+
+                {/* Thin blue indicator beneath active tab */}
+                {isActive && (
+                  <span
+                    className="absolute bottom-0 left-3 right-3 h-[2px] bg-blue-500/90 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.6)]"
+                    aria-hidden="true"
+                  />
                 )}
               </button>
             );
@@ -113,7 +131,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
                 <LogOut className="w-3 h-3" />
               </button>
             </div>
-            <AddressBadge address={address} shortAddress={shortAddress} />
+            <AddressBadge
+              address={address}
+              shortAddress={shortAddress}
+              onClick={onOpenConnect}
+            />
           </div>
         ) : (
           <button

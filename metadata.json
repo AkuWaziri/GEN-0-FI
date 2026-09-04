@@ -1,6 +1,6 @@
 {
   "name": "GEN-0 FI",
-  "description": "Onchain financial intelligence, made simple. Connect your wallet and understand your Arc Testnet activity.",
+  "description": "onchain financial intelligence, made simple. gen-0 fi turns your onchain activity into clear, useful financial intelligence.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
