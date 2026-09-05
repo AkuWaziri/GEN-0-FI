@@ -54,6 +54,45 @@ export interface WalletContextType {
   fetchAiSummary: () => Promise<void>;
 }
 
+function buildFallbackAiAnalysis(
+  targetAddr: string,
+  summary: WalletSummary | null,
+  balance: string
+): AiWalletAnalysis {
+  const short = `${targetAddr.slice(0, 6)}...${targetAddr.slice(-4)}`;
+  const txCount = summary?.txCount ?? 0;
+  const numBal = parseFloat(balance.replace(/,/g, '')) || 0;
+  const historyStatus = summary?.historyStatus || (numBal > 0 && txCount === 0 ? 'incomplete' : 'complete');
+  const observations: string[] = [];
+
+  let summaryText = '';
+  if (historyStatus === 'incomplete') {
+    summaryText = `Wallet ${short} verifiably holds ${balance} USDC on Arc Testnet across ${txCount} transaction(s). Historical inbound funding occurred outside the scanned explorer dataset, so lifetime received volume cannot be fully determined from recent logs.`;
+    observations.push(`Current authoritative balance: ${balance} USDC on Arc Testnet.`);
+    observations.push(`Confirmed outbound nonce: ${txCount} transaction(s).`);
+    observations.push(`Inbound funding happened outside scanned blocks; current balance is authoritative.`);
+  } else if (txCount === 0 && numBal === 0) {
+    summaryText = `Wallet ${short} holds 0.00 USDC with zero recorded transactions on Arc Testnet.`;
+    observations.push(`Current verified balance: 0.00 USDC.`);
+    observations.push(`No incoming or outgoing transfers on Arc Testnet.`);
+  } else {
+    summaryText = `Wallet ${short} holds ${balance} USDC on Arc Testnet across ${txCount} confirmed transaction(s). Total verified incoming transfers: ${summary?.totalReceivedUSDC || '0.00'} USDC; outgoing transfers: ${summary?.totalSentUSDC || '0.00'} USDC.`;
+    observations.push(`Current verified balance: ${balance} USDC.`);
+    observations.push(`Verified inbound: ${summary?.totalReceivedUSDC || '0.00'} USDC | Outbound: ${summary?.totalSentUSDC || '0.00'} USDC.`);
+    if ((summary?.contractInteractionsCount || 0) > 0) {
+      observations.push(`${summary?.contractInteractionsCount} smart contract interaction(s) verified.`);
+    }
+  }
+
+  return {
+    summary: summaryText,
+    keyObservations: observations,
+    activityLevel: txCount > 5 ? 'active' : txCount > 0 ? 'moderate' : 'low',
+    generatedAt: Date.now(),
+    disclaimer: 'Generated from real Arc Testnet onchain state.',
+  };
+}
+
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -185,7 +224,8 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
     try {
       const res = await fetch('/api/ai/summary', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+        cache: 'no-store',
         body: JSON.stringify({
           address: targetAddr,
           summary: {
@@ -198,9 +238,12 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
       if (res.ok) {
         const data = await res.json();
         setAiSummary(data);
+      } else {
+        setAiSummary(buildFallbackAiAnalysis(targetAddr, activeSummary, balance));
       }
     } catch (err) {
-      console.warn('AI Summary fetch error:', err);
+      console.warn('AI Summary fetch error, serving verified onchain summary fallback:', err);
+      setAiSummary(buildFallbackAiAnalysis(targetAddr, activeSummary, balance));
     } finally {
       isAiFetchingRef.current = false;
       setIsAiLoading(false);

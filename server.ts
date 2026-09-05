@@ -14,6 +14,33 @@ const PORT = 3000;
 
 app.use(express.json());
 
+// Normalize incoming request path for Vercel serverless functions (where /api might be stripped)
+app.use((req, res, next) => {
+  if (req.url && !req.url.startsWith('/api') && (
+    req.url.startsWith('/blockchain') ||
+    req.url.startsWith('/ai') ||
+    req.url.startsWith('/health')
+  )) {
+    req.url = `/api${req.url}`;
+  }
+  next();
+});
+
+// Enforce CORS and disable caching across all /api endpoints for live blockchain accuracy
+app.use('/api', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cache-Control, Pragma');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+  next();
+});
+
 // Arc Viem Client
 const arcClient = createPublicClient({
   chain: arcTestnetChain,
@@ -763,4 +790,12 @@ async function startServer() {
   });
 }
 
-startServer();
+// Start server when run standalone (AI Studio dev container or production container).
+// Skip starting HTTP listener when imported in serverless environments (e.g. Vercel).
+const isServerless = process.env.VERCEL === '1' || Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME);
+if (!isServerless) {
+  startServer();
+}
+
+export default app;
+export { app };

@@ -1,7 +1,7 @@
 import { createPublicClient, formatUnits, http, isAddress } from 'viem';
 import { arcTestnetChain, ARC_NETWORK_CONFIG, ARC_TESTNET_RPC_URL } from '../../config/arc';
 import { BlockchainStatus, NormalizedTransaction, WalletSummary } from '../../types/blockchain';
-import { normalizeTransaction } from './normalizer';
+import { normalizeTransaction, RawTxInput } from './normalizer';
 import { DEMO_WALLET_ADDRESS, DEMO_TRANSACTIONS, DEMO_WALLET_SUMMARY } from './demoData';
 
 export interface BlockchainProvider {
@@ -140,8 +140,12 @@ export class ArcBlockchainProvider implements BlockchainProvider {
     if (!isAddress(address)) return [];
     const isDemo = address.toLowerCase() === DEMO_WALLET_ADDRESS.toLowerCase();
 
+    // 1. Try Backend API first (with cache: 'no-store')
     try {
-      const res = await fetch(`/api/blockchain/arc/activity/${address}?limit=${limit}`);
+      const res = await fetch(`/api/blockchain/arc/activity/${address}?limit=${limit}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+      });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.transactions) && data.transactions.length > 0) {
@@ -149,7 +153,44 @@ export class ArcBlockchainProvider implements BlockchainProvider {
         }
       }
     } catch (err) {
-      console.warn('Backend activity endpoint call failed, querying fallback:', err);
+      console.warn('Backend activity endpoint call failed, querying direct explorer fallback:', err);
+    }
+
+    // 2. Direct client-side ArcScan Blockscout API v2 query (supported with CORS * on ArcScan)
+    try {
+      const v2Url = `https://testnet.arcscan.app/api/v2/addresses/${address}/transactions`;
+      const scanRes = await fetch(v2Url, {
+        signal: AbortSignal.timeout(6000),
+        cache: 'no-store',
+      });
+      if (scanRes.ok) {
+        const scanData: any = await scanRes.json();
+        if (scanData && Array.isArray(scanData.items) && scanData.items.length > 0) {
+          const directTxs: NormalizedTransaction[] = [];
+          for (const tx of scanData.items.slice(0, limit)) {
+            const rawTx: RawTxInput = {
+              hash: tx.hash,
+              blockNumber: BigInt(tx.block_number || '0'),
+              from: tx.from?.hash || '',
+              to: tx.to?.hash || tx.created_contract?.hash || null,
+              value: BigInt(tx.value || '0'),
+              gas: BigInt(tx.gas_limit || tx.gas_used || '21000'),
+              gasPrice: BigInt(tx.gas_price || '25000000000'),
+              gasUsed: BigInt(tx.gas_used || '21000'),
+              input: tx.raw_input || '0x',
+              timestamp: tx.timestamp ? new Date(tx.timestamp).getTime() : Date.now(),
+              status: tx.status === 'ok' || tx.result === 'success' ? 1 : 0,
+              contractAddress: tx.created_contract?.hash || null,
+            };
+            directTxs.push(normalizeTransaction(rawTx, address));
+          }
+          if (directTxs.length > 0) {
+            return directTxs;
+          }
+        }
+      }
+    } catch (directErr) {
+      console.warn('Direct ArcScan client fetch error:', directErr);
     }
 
     // If demo address has no recent scanned transactions on chain, return demo activity
@@ -165,7 +206,10 @@ export class ArcBlockchainProvider implements BlockchainProvider {
 
     // 1. Try unified backend summary endpoint first (authoritative live Arc RPC + ArcScan v2)
     try {
-      const summaryRes = await fetch(`/api/blockchain/arc/summary/${address}`);
+      const summaryRes = await fetch(`/api/blockchain/arc/summary/${address}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+      });
       if (summaryRes.ok) {
         const data = await summaryRes.json();
         if (data && data.summary) {

@@ -51,7 +51,10 @@ export function useArcBalance(address: `0x${string}` | string | undefined, isArc
 
     // 1. Try server endpoint first (server-side viem connection to Arc RPC)
     try {
-      const res = await fetch(`/api/blockchain/arc/balance/${targetAddr}`);
+      const res = await fetch(`/api/blockchain/arc/balance/${targetAddr}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+      });
       if (res.ok) {
         const data = await res.json();
         if (activeAddressRef.current === targetAddr && data && data.balanceUSDC) {
