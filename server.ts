@@ -3,7 +3,6 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { createPublicClient, formatUnits, http, isAddress } from 'viem';
 import { GoogleGenAI, Type } from '@google/genai';
-import { createServer as createViteServer } from 'vite';
 import { arcTestnetChain, ARC_NETWORK_CONFIG, ARC_TESTNET_RPC_URL } from './src/config/arc';
 import { normalizeTransaction, RawTxInput } from './src/services/blockchain/normalizer';
 
@@ -75,6 +74,7 @@ async function fetchTransactionsForAddress(address: string, limit = 50): Promise
             from: tx.from?.hash || '',
             to: tx.to?.hash || tx.created_contract?.hash || null,
             value: BigInt(tx.value || '0'),
+            fee: tx.fee?.value ? BigInt(tx.fee.value) : undefined,
             gas: BigInt(tx.gas_limit || tx.gas_used || '21000'),
             gasPrice: BigInt(tx.gas_price || '25000000000'),
             gasUsed: BigInt(tx.gas_used || '21000'),
@@ -433,7 +433,7 @@ app.get('/api/blockchain/arc/summary/:address', async (req, res) => {
       receivedTotalUSDC: totalReceivedDisplay, // backwards compatibility alias
       totalSentUSDC: totalSentDisplay,
       sentTotalUSDC: totalSentDisplay, // backwards compatibility alias
-      txCount: outgoingNonceNum, // Outgoing nonce from Arc RPC
+      txCount: Math.max(outgoingNonceNum, transactions.length), // Authoritative transaction count (nonce or confirmed transactions)
       scannedTxCount: transactions.length,
       gasSpentUSDC: finalGasSpent,
       contractInteractionsCount,
@@ -772,6 +772,7 @@ SAFETY & ACCURACY MANDATES:
 // -------------------------------------------------------------
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',

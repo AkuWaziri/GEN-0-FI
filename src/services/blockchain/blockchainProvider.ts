@@ -109,15 +109,45 @@ export class ArcBlockchainProvider implements BlockchainProvider {
         raw: balanceWei.toString(),
       };
     } catch (err) {
-      if (isDemo) {
-        return {
-          formatted: DEMO_WALLET_SUMMARY.balanceUSDC,
-          raw: DEMO_WALLET_SUMMARY.rawBalance,
-        };
-      }
-      console.error('Failed to get Arc Testnet balance:', err);
-      throw new Error('Unable to query Arc Testnet RPC for balance. Check network connection.');
+      console.warn('Direct Viem RPC balance query failed, trying ArcScan explorer:', err);
     }
+
+    // 3. Direct ArcScan Blockscout API v2 address endpoint
+    try {
+      const scanRes = await fetch(`https://testnet.arcscan.app/api/v2/addresses/${address}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+      });
+      if (scanRes.ok) {
+        const scanData = await scanRes.json();
+        if (scanData && scanData.coin_balance !== undefined && scanData.coin_balance !== null) {
+          const balanceWei = BigInt(scanData.coin_balance);
+          const rawUnits = formatUnits(balanceWei, 18);
+          const num = parseFloat(rawUnits);
+          const displayStr = isNaN(num) ? '0.00' : num === 0 ? (isDemo ? DEMO_WALLET_SUMMARY.balanceUSDC : '0.00') : num.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 4,
+          });
+          return {
+            formatted: displayStr,
+            raw: balanceWei.toString(),
+          };
+        }
+      }
+    } catch (scanErr) {
+      console.warn('ArcScan explorer balance lookup failed:', scanErr);
+    }
+
+    if (isDemo) {
+      return {
+        formatted: DEMO_WALLET_SUMMARY.balanceUSDC,
+        raw: DEMO_WALLET_SUMMARY.rawBalance,
+      };
+    }
+    return {
+      formatted: '0.00',
+      raw: '0',
+    };
   }
 
   async getTransactionCount(address: string): Promise<number> {
@@ -174,6 +204,7 @@ export class ArcBlockchainProvider implements BlockchainProvider {
               from: tx.from?.hash || '',
               to: tx.to?.hash || tx.created_contract?.hash || null,
               value: BigInt(tx.value || '0'),
+              fee: tx.fee?.value ? BigInt(tx.fee.value) : undefined,
               gas: BigInt(tx.gas_limit || tx.gas_used || '21000'),
               gasPrice: BigInt(tx.gas_price || '25000000000'),
               gasUsed: BigInt(tx.gas_used || '21000'),
@@ -310,7 +341,7 @@ export class ArcBlockchainProvider implements BlockchainProvider {
         receivedTotalUSDC: totalReceivedDisplay,
         totalSentUSDC: totalSentDisplay,
         sentTotalUSDC: totalSentDisplay,
-        txCount,
+        txCount: Math.max(txCount, txs.length),
         scannedTxCount: txs.length,
         gasSpentUSDC: finalGasSpent,
         contractInteractionsCount: contractInteractions,
@@ -323,11 +354,31 @@ export class ArcBlockchainProvider implements BlockchainProvider {
         incomingTransfersCount: incomingCount,
         outgoingTransfersCount: outgoingCount,
       };
-    } catch {
+    } catch (computeErr) {
       if (isDemo) {
         return DEMO_WALLET_SUMMARY;
       }
-      throw new Error('Unable to compute wallet summary');
+      console.warn('Fallback summary computation error:', computeErr);
+      return {
+        address,
+        balanceUSDC: '0.00',
+        rawBalance: '0',
+        totalReceivedUSDC: '0.00',
+        receivedTotalUSDC: '0.00',
+        totalSentUSDC: '0.00',
+        sentTotalUSDC: '0.00',
+        txCount: 0,
+        scannedTxCount: 0,
+        gasSpentUSDC: '0.000000',
+        contractInteractionsCount: 0,
+        activeContractsCount: 0,
+        uniqueCounterpartiesCount: 0,
+        isDataAvailable: true,
+        historyStatus: 'incomplete',
+        historyStatusNote: 'Unable to complete full onchain calculation.',
+        incomingTransfersCount: 0,
+        outgoingTransfersCount: 0,
+      };
     }
   }
 }

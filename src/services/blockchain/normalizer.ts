@@ -8,6 +8,7 @@ export interface RawTxInput {
   from: string;
   to: string | null;
   value: bigint | string;
+  fee?: bigint | string;
   gas?: bigint | string;
   gasPrice?: bigint | string;
   gasUsed?: bigint | string;
@@ -89,18 +90,24 @@ export function normalizeTransaction(raw: RawTxInput, userAddress: string): Norm
     formattedValue = '0.00';
   }
 
-  // Gas calculation in USDC (18 decimals)
+  // Gas calculation in USDC (18 decimals native USDC on Arc)
   let gasCostUSDC = '0.00';
   let gasUsedStr = '0';
   let gasPriceStr = '0';
   try {
-    const gasUsed = raw.gasUsed ? (typeof raw.gasUsed === 'bigint' ? raw.gasUsed : BigInt(raw.gasUsed)) : 21000n;
-    const gasPrice = raw.gasPrice ? (typeof raw.gasPrice === 'bigint' ? raw.gasPrice : BigInt(raw.gasPrice)) : 1000000000n;
-    gasUsedStr = gasUsed.toString();
-    gasPriceStr = gasPrice.toString();
-    const totalGasCostWei = gasUsed * gasPrice;
-    const gasUnits = formatUnits(totalGasCostWei, 18);
-    gasCostUSDC = parseFloat(gasUnits).toFixed(6);
+    if (raw.fee !== undefined && raw.fee !== null) {
+      const feeWei = typeof raw.fee === 'bigint' ? raw.fee : BigInt(raw.fee);
+      const feeUnits = formatUnits(feeWei, 18);
+      gasCostUSDC = parseFloat(feeUnits).toFixed(6);
+    } else {
+      const gasUsed = raw.gasUsed ? (typeof raw.gasUsed === 'bigint' ? raw.gasUsed : BigInt(raw.gasUsed)) : 21000n;
+      const gasPrice = raw.gasPrice ? (typeof raw.gasPrice === 'bigint' ? raw.gasPrice : BigInt(raw.gasPrice)) : 1000000000n;
+      gasUsedStr = gasUsed.toString();
+      gasPriceStr = gasPrice.toString();
+      const totalGasCostWei = gasUsed * gasPrice;
+      const gasUnits = formatUnits(totalGasCostWei, 18);
+      gasCostUSDC = parseFloat(gasUnits).toFixed(6);
+    }
   } catch {
     gasCostUSDC = '0.000000';
   }

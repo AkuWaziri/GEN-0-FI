@@ -87,13 +87,41 @@ export function useArcBalance(address: `0x${string}` | string | undefined, isArc
 
       setFormatted(displayStr);
       setIsLoading(false);
-    } catch (err: unknown) {
-      if (activeAddressRef.current !== targetAddr) return;
-      console.warn(`Could not fetch Arc Testnet balance for ${targetAddr}:`, err);
-      setIsError(true);
-      setErrorMessage('Could not retrieve real-time Arc Testnet balance.');
-      setIsLoading(false);
+      return;
+    } catch (rpcErr: unknown) {
+      console.warn(`Viem RPC balance query failed for ${targetAddr}, trying ArcScan explorer balance:`, rpcErr);
     }
+
+    // 3. Fallback: Direct ArcScan Blockscout API v2 address lookup
+    try {
+      const scanRes = await fetch(`https://testnet.arcscan.app/api/v2/addresses/${targetAddr}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+      });
+      if (scanRes.ok) {
+        const scanData = await scanRes.json();
+        if (activeAddressRef.current === targetAddr && scanData && scanData.coin_balance !== undefined && scanData.coin_balance !== null) {
+          const balanceWei = BigInt(scanData.coin_balance);
+          setRaw(balanceWei);
+          const rawUnits = formatUnits(balanceWei, 18);
+          const num = parseFloat(rawUnits);
+          const displayStr = isNaN(num) ? '0.00' : num === 0 ? '0.00' : num.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 4,
+          });
+          setFormatted(displayStr);
+          setIsLoading(false);
+          return;
+        }
+      }
+    } catch (scanErr: unknown) {
+      console.warn(`ArcScan explorer balance lookup failed for ${targetAddr}:`, scanErr);
+    }
+
+    if (activeAddressRef.current !== targetAddr) return;
+    setIsError(true);
+    setErrorMessage('Could not retrieve real-time Arc Testnet balance.');
+    setIsLoading(false);
   }, [address]);
 
   useEffect(() => {
