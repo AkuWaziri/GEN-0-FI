@@ -30,14 +30,22 @@ export interface WalletSummary {
   address: string;
   balanceUSDC: string;
   rawBalance: string;
-  receivedTotalUSDC: string;
-  sentTotalUSDC: string;
+  totalReceivedUSDC: string;
+  receivedTotalUSDC: string; // alias
+  totalSentUSDC: string;
+  sentTotalUSDC: string; // alias
   txCount: number;
+  scannedTxCount?: number;
   gasSpentUSDC: string;
-  activeContractsCount: number;
+  contractInteractionsCount: number;
+  activeContractsCount: number; // alias
   uniqueCounterpartiesCount: number;
   latestActivityTime?: number;
   isDataAvailable: boolean;
+  historyStatus?: 'complete' | 'incomplete' | 'unavailable';
+  historyStatusNote?: string;
+  incomingTransfersCount?: number;
+  outgoingTransfersCount?: number;
 }
 
 export interface NetworkConfig {

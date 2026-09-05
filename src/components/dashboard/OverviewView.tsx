@@ -219,12 +219,20 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
           <div className="mt-2">
             {isLoadingData ? (
               <Skeleton className="h-7 w-24" />
-            ) : (
-              <div className="text-lg sm:text-xl font-bold text-white font-mono truncate">
-                {walletSummary?.receivedTotalUSDC || '0.00'} <span className="text-xs text-zinc-400 font-sans">USDC</span>
-              </div>
-            )}
-            <div className="text-[11px] text-zinc-500 font-mono mt-1">Inbound transfers</div>
+            ) : (() => {
+              const recVal = walletSummary?.totalReceivedUSDC || walletSummary?.receivedTotalUSDC || '0.00';
+              const isNonNumeric = recVal === 'Incomplete scan' || recVal === 'Unavailable';
+              return (
+                <>
+                  <div className={`font-mono truncate ${isNonNumeric ? 'text-sm sm:text-base font-semibold text-zinc-300' : 'text-lg sm:text-xl font-bold text-white'}`}>
+                    {recVal} {!isNonNumeric && <span className="text-xs text-zinc-400 font-sans">USDC</span>}
+                  </div>
+                  <div className="text-[11px] text-zinc-500 font-mono mt-1">
+                    {isNonNumeric ? 'Inbound outside scan' : 'Inbound transfers'}
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
 
@@ -241,12 +249,18 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
           <div className="mt-2">
             {isLoadingData ? (
               <Skeleton className="h-7 w-24" />
-            ) : (
-              <div className="text-lg sm:text-xl font-bold text-zinc-200 font-mono truncate">
-                {walletSummary?.sentTotalUSDC || '0.00'} <span className="text-xs text-zinc-400 font-sans">USDC</span>
-              </div>
-            )}
-            <div className="text-[11px] text-zinc-500 font-mono mt-1">Outbound transfers</div>
+            ) : (() => {
+              const sentVal = walletSummary?.totalSentUSDC || walletSummary?.sentTotalUSDC || '0.00';
+              const isNonNumeric = sentVal === 'Incomplete scan' || sentVal === 'Unavailable';
+              return (
+                <>
+                  <div className={`font-mono truncate ${isNonNumeric ? 'text-sm sm:text-base font-semibold text-zinc-400' : 'text-lg sm:text-xl font-bold text-zinc-200'}`}>
+                    {sentVal} {!isNonNumeric && <span className="text-xs text-zinc-400 font-sans">USDC</span>}
+                  </div>
+                  <div className="text-[11px] text-zinc-500 font-mono mt-1">Outbound transfers</div>
+                </>
+              );
+            })()}
           </div>
         </div>
 
@@ -349,11 +363,9 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
           <div className="space-y-3">
             <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-normal">
               {aiSummary?.summary ||
-                `Connected to Arc Testnet with ${activeBalanceUSDC} USDC. ${
-                  transactions.length > 0
-                    ? `Found ${transactions.length} confirmed transaction(s).`
-                    : 'No outgoing or incoming transactions detected in recent blocks.'
-                }`}
+                (walletSummary?.historyStatus === 'incomplete'
+                  ? `Wallet verifiably holds ${activeBalanceUSDC} USDC on Arc Testnet across ${totalTransactions} outgoing transaction(s). Inbound funding occurred outside the scanned explorer dataset, so historical incoming transfer records cannot be fully determined.`
+                  : `Connected to Arc Testnet with ${activeBalanceUSDC} USDC across ${totalTransactions} transaction(s). Verified inbound: ${walletSummary?.totalReceivedUSDC || '0.00'} USDC, outbound: ${walletSummary?.totalSentUSDC || '0.00'} USDC.`)}
             </p>
 
             {aiSummary?.keyObservations && aiSummary.keyObservations.length > 0 && (
@@ -367,12 +379,19 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
               </div>
             )}
 
+            {walletSummary?.historyStatus === 'incomplete' && (
+              <div className="pt-2 flex items-center gap-2 text-[11px] text-amber-400/90 font-mono">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>Explorer scan is partial: inbound funding occurred outside recent indexed blocks. Live balance is authoritative.</span>
+              </div>
+            )}
+
             <div className="pt-1.5 text-[10px] text-zinc-500 flex items-center justify-between font-mono">
               <span className="flex items-center gap-1.5">
                 <span className="w-1 h-1 rounded-full bg-emerald-400" />
                 Grounded on live Arc blockchain state ({activeBalanceUSDC} USDC)
               </span>
-              <span className="text-zinc-400 font-medium">Gemini 3.7 Flash</span>
+              <span className="text-zinc-400 font-medium">Gemini 3.8 Flash</span>
             </div>
           </div>
         )}

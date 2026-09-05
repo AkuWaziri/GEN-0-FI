@@ -163,7 +163,7 @@ export class ArcBlockchainProvider implements BlockchainProvider {
   async getWalletSummary(address: string): Promise<WalletSummary> {
     const isDemo = address.toLowerCase() === DEMO_WALLET_ADDRESS.toLowerCase();
 
-    // 1. Try unified backend summary endpoint first
+    // 1. Try unified backend summary endpoint first (authoritative live Arc RPC + ArcScan v2)
     try {
       const summaryRes = await fetch(`/api/blockchain/arc/summary/${address}`);
       if (summaryRes.ok) {
@@ -181,53 +181,103 @@ export class ArcBlockchainProvider implements BlockchainProvider {
       const txCount = await this.getTransactionCount(address);
       const txs = await this.getTransactions(address, 50);
 
-      if (isDemo && txs.length === 0) {
-        return DEMO_WALLET_SUMMARY;
-      }
+      const balNum = parseFloat(balance.formatted.replace(/,/g, '')) || 0;
+      const normalizedAddress = address.toLowerCase();
 
       let receivedSum = 0;
       let sentSum = 0;
       let gasSpentSum = 0;
+      let incomingCount = 0;
+      let outgoingCount = 0;
+      let contractInteractions = 0;
       const counterparties = new Set<string>();
       const contracts = new Set<string>();
 
       for (const tx of txs) {
         const valNum = parseFloat(tx.value.replace(/,/g, '')) || 0;
-        if (tx.direction === 'received') {
+        const isFromMe = (tx.from || '').toLowerCase() === normalizedAddress;
+        const isToMe = (tx.to || '').toLowerCase() === normalizedAddress;
+
+        if (isToMe && !isFromMe) {
           receivedSum += valNum;
+          incomingCount++;
           if (tx.from) counterparties.add(tx.from.toLowerCase());
-        } else if (tx.direction === 'sent' || tx.direction === 'contract_interaction') {
+        } else if (isFromMe) {
           sentSum += valNum;
+          outgoingCount++;
           if (tx.to) counterparties.add(tx.to.toLowerCase());
-        }
 
-        if (tx.isContractInteraction && tx.to) {
-          contracts.add(tx.to.toLowerCase());
-        }
-
-        const gasCost = parseFloat(tx.gasCostUSDC) || 0;
-        if (tx.direction === 'sent' || tx.direction === 'contract_interaction' || tx.direction === 'self') {
+          const gasCost = parseFloat(tx.gasCostUSDC) || 0;
           gasSpentSum += gasCost;
         }
+
+        if (tx.isContractInteraction) {
+          contractInteractions++;
+          if (tx.to) contracts.add(tx.to.toLowerCase());
+        }
       }
 
-      const balNum = parseFloat(balance.formatted.replace(/,/g, '')) || 0;
-      if (receivedSum === 0 && balNum > 0) {
-        receivedSum = balNum;
+      // Explicitly determine history status without guessing or inferring
+      let historyStatus: 'complete' | 'incomplete' | 'unavailable' = 'complete';
+      let historyStatusNote = '';
+      let totalReceivedDisplay = '0.00';
+      let totalSentDisplay = '0.00';
+
+      if (txs.length === 0) {
+        if (balNum > 0) {
+          historyStatus = 'incomplete';
+          historyStatusNote = 'Wallet is funded on Arc Testnet, but inbound funding occurred outside recent scanned blocks.';
+          totalReceivedDisplay = 'Incomplete scan';
+          totalSentDisplay = txCount === 0 ? '0.00' : '0.00';
+        } else if (txCount === 0) {
+          historyStatus = 'complete';
+          historyStatusNote = 'Verified clean wallet with zero transactions.';
+          totalReceivedDisplay = '0.00';
+          totalSentDisplay = '0.00';
+        } else {
+          historyStatus = 'incomplete';
+          historyStatusNote = 'Confirmed outgoing transactions exist onchain, but explorer records are unavailable.';
+          totalReceivedDisplay = 'Incomplete scan';
+          totalSentDisplay = 'Incomplete scan';
+        }
+      } else {
+        if (receivedSum > 0) {
+          totalReceivedDisplay = receivedSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+        } else if (balNum > 0) {
+          historyStatus = 'incomplete';
+          historyStatusNote = 'Inbound funding transfer occurred outside recent scanned blocks.';
+          totalReceivedDisplay = 'Incomplete scan';
+        } else {
+          totalReceivedDisplay = '0.00';
+        }
+
+        totalSentDisplay = sentSum > 0
+          ? sentSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
+          : '0.00';
       }
+
+      const finalGasSpent = txCount === 0 ? '0.000000' : (gasSpentSum > 0 ? gasSpentSum.toFixed(6) : '0.000000');
 
       return {
         address,
         balanceUSDC: balance.formatted,
         rawBalance: balance.raw,
-        receivedTotalUSDC: receivedSum > 0 ? receivedSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '0.00',
-        sentTotalUSDC: sentSum > 0 ? sentSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '0.00',
-        txCount: Math.max(txCount, txs.length),
-        gasSpentUSDC: gasSpentSum > 0 ? gasSpentSum.toFixed(6) : '0.000000',
-        activeContractsCount: contracts.size,
+        totalReceivedUSDC: totalReceivedDisplay,
+        receivedTotalUSDC: totalReceivedDisplay,
+        totalSentUSDC: totalSentDisplay,
+        sentTotalUSDC: totalSentDisplay,
+        txCount,
+        scannedTxCount: txs.length,
+        gasSpentUSDC: finalGasSpent,
+        contractInteractionsCount: contractInteractions,
+        activeContractsCount: contractInteractions,
         uniqueCounterpartiesCount: counterparties.size,
         latestActivityTime: txs.length > 0 ? txs[0].timestamp : undefined,
         isDataAvailable: true,
+        historyStatus,
+        historyStatusNote,
+        incomingTransfersCount: incomingCount,
+        outgoingTransfersCount: outgoingCount,
       };
     } catch {
       if (isDemo) {

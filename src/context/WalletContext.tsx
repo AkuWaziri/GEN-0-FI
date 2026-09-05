@@ -87,6 +87,19 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
         ? walletSummary.balanceUSDC
         : (arcBalance.formatted || walletSummary?.balanceUSDC || '0.00');
 
+  // References to prevent infinite re-render loops and rapid duplicate requests
+  const walletSummaryRef = useRef<WalletSummary | null>(null);
+  walletSummaryRef.current = walletSummary;
+
+  const transactionsRef = useRef<NormalizedTransaction[]>([]);
+  transactionsRef.current = transactions;
+
+  const synchronizedBalanceRef = useRef<string>(synchronizedBalanceUSDC);
+  synchronizedBalanceRef.current = synchronizedBalanceUSDC;
+
+  const lastAiFetchedKeyRef = useRef<string>('');
+  const isAiFetchingRef = useRef<boolean>(false);
+
   // First-time onboarding welcome state
   const [showWelcomeOverlay, setShowWelcomeOverlay] = useState<boolean>(false);
   const hasEverConnectedRef = useRef<boolean>(false);
@@ -147,6 +160,53 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
     };
   }, []);
 
+  // Stable AI Summary Generator for real onchain transactions
+  const fetchAiSummary = useCallback(async (
+    overrideSummary?: WalletSummary | null,
+    overrideTxs?: NormalizedTransaction[],
+    force = false
+  ) => {
+    const targetAddr = currentAddressRef.current;
+    if (!targetAddr) return;
+
+    const activeSummary = overrideSummary !== undefined ? overrideSummary : walletSummaryRef.current;
+    const activeTxs = overrideTxs !== undefined ? overrideTxs : transactionsRef.current;
+    const balance = synchronizedBalanceRef.current;
+    const requestKey = `${targetAddr.toLowerCase()}_${balance}_${activeSummary?.txCount ?? 0}`;
+
+    if (!force && (lastAiFetchedKeyRef.current === requestKey || isAiFetchingRef.current)) {
+      return;
+    }
+
+    lastAiFetchedKeyRef.current = requestKey;
+    isAiFetchingRef.current = true;
+    setIsAiLoading(true);
+
+    try {
+      const res = await fetch('/api/ai/summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: targetAddr,
+          summary: {
+            ...(activeSummary || {}),
+            balanceUSDC: balance,
+          },
+          recentTransactions: activeTxs,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAiSummary(data);
+      }
+    } catch (err) {
+      console.warn('AI Summary fetch error:', err);
+    } finally {
+      isAiFetchingRef.current = false;
+      setIsAiLoading(false);
+    }
+  }, []);
+
   // Fetch real onchain activity and summary for the connected address on Arc Testnet
   const loadRealBlockchainData = useCallback(async (targetAddr: string, isInitial = false) => {
     if (!targetAddr || !isAddress(targetAddr)) return;
@@ -169,6 +229,11 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
 
       setTransactions(txs || []);
       setWalletSummary(summary);
+
+      // Trigger AI summary with the fresh authoritative data
+      if (summary || targetAddr) {
+        fetchAiSummary(summary, txs || [], false);
+      }
     } catch (err: unknown) {
       if (currentAddressRef.current?.toLowerCase() !== targetAddr.toLowerCase()) {
         return;
@@ -181,13 +246,14 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
         setIsRefreshing(false);
       }
     }
-  }, []);
+  }, [fetchAiSummary]);
 
   // When active account changes, refresh real Arc Testnet data or reset
   useEffect(() => {
     if (activeAddress) {
       loadRealBlockchainData(activeAddress, true);
     } else {
+      lastAiFetchedKeyRef.current = '';
       setTransactions([]);
       setWalletSummary(null);
       setAiSummary(null);
@@ -196,48 +262,12 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
     }
   }, [activeAddress, loadRealBlockchainData]);
 
-  // AI Summary Generator for real onchain transactions
-  const fetchAiSummary = useCallback(async () => {
-    if (!activeAddress) return;
-    setIsAiLoading(true);
-    try {
-      const res = await fetch('/api/ai/summary', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          address: activeAddress,
-          summary: {
-            ...(walletSummary || {}),
-            balanceUSDC: synchronizedBalanceUSDC,
-          },
-          recentTransactions: transactions,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setAiSummary(data);
-      }
-    } catch (err) {
-      console.warn('AI Summary fetch error:', err);
-    } finally {
-      setIsAiLoading(false);
-    }
-  }, [activeAddress, walletSummary, synchronizedBalanceUSDC, transactions]);
-
-  // Auto trigger AI summary after data load if walletSummary or transactions update
-  useEffect(() => {
-    if (activeAddress && (walletSummary || synchronizedBalanceUSDC !== '0.00') && !isAiLoading && !aiSummary) {
-      fetchAiSummary();
-    }
-  }, [activeAddress, walletSummary?.address, walletSummary?.txCount, synchronizedBalanceUSDC]);
-
   const refreshData = async () => {
     if (activeAddress) {
       await Promise.all([
         arcBalance.refetch(),
         loadRealBlockchainData(activeAddress, false),
       ]);
-      await fetchAiSummary();
     }
   };
 

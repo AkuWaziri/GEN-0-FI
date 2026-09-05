@@ -139,14 +139,22 @@ export const DEMO_WALLET_SUMMARY: WalletSummary = {
   address: DEMO_WALLET_ADDRESS,
   balanceUSDC: '2,755.00',
   rawBalance: '2755000000000000000000',
+  totalReceivedUSDC: '3,250.00',
   receivedTotalUSDC: '3,250.00',
+  totalSentUSDC: '495.00',
   sentTotalUSDC: '495.00',
   txCount: 6,
+  scannedTxCount: 6,
   gasSpentUSDC: '0.000456',
+  contractInteractionsCount: 2,
   activeContractsCount: 2,
   uniqueCounterpartiesCount: 4,
   latestActivityTime: now - 15 * 60 * 1000,
   isDataAvailable: true,
+  historyStatus: 'complete',
+  historyStatusNote: 'Verified complete demo transaction dataset.',
+  incomingTransfersCount: 3,
+  outgoingTransfersCount: 3,
 };
 
 export const DEMO_AI_ANALYSIS: AiWalletAnalysis = {
