@@ -159,8 +159,8 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
     return (
       <div className="p-6 sm:p-10 max-w-4xl mx-auto space-y-6">
         <div className="p-8 rounded-2xl bg-[#0d0f12] border border-zinc-800 text-center space-y-4 shadow-sm">
-          <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-700 flex items-center justify-center text-white mx-auto">
-            <Coins className="w-6 h-6" />
+          <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-700 flex items-center justify-center text-white mx-auto shadow-sm">
+            <Coins className="w-6 h-6 text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
           </div>
           <h2 className="text-xl font-bold text-white tracking-tight">Connect your wallet to continue</h2>
           <p className="text-sm text-zinc-400 max-w-md mx-auto">
@@ -168,7 +168,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
           </p>
           <button
             onClick={onOpenConnect}
-            className="py-2.5 px-6 rounded-xl bg-white hover:bg-zinc-200 text-xs font-bold text-black transition-all shadow-sm cursor-pointer"
+            className="py-2.5 px-6 rounded-xl bg-white hover:bg-zinc-200 text-xs font-bold text-black glow-blue-cta cursor-pointer"
           >
             Connect Wallet
           </button>
@@ -221,14 +221,17 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
       </div>
 
       {/* Main Balance Card - Prominent 58.0364 USDC Display */}
-      <div className="p-6 sm:p-7 rounded-2xl bg-[#0d0f12] border border-zinc-800 relative overflow-hidden shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="p-6 sm:p-7 rounded-2xl bg-[#0d0f12] bg-[radial-gradient(ellipse_at_top_left,rgba(59,130,246,0.08),transparent_65%)] border border-blue-500/20 glow-blue-card relative overflow-hidden">
+        {/* Soft diffused background blue ambient halo */}
+        <div className="absolute -right-12 -top-12 w-72 h-72 bg-blue-500/[0.07] rounded-full blur-3xl pointer-events-none" />
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono uppercase tracking-wider text-zinc-400 font-semibold">
                 Current USDC Balance
               </span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-zinc-900 border border-zinc-700 text-zinc-300">
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-500/10 border border-blue-500/30 text-blue-300 shadow-[0_0_8px_rgba(59,130,246,0.18)]">
                 Native Gas Asset
               </span>
             </div>
@@ -245,7 +248,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
                   <span className="text-xl sm:text-2xl font-bold text-zinc-400">USDC</span>
                 </div>
                 <div className="text-xs text-zinc-400 mt-2 flex items-center gap-2 font-mono">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)] animate-pulse" />
                   <span>Arc Testnet • 18 Decimals Verified Onchain</span>
                 </div>
               </div>
@@ -256,7 +259,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
             <button
               onClick={() => refreshData()}
               disabled={isRefreshing}
-              className="py-2 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-xs font-semibold text-white flex items-center gap-2 cursor-pointer transition-colors shadow-sm disabled:opacity-50"
+              className="py-2 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-blue-500/40 hover:shadow-[0_0_16px_-3px_rgba(59,130,246,0.22)] text-xs font-semibold text-white flex items-center gap-2 cursor-pointer transition-all shadow-sm disabled:opacity-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
               <span>{isRefreshing ? 'Syncing...' : 'Sync Live Data'}</span>
@@ -268,12 +271,12 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
       {/* Prominent Key Financial Metrics Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5 sm:gap-4">
         {/* Metric 1: Total Amount Received */}
-        <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 flex flex-col justify-between shadow-sm">
+        <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 glow-blue-card-hover flex flex-col justify-between shadow-sm group">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-medium">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-medium group-hover:text-zinc-300 transition-colors">
               Total Received
             </span>
-            <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-700 flex items-center justify-center text-white">
+            <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-700 group-hover:border-blue-500/40 group-hover:text-blue-300 flex items-center justify-center text-white transition-colors">
               <ArrowDownLeft className="w-4 h-4" />
             </div>
           </div>
@@ -298,12 +301,12 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
         </div>
 
         {/* Metric 2: Total Amount Sent */}
-        <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 flex flex-col justify-between shadow-sm">
+        <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 glow-blue-card-hover flex flex-col justify-between shadow-sm group">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-medium">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-medium group-hover:text-zinc-300 transition-colors">
               Total Sent
             </span>
-            <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400">
+            <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 group-hover:border-blue-500/40 group-hover:text-blue-300 flex items-center justify-center text-zinc-400 transition-colors">
               <ArrowUpRight className="w-4 h-4" />
             </div>
           </div>
@@ -326,12 +329,12 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
         </div>
 
         {/* Metric 3: Total Gas Spent */}
-        <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 flex flex-col justify-between shadow-sm">
+        <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 glow-blue-card-hover flex flex-col justify-between shadow-sm group">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-medium">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-medium group-hover:text-zinc-300 transition-colors">
               Total Gas Spent
             </span>
-            <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400">
+            <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 group-hover:border-blue-500/40 group-hover:text-blue-300 flex items-center justify-center text-zinc-400 transition-colors">
               <Flame className="w-4 h-4" />
             </div>
           </div>
@@ -348,12 +351,12 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
         </div>
 
         {/* Metric 4: Total Transactions */}
-        <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 flex flex-col justify-between shadow-sm">
+        <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 glow-blue-card-hover flex flex-col justify-between shadow-sm group">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-medium">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-medium group-hover:text-zinc-300 transition-colors">
               Total Transactions
             </span>
-            <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400">
+            <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 group-hover:border-blue-500/40 group-hover:text-blue-300 flex items-center justify-center text-zinc-400 transition-colors">
               <Activity className="w-4 h-4" />
             </div>
           </div>
@@ -370,12 +373,12 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
         </div>
 
         {/* Metric 5: Contract Interactions */}
-        <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 flex flex-col justify-between shadow-sm">
+        <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 glow-blue-card-hover flex flex-col justify-between shadow-sm group">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-medium">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-medium group-hover:text-zinc-300 transition-colors">
               Contract Interactions
             </span>
-            <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400">
+            <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 group-hover:border-blue-500/40 group-hover:text-blue-300 flex items-center justify-center text-zinc-400 transition-colors">
               <Code2 className="w-4 h-4" />
             </div>
           </div>
@@ -395,11 +398,11 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
       {/* AI Summary Card - Synchronized with live Arc state */}
       <div
         id="section-ai-wallet-summary"
-        className="p-5 sm:p-6 rounded-xl bg-[#0d0f12] border border-zinc-800 shadow-sm relative overflow-hidden"
+        className="p-5 sm:p-6 rounded-xl bg-[#0d0f12] bg-[radial-gradient(ellipse_at_top_right,rgba(59,130,246,0.06),transparent_70%)] border border-blue-500/25 shadow-[0_0_24px_-6px_rgba(59,130,246,0.14)] relative overflow-hidden"
       >
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-zinc-900 border border-zinc-700 flex items-center justify-center text-white">
+            <div className="w-6 h-6 rounded-lg bg-blue-500/15 border border-blue-500/35 flex items-center justify-center text-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.3)]">
               <Sparkles className="w-3.5 h-3.5" />
             </div>
             <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">AI Intelligence Summary</h2>
@@ -407,7 +410,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
 
           <button
             onClick={() => onSelectTab('ask')}
-            className="text-xs text-white hover:text-zinc-300 flex items-center gap-1 font-semibold cursor-pointer"
+            className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 font-semibold cursor-pointer py-1 px-2 rounded-lg hover:bg-blue-500/10 border border-transparent hover:border-blue-500/30 transition-all shadow-none hover:shadow-[0_0_12px_rgba(59,130,246,0.2)]"
           >
             <span>Ask GEN-0</span>
             <ChevronRight className="w-3.5 h-3.5" />
@@ -433,7 +436,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
               <div className="pt-2.5 border-t border-zinc-800/80 space-y-1.5">
                 {aiSummary.keyObservations.map((obs, idx) => (
                   <div key={idx} className="flex items-start gap-2 text-xs text-zinc-400">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 mt-1.5" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.6)] shrink-0 mt-1.5" />
                     <span>{obs}</span>
                   </div>
                 ))}
@@ -449,7 +452,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
 
             <div className="pt-1.5 text-[10px] text-zinc-500 flex items-center justify-between font-mono">
               <span className="flex items-center gap-1.5">
-                <span className="w-1 h-1 rounded-full bg-emerald-400" />
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.8)]" />
                 Grounded on live Arc blockchain state ({activeBalanceUSDC} USDC)
               </span>
               <span className="text-zinc-400 font-medium">Gemini AI Engine</span>
@@ -491,7 +494,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
             <div className="pt-2">
               <button
                 onClick={() => refreshData()}
-                className="py-1.5 px-4 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-xs font-medium text-zinc-200 cursor-pointer transition-colors"
+                className="py-1.5 px-4 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-blue-500/35 hover:shadow-[0_0_14px_-2px_rgba(59,130,246,0.2)] text-xs font-medium text-zinc-200 cursor-pointer transition-all"
               >
                 Scan Arc Blocks
               </button>
@@ -506,24 +509,24 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
               return (
                 <div
                   key={tx.hash}
-                  className="p-3.5 sm:p-4 rounded-xl bg-[#0d0f12] hover:bg-[#131519] border border-zinc-800/80 hover:border-zinc-700 transition-all flex items-center justify-between gap-3 shadow-sm"
+                  className="p-3.5 sm:p-4 rounded-xl bg-[#0d0f12] hover:bg-[#131519] border border-zinc-800/80 hover:border-blue-500/30 hover:shadow-[0_0_18px_-4px_rgba(59,130,246,0.16)] transition-all flex items-center justify-between gap-3 shadow-sm group"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
                         isReceived
-                          ? 'bg-zinc-900 text-white border border-zinc-700'
+                          ? 'bg-zinc-900 text-white border border-zinc-700 group-hover:border-blue-500/40 group-hover:text-blue-300'
                           : isSent
-                          ? 'bg-zinc-900 text-zinc-400 border border-zinc-800'
-                          : 'bg-zinc-900 text-zinc-300 border border-zinc-800'
+                          ? 'bg-zinc-900 text-zinc-400 border border-zinc-800 group-hover:border-zinc-700'
+                          : 'bg-zinc-900 text-zinc-300 border border-zinc-800 group-hover:border-zinc-700'
                       }`}
                     >
                       {isReceived ? (
-                        <ArrowDownLeft className="w-4 h-4 text-white" />
+                        <ArrowDownLeft className="w-4 h-4" />
                       ) : isSent ? (
-                        <ArrowUpRight className="w-4 h-4 text-zinc-400" />
+                        <ArrowUpRight className="w-4 h-4" />
                       ) : (
-                        <Code2 className="w-4 h-4 text-zinc-400" />
+                        <Code2 className="w-4 h-4" />
                       )}
                     </div>
 
@@ -560,7 +563,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
                       href={getArcScanTxUrl(tx.hash)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-800 transition-colors"
+                      className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-800 hover:shadow-[0_0_8px_rgba(59,130,246,0.2)] transition-all"
                       title="View on ArcScan"
                       aria-label="View on ArcScan Explorer"
                     >

@@ -41,14 +41,14 @@ export const LandingView: React.FC<LandingViewProps> = ({ onOpenConnect }) => {
       <header className="flex items-center justify-between px-4 sm:px-8 lg:px-12 py-4 border-b border-zinc-900 w-full bg-[#000000]/90 backdrop-blur-md sticky top-0 z-30">
         <Logo size="md" />
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-[#111317] border border-zinc-800 text-xs font-mono text-zinc-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-white" />
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-[#111317] border border-blue-500/25 text-xs font-mono text-zinc-300 shadow-[0_0_12px_rgba(59,130,246,0.15)]">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.8)]" />
             <span>Arc Testnet</span>
           </div>
           <button
             id="btn-landing-top-connect"
             onClick={onOpenConnect}
-            className="flex items-center gap-2 py-2 px-4 rounded-xl bg-white hover:bg-zinc-200 text-xs font-bold text-black transition-all shadow-sm cursor-pointer"
+            className="flex items-center gap-2 py-2 px-4 rounded-xl bg-white hover:bg-zinc-200 text-xs font-bold text-black glow-blue-cta cursor-pointer"
           >
             <Wallet className="w-3.5 h-3.5" />
             <span>Connect Wallet</span>
@@ -62,7 +62,7 @@ export const LandingView: React.FC<LandingViewProps> = ({ onOpenConnect }) => {
         <div className="relative max-w-4xl mx-auto">
           {/* Blue glow effect beneath the title */}
           <div
-            className="absolute left-1/2 -translate-x-1/2 -bottom-4 sm:-bottom-6 w-4/5 max-w-2xl h-16 sm:h-24 bg-blue-500/30 blur-2xl sm:blur-3xl rounded-full pointer-events-none -z-10"
+            className="absolute left-1/2 -translate-x-1/2 -bottom-4 sm:-bottom-6 w-4/5 max-w-2xl h-16 sm:h-24 bg-blue-500/25 blur-2xl sm:blur-3xl rounded-full pointer-events-none -z-10"
             aria-hidden="true"
           />
           <h1 className="relative text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.15]">
@@ -83,9 +83,21 @@ export const LandingView: React.FC<LandingViewProps> = ({ onOpenConnect }) => {
           </p>
         </div>
 
+        {/* Primary CTA Button */}
+        <div className="mt-7 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <button
+            id="btn-landing-hero-connect"
+            onClick={onOpenConnect}
+            className="w-full sm:w-auto flex items-center justify-center gap-2.5 py-3.5 px-8 rounded-xl bg-white hover:bg-zinc-200 text-sm font-bold text-black glow-blue-cta cursor-pointer min-h-[48px]"
+          >
+            <Wallet className="w-4 h-4" />
+            <span>Connect Wallet</span>
+          </button>
+        </div>
+
         {/* Trust badge with blue shield icon and removed 'you stay in control' */}
-        <div className="mt-6 flex items-center justify-center gap-1.5 text-xs text-zinc-400 font-medium">
-          <Shield className="w-4 h-4 text-blue-400" />
+        <div className="mt-5 flex items-center justify-center gap-1.5 text-xs text-zinc-400 font-medium">
+          <Shield className="w-4 h-4 text-blue-400 drop-shadow-[0_0_6px_rgba(59,130,246,0.5)]" />
           <span>Non-custodial</span>
         </div>
 
@@ -97,13 +109,13 @@ export const LandingView: React.FC<LandingViewProps> = ({ onOpenConnect }) => {
             return (
               <div
                 key={idx}
-                className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800/80 hover:border-zinc-700 transition-all group shadow-sm"
+                className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800/80 glow-blue-card-hover group shadow-sm"
               >
                 <div
                   className={`w-8 h-8 rounded-lg bg-zinc-900 border flex items-center justify-center mb-3 group-hover:scale-105 transition-transform ${
                     isShield
-                      ? 'border-blue-500/40 text-blue-400'
-                      : 'border-zinc-700/80 text-white'
+                      ? 'border-blue-500/40 text-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.3)]'
+                      : 'border-zinc-700/80 text-white group-hover:border-blue-500/30 group-hover:text-blue-300'
                   }`}
                 >
                   <Icon className="w-4 h-4" />

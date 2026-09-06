@@ -34,14 +34,14 @@ export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, onSelectTab }) 
             onClick={() => onSelectTab(item.id)}
             className={`relative flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition-all duration-200 ease-out cursor-pointer min-w-[60px] select-none ${
               isActive
-                ? 'text-white font-semibold bg-blue-500/[0.08] border border-blue-500/25 shadow-[0_0_14px_rgba(59,130,246,0.14)]'
+                ? 'text-white font-semibold bg-blue-500/[0.09] border glow-blue-tab'
                 : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/40 border border-transparent font-medium'
             }`}
           >
             <Icon
               className={`w-4 h-4 transition-colors duration-200 ${
                 isActive
-                  ? 'text-blue-400 drop-shadow-[0_0_6px_rgba(59,130,246,0.35)]'
+                  ? 'text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.45)]'
                   : 'text-zinc-500'
               }`}
             />
@@ -50,7 +50,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, onSelectTab }) 
             {/* Thin blue indicator beneath active tab */}
             {isActive && (
               <span
-                className="absolute bottom-0.5 left-2.5 right-2.5 h-[2px] bg-blue-500 rounded-full shadow-[0_0_6px_rgba(59,130,246,0.6)]"
+                className="absolute bottom-0.5 left-2.5 right-2.5 h-[2px] bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.8)]"
                 aria-hidden="true"
               />
             )}

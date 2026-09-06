@@ -11,13 +11,13 @@ export const WelcomeOnboarding: React.FC<WelcomeOnboardingProps> = ({ onDismiss 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-300 select-none">
-      <div className="w-full max-w-md rounded-2xl bg-[#0d0f14] border border-zinc-800 p-8 text-center space-y-6 shadow-2xl relative overflow-hidden">
+      <div className="w-full max-w-md rounded-2xl bg-[#0d0f14] border border-blue-500/25 p-8 text-center space-y-6 shadow-[0_0_35px_-6px_rgba(59,130,246,0.22),0_20px_50px_rgba(0,0,0,0.8)] relative overflow-hidden">
         {/* Subtle accent glow */}
-        <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-40 h-40 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
 
         {/* Success Icon */}
-        <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-700 flex items-center justify-center text-white mx-auto shadow-inner">
-          <CheckCircle2 className="w-8 h-8 text-white" />
+        <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-blue-500/30 flex items-center justify-center text-white mx-auto shadow-inner">
+          <CheckCircle2 className="w-8 h-8 text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
         </div>
 
         {/* Copy Per Requirements */}
@@ -33,7 +33,7 @@ export const WelcomeOnboarding: React.FC<WelcomeOnboardingProps> = ({ onDismiss 
         {/* Connected Details summary pill */}
         <div className="rounded-xl bg-[#13161c] border border-zinc-800/80 p-3.5 flex items-center justify-between text-xs font-mono">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)] animate-pulse" />
             <span className="text-white font-semibold">{shortAddress}</span>
           </div>
 
@@ -44,14 +44,14 @@ export const WelcomeOnboarding: React.FC<WelcomeOnboardingProps> = ({ onDismiss 
 
         {/* Subtle animated loading line indicating auto-advance */}
         <div className="w-full bg-zinc-900 rounded-full h-1 overflow-hidden">
-          <div className="bg-white h-full w-full animate-[shimmer_2s_infinite] origin-left transition-all" />
+          <div className="bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)] h-full w-full animate-[shimmer_2s_infinite] origin-left transition-all" />
         </div>
 
         {/* Manual Continue Button */}
         <button
           id="btn-welcome-continue"
           onClick={onDismiss}
-          className="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-xl bg-white hover:bg-zinc-200 text-sm font-bold text-black transition-all shadow-sm cursor-pointer min-h-[44px]"
+          className="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-xl bg-white hover:bg-zinc-200 text-sm font-bold text-black glow-blue-cta cursor-pointer min-h-[44px]"
         >
           <span>Continue to Dashboard</span>
           <ArrowRight className="w-4 h-4" />

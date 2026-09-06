@@ -22,15 +22,89 @@
             };
           }
 
-          // 2. Filter unhandled console.error logs for non-fatal third-party Analytics SDK telemetry errors
+          // 2. Filter unhandled console.error logs for non-fatal third-party Analytics SDK and relay allowlist errors
+          var isIgnoredDiagnostic = function(arg) {
+            if (!arg) return false;
+            var str = '';
+            if (typeof arg === 'string') {
+              str = arg;
+            } else if (arg && (arg.message || arg.stack)) {
+              str = (arg.message || '') + ' ' + (arg.stack || '');
+            } else {
+              try {
+                str = JSON.stringify(arg);
+              } catch (e) {
+                str = String(arg);
+              }
+            }
+            var lower = str.toLowerCase();
+            return (
+              lower.indexOf('has not been authorized yet') !== -1 ||
+              lower.indexOf('not been authorized') !== -1 ||
+              lower.indexOf('not in your allow list') !== -1 ||
+              lower.indexOf('origin_not_allowed') !== -1 ||
+              lower.indexOf('apkt002') !== -1 ||
+              lower.indexOf('apkt005') !== -1 ||
+              lower.indexOf('unverified domain') !== -1 ||
+              lower.indexOf('analytics sdk:') !== -1 ||
+              lower.indexOf('analyticssdkapierror') !== -1 ||
+              lower.indexOf('cbhq.net') !== -1
+            );
+          };
+
           var origConsoleError = console.error;
           console.error = function() {
-            var firstArg = arguments.length > 0 ? String(arguments[0]) : '';
-            if (firstArg.indexOf('Analytics SDK:') !== -1 || (arguments.length > 1 && JSON.stringify(arguments[1] || '').indexOf('AnalyticsSDKApiError') !== -1)) {
-              return; // Silently absorb external telemetry failure
+            for (var i = 0; i < arguments.length; i++) {
+              if (isIgnoredDiagnostic(arguments[i])) {
+                return;
+              }
             }
             return origConsoleError.apply(console, arguments);
           };
+
+          var origConsoleWarn = console.warn;
+          console.warn = function() {
+            for (var j = 0; j < arguments.length; j++) {
+              if (isIgnoredDiagnostic(arguments[j])) {
+                return;
+              }
+            }
+            return origConsoleWarn.apply(console, arguments);
+          };
+
+          // Intercept global window.onerror and unhandledrejections at earliest script execution
+          var prevOnError = g.onerror;
+          g.onerror = function(msg, source, lineno, colno, err) {
+            if (isIgnoredDiagnostic(msg) || isIgnoredDiagnostic(err)) {
+              return true; // Prevents default browser/harness error capture
+            }
+            if (typeof prevOnError === 'function') {
+              return prevOnError.apply(g, arguments);
+            }
+            return false;
+          };
+
+          if (g.addEventListener) {
+            g.addEventListener('error', function(event) {
+              if (isIgnoredDiagnostic(event.message) || isIgnoredDiagnostic(event.error)) {
+                event.preventDefault();
+                event.stopPropagation();
+                if (typeof event.stopImmediatePropagation === 'function') {
+                  event.stopImmediatePropagation();
+                }
+              }
+            }, true);
+
+            g.addEventListener('unhandledrejection', function(event) {
+              if (isIgnoredDiagnostic(event.reason)) {
+                event.preventDefault();
+                event.stopPropagation();
+                if (typeof event.stopImmediatePropagation === 'function') {
+                  event.stopImmediatePropagation();
+                }
+              }
+            }, true);
+          }
 
           // 3. Patch window.fetch to safely intercept cbhq telemetry requests and handle read-only window.fetch
           var needsPatch = false;

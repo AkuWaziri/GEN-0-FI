@@ -66,7 +66,7 @@ export const ActivityView: React.FC = () => {
         <button
           onClick={() => refreshData()}
           disabled={isRefreshing}
-          className="self-start sm:self-auto flex items-center gap-1.5 py-1.5 px-3 rounded-lg bg-[#111317] hover:bg-zinc-800 border border-zinc-800 text-xs font-semibold text-zinc-300 hover:text-white transition-colors cursor-pointer font-mono"
+          className="self-start sm:self-auto flex items-center gap-1.5 py-1.5 px-3 rounded-lg bg-[#111317] hover:bg-zinc-800 border border-zinc-800 hover:border-blue-500/35 hover:shadow-[0_0_12px_rgba(59,130,246,0.18)] text-xs font-semibold text-zinc-300 hover:text-white transition-all cursor-pointer font-mono"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-white' : ''}`} />
           <span>Sync</span>
@@ -124,7 +124,7 @@ export const ActivityView: React.FC = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search hash, address, memo..."
-            className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-[#131519] border border-zinc-800 focus:border-zinc-500 focus:outline-none text-xs text-white placeholder:text-zinc-500 font-mono"
+            className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-[#131519] border border-zinc-800 focus:border-blue-500/50 glow-blue-focus focus:outline-none text-xs text-white placeholder:text-zinc-500 font-mono transition-all"
           />
         </div>
       </div>
@@ -157,7 +157,7 @@ export const ActivityView: React.FC = () => {
               <div
                 key={tx.hash}
                 id={`tx-row-${tx.hash.slice(0, 10)}`}
-                className="p-3.5 sm:p-4 rounded-xl bg-[#0d0f12] hover:bg-[#131519] border border-zinc-800/80 hover:border-zinc-700 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm"
+                className="p-3.5 sm:p-4 rounded-xl bg-[#0d0f12] hover:bg-[#131519] border border-zinc-800/80 hover:border-blue-500/30 hover:shadow-[0_0_18px_-4px_rgba(59,130,246,0.16)] transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm group"
               >
                 {/* Left side: Type, Status, Counterparty, Summary */}
                 <div className="flex items-start sm:items-center gap-3 min-w-0">

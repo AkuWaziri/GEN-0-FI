@@ -38,7 +38,7 @@ export const WalletIdentityModal: React.FC<WalletIdentityModalProps> = ({ isOpen
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 select-none">
       <div
         id="wallet-identity-modal"
-        className="w-full max-w-md rounded-2xl bg-[#0d0f14] border border-zinc-800 shadow-2xl p-6 sm:p-7 space-y-6 relative"
+        className="w-full max-w-md rounded-2xl bg-[#0d0f14] border border-blue-500/25 shadow-[0_0_35px_-8px_rgba(59,130,246,0.22),0_20px_50px_rgba(0,0,0,0.8)] p-6 sm:p-7 space-y-6 relative"
       >
         {/* Close Button */}
         <button
@@ -52,8 +52,8 @@ export const WalletIdentityModal: React.FC<WalletIdentityModalProps> = ({ isOpen
         {/* Header */}
         <div>
           <div className="flex items-center gap-2 mb-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-semibold">
+            <span className="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.8)]" />
+            <span className="text-[11px] font-mono uppercase tracking-wider text-blue-300 font-semibold">
               Arc Testnet (5042002)
             </span>
           </div>
@@ -77,11 +77,11 @@ export const WalletIdentityModal: React.FC<WalletIdentityModalProps> = ({ isOpen
             <button
               type="button"
               onClick={handleCopy}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-xs font-medium text-white transition-colors cursor-pointer"
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-blue-500/35 hover:shadow-[0_0_12px_rgba(59,130,246,0.18)] text-xs font-medium text-white transition-all cursor-pointer"
             >
               {copied ? (
                 <>
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <Check className="w-3.5 h-3.5 text-blue-400" />
                   <span>Copied!</span>
                 </>
               ) : (
@@ -96,7 +96,7 @@ export const WalletIdentityModal: React.FC<WalletIdentityModalProps> = ({ isOpen
               href={getArcScanAddressUrl(address)}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-xs font-medium text-white transition-colors cursor-pointer"
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-blue-500/35 hover:shadow-[0_0_12px_rgba(59,130,246,0.18)] text-xs font-medium text-white transition-all cursor-pointer"
             >
               <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
               <span>View on ArcScan</span>
@@ -105,7 +105,7 @@ export const WalletIdentityModal: React.FC<WalletIdentityModalProps> = ({ isOpen
         </div>
 
         {/* Real Balance Section */}
-        <div className="rounded-xl bg-[#12141a] border border-zinc-800 p-4 flex items-center justify-between">
+        <div className="rounded-xl bg-[#12141a] border border-blue-500/20 glow-blue-wallet p-4 flex items-center justify-between">
           <div>
             <span className="text-xs text-zinc-400 font-medium block">Arc Testnet Balance</span>
             <span className="text-2xl font-extrabold text-white tracking-tight font-mono">
@@ -117,7 +117,7 @@ export const WalletIdentityModal: React.FC<WalletIdentityModalProps> = ({ isOpen
             type="button"
             onClick={() => refreshData()}
             disabled={isRefreshing}
-            className="p-2 rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+            className="p-2 rounded-lg bg-zinc-900 border border-zinc-700 hover:border-blue-500/40 hover:shadow-[0_0_12px_rgba(59,130,246,0.2)] text-zinc-400 hover:text-white transition-all cursor-pointer"
             title="Refresh balance"
           >
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-white' : ''}`} />

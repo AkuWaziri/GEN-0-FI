@@ -35,11 +35,11 @@ export const NetworkBadge: React.FC<{ compact?: boolean }> = ({ compact = false 
   return (
     <div
       id="network-badge-active"
-      className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#111317] border border-zinc-800 text-[11px] font-mono text-zinc-300 whitespace-nowrap shadow-sm"
+      className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#111317] border border-blue-500/25 text-[11px] font-mono text-zinc-300 whitespace-nowrap shadow-[0_0_14px_-2px_rgba(59,130,246,0.18)]"
     >
       <span className="relative flex h-2 w-2">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-40"></span>
-        <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-60"></span>
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)]"></span>
       </span>
       <span className="font-semibold text-white">{ARC_NETWORK_CONFIG.name}</span>
       {!compact && networkStatus?.latencyMs ? (

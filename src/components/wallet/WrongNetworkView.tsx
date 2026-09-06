@@ -86,7 +86,7 @@ export const WrongNetworkView: React.FC = () => {
             id="btn-switch-network"
             onClick={handleSwitch}
             disabled={isSwitching}
-            className="w-full flex items-center justify-center gap-2.5 py-3 px-6 rounded-xl bg-white hover:bg-zinc-200 text-sm font-bold text-black transition-all shadow-md cursor-pointer disabled:opacity-60 min-h-[44px]"
+            className="w-full flex items-center justify-center gap-2.5 py-3 px-6 rounded-xl bg-white hover:bg-zinc-200 text-sm font-bold text-black glow-blue-cta cursor-pointer disabled:opacity-60 min-h-[44px]"
           >
             {isSwitching ? (
               <>

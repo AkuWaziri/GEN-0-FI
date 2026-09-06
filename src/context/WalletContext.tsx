@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { WagmiProvider, useAccount } from 'wagmi';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { WagmiProvider, useAccount, useBalance } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { isAddress } from 'viem';
+import { isAddress, formatUnits } from 'viem';
 import { wagmiConfig } from '../config/wagmi';
 import { ARC_TESTNET_CHAIN_ID, formatShortAddress } from '../config/arc';
 import { useWalletConnection, ConnectionState } from '../hooks/useWalletConnection';
@@ -43,6 +43,8 @@ export interface WalletContextType {
   isAiLoading: boolean;
   showWelcomeOverlay: boolean;
   dismissWelcomeOverlay: () => void;
+  hasInjectedWallet: boolean;
+  connectInjected: () => Promise<void>;
   connectWallet: () => Promise<void>;
   disconnectWallet: () => void;
   switchToArc: () => Promise<boolean>;
@@ -153,6 +155,34 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
   // Real Arc native USDC balance directly from Arc Testnet RPC
   const arcBalance = useArcBalance(activeAddress || undefined);
 
+  // Wagmi native balance hook targeting Arc Testnet (chain id 5042002)
+  const {
+    data: wagmiBalanceData,
+    refetch: refetchWagmiBalance,
+  } = useBalance({
+    address: (activeAddress && activeAddress.startsWith('0x') && activeAddress.length >= 42)
+      ? (activeAddress as `0x${string}`)
+      : undefined,
+    chainId: ARC_TESTNET_CHAIN_ID,
+  });
+
+  const wagmiFormattedBalance = useMemo(() => {
+    if (!wagmiBalanceData) return null;
+    try {
+      const rawVal = wagmiBalanceData.value;
+      const units = formatUnits(rawVal, wagmiBalanceData.decimals ?? 18);
+      const num = parseFloat(units);
+      if (isNaN(num)) return '0.00';
+      if (num === 0) return '0.00';
+      return num.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 4,
+      });
+    } catch {
+      return null;
+    }
+  }, [wagmiBalanceData]);
+
   const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
   const [transactions, setTransactions] = useState<NormalizedTransaction[]>([]);
   const [networkStatus, setNetworkStatus] = useState<BlockchainStatus | null>(null);
@@ -164,12 +194,22 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
 
   // Single synchronized balance source of truth: whichever has the verified non-zero live balance
-  const synchronizedBalanceUSDC = 
-    (arcBalance.formatted && arcBalance.formatted !== '0.00')
-      ? arcBalance.formatted
-      : (walletSummary?.balanceUSDC && walletSummary.balanceUSDC !== '0.00')
-        ? walletSummary.balanceUSDC
-        : (arcBalance.formatted || walletSummary?.balanceUSDC || '0.00');
+  const synchronizedBalanceUSDC = useMemo(() => {
+    // 1. Direct verified onchain balance from Arc RPC hook
+    if (arcBalance.formatted && arcBalance.formatted !== '0.00') {
+      return arcBalance.formatted;
+    }
+    // 2. Wagmi native useBalance on Arc Testnet (chain 5042002)
+    if (wagmiFormattedBalance && wagmiFormattedBalance !== '0.00') {
+      return wagmiFormattedBalance;
+    }
+    // 3. Wallet summary balance from provider
+    if (walletSummary?.balanceUSDC && walletSummary.balanceUSDC !== '0.00') {
+      return walletSummary.balanceUSDC;
+    }
+    // 4. Default to valid 0.00 if connected and verified zero
+    return arcBalance.formatted || wagmiFormattedBalance || walletSummary?.balanceUSDC || '0.00';
+  }, [arcBalance.formatted, wagmiFormattedBalance, walletSummary?.balanceUSDC]);
 
   // References to prevent infinite re-render loops and rapid duplicate requests
   const walletSummaryRef = useRef<WalletSummary | null>(null);
@@ -406,6 +446,7 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
     if (activeAddress) {
       await Promise.all([
         arcBalance.refetch(),
+        refetchWagmiBalance().catch(() => null),
         loadRealBlockchainData(activeAddress, false),
       ]);
     }
@@ -458,7 +499,7 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
         walletSummary,
         transactions,
         networkStatus,
-        isLoadingData: isLoadingData || arcBalance.isLoading,
+        isLoadingData: isLoadingData || (arcBalance.isLoading && synchronizedBalanceUSDC === '0.00'),
         isRefreshing,
         error,
         isDemoMode: false,
@@ -466,6 +507,8 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
         isAiLoading,
         showWelcomeOverlay,
         dismissWelcomeOverlay,
+        hasInjectedWallet: connection.hasInjectedWallet,
+        connectInjected: connection.connectInjected,
         connectWallet: connection.openConnectModal,
         disconnectWallet,
         switchToArc: network.switchToArc,

@@ -259,7 +259,35 @@ app.get('/api/blockchain/arc/balance/:address', async (req, res) => {
       isTestnet: true,
     });
   } catch (error: any) {
-    console.error(`Error fetching balance for ${address}:`, error);
+    console.error(`Error fetching balance for ${address} via RPC, trying ArcScan fallback:`, error);
+    try {
+      const scanRes = await fetch(`https://testnet.arcscan.app/api/v2/addresses/${address}`);
+      if (scanRes.ok) {
+        const scanData: any = await scanRes.json();
+        if (scanData && scanData.coin_balance !== undefined && scanData.coin_balance !== null) {
+          const balanceWei = BigInt(scanData.coin_balance);
+          const formatted = formatUnits(balanceWei, 18);
+          const num = parseFloat(formatted);
+          const displayBalance = num === 0 ? '0.00' : num.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 4,
+          });
+
+          return res.json({
+            address,
+            balanceUSDC: displayBalance,
+            rawBalance: balanceWei.toString(),
+            token: 'USDC',
+            decimals: 18,
+            network: 'Arc Testnet',
+            isTestnet: true,
+          });
+        }
+      }
+    } catch (fallbackErr) {
+      console.error(`ArcScan fallback also failed for ${address}:`, fallbackErr);
+    }
+
     res.status(500).json({
       error: 'Failed to retrieve balance from Arc RPC',
       message: error?.message || 'RPC query failed',

@@ -1,15 +1,42 @@
 import { createAppKit } from '@reown/appkit/react';
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
 import { defineChain } from '@reown/appkit/networks';
-import { OptionsController } from '@reown/appkit-controllers';
+import { OptionsController, AlertController } from '@reown/appkit-controllers';
 import { mainnet, base, arbitrum, polygon, optimism } from 'viem/chains';
 import { ARC_TESTNET_CHAIN_ID, ARC_TESTNET_EXPLORER_URL, ARC_TESTNET_RPC_URL } from './arc';
 
-// Disable background third-party SDK analytics telemetry
+// Disable background third-party SDK analytics telemetry and origin allowlist checks for unused embedded wallets
 if (typeof OptionsController !== 'undefined') {
   try {
     OptionsController.setEnableCoinbase(false);
     OptionsController.setEnableBaseAccount(false);
+    OptionsController.setRemoteFeatures({
+      email: false,
+      socials: false,
+    });
+    OptionsController.subscribeKey('remoteFeatures', (val: any) => {
+      if (val && (val.email || (Array.isArray(val.socials) && val.socials.length > 0))) {
+        if (OptionsController.state.remoteFeatures) {
+          OptionsController.state.remoteFeatures.email = false;
+          OptionsController.state.remoteFeatures.socials = false;
+        }
+      }
+    });
+  } catch (_) {}
+}
+
+if (typeof AlertController !== 'undefined') {
+  try {
+    const origAlertOpen = AlertController.open?.bind(AlertController);
+    if (origAlertOpen) {
+      AlertController.open = (message: any, variant: any) => {
+        const code = message?.code;
+        if (code === 'APKT002' || code === 'APKT005') {
+          return;
+        }
+        return origAlertOpen(message, variant);
+      };
+    }
   } catch (_) {}
 }
 
@@ -77,7 +104,7 @@ export const appKitModal = createAppKit({
   features: {
     email: false, // Strictly no email per specifications
     socials: [], // Strictly no social logins per specifications
-    emailShowWallets: true,
+    emailShowWallets: false, // Disabled to prevent unnecessary embedded auth iframe initialization
     analytics: false,
     swaps: false,
     onramp: false,

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useAccount, useDisconnect } from 'wagmi';
+import { useAccount, useDisconnect, useConnect } from 'wagmi';
 import { useAppKit, useAppKitState } from '@reown/appkit/react';
+import { ARC_TESTNET_CHAIN_ID } from '../config/arc';
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'rejected' | 'failed';
 
@@ -11,6 +12,8 @@ export interface WalletConnectionHook {
   isConnecting: boolean;
   connectorName: string | undefined;
   errorMessage: string | null;
+  hasInjectedWallet: boolean;
+  connectInjected: () => Promise<void>;
   openConnectModal: () => Promise<void>;
   disconnect: () => void;
   clearError: () => void;
@@ -20,6 +23,7 @@ export interface WalletConnectionHook {
 export function useWalletConnection(): WalletConnectionHook {
   const { address, isConnected, isConnecting, isReconnecting, connector, status } = useAccount();
   const { disconnect: wagmiDisconnect } = useDisconnect();
+  const { connectors, connectAsync } = useConnect();
   const { open, close } = useAppKit();
   const { open: isModalOpen } = useAppKitState();
 
@@ -27,6 +31,8 @@ export function useWalletConnection(): WalletConnectionHook {
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
   const wasModalOpen = useRef<boolean>(false);
   const connectionAttemptActive = useRef<boolean>(false);
+
+  const hasInjectedWallet = typeof window !== 'undefined' && Boolean((window as any).ethereum);
 
   // Compute derived connection state
   useEffect(() => {
@@ -53,6 +59,35 @@ export function useWalletConnection(): WalletConnectionHook {
     }
     wasModalOpen.current = isModalOpen;
   }, [isModalOpen, isConnected]);
+
+  const connectInjected = useCallback(async () => {
+    if (isConnecting || isReconnecting) return;
+
+    setErrorMessage(null);
+    setConnectionState('connecting');
+    connectionAttemptActive.current = true;
+
+    try {
+      const injected = connectors.find((c) => c.id === 'injected' || c.type === 'injected') || connectors[0];
+      if (!injected) {
+        throw new Error('No browser wallet extension detected.');
+      }
+      await connectAsync({ connector: injected, chainId: ARC_TESTNET_CHAIN_ID });
+      setConnectionState('connected');
+    } catch (err: unknown) {
+      console.warn('Direct injected connection attempt error:', err);
+      const message = err instanceof Error ? err.message : "Couldn't connect browser wallet.";
+      if (message.toLowerCase().includes('user rejected') || message.toLowerCase().includes('cancelled')) {
+        setConnectionState('rejected');
+        setErrorMessage('Connection cancelled in wallet extension');
+      } else {
+        setConnectionState('failed');
+        setErrorMessage(message);
+      }
+    } finally {
+      connectionAttemptActive.current = false;
+    }
+  }, [connectors, connectAsync, isConnecting, isReconnecting]);
 
   const openConnectModal = useCallback(async () => {
     // Prevent duplicate connection attempts
@@ -107,6 +142,8 @@ export function useWalletConnection(): WalletConnectionHook {
     isConnecting: Boolean(isConnecting || isReconnecting || connectionState === 'connecting'),
     connectorName: connector?.name,
     errorMessage,
+    hasInjectedWallet,
+    connectInjected,
     openConnectModal,
     disconnect,
     clearError,

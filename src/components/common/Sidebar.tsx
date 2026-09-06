@@ -74,15 +74,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
                 onClick={() => onSelectTab(item.id)}
                 className={`relative w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 ease-out cursor-pointer select-none group ${
                   isActive
-                    ? 'bg-blue-500/[0.08] text-white border border-blue-500/25 font-semibold shadow-[0_0_16px_rgba(59,130,246,0.12)]'
-                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40 border border-transparent font-medium'
+                    ? 'bg-blue-500/[0.09] text-white border font-semibold glow-blue-tab'
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40 border border-transparent font-medium hover:border-zinc-800/60'
                 }`}
               >
                 <div className="flex items-center gap-2.5">
                   <Icon
                     className={`w-4 h-4 shrink-0 transition-colors duration-200 ${
                       isActive
-                        ? 'text-blue-400 drop-shadow-[0_0_6px_rgba(59,130,246,0.35)]'
+                        ? 'text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.45)]'
                         : 'text-zinc-500 group-hover:text-zinc-300'
                     }`}
                   />
@@ -93,7 +93,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
                   <span
                     className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold transition-colors duration-200 ${
                       isActive
-                        ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                        ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40 shadow-[0_0_8px_rgba(59,130,246,0.25)]'
                         : 'bg-zinc-900 text-zinc-400 border border-zinc-700/80 group-hover:text-zinc-300'
                     }`}
                   >
@@ -104,7 +104,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
                 {/* Thin blue indicator beneath active tab */}
                 {isActive && (
                   <span
-                    className="absolute bottom-0 left-3 right-3 h-[2px] bg-blue-500/90 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.6)]"
+                    className="absolute bottom-0 left-3 right-3 h-[2px] bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.8)]"
                     aria-hidden="true"
                   />
                 )}
@@ -117,7 +117,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
       {/* Sidebar Footer: Connected Wallet Info */}
       <div className="pt-3 border-t border-zinc-900 space-y-2.5">
         {isConnected && address ? (
-          <div className="p-2.5 rounded-xl bg-[#0e1014] border border-zinc-800">
+          <div className="p-2.5 rounded-xl bg-[#0e1014] border border-zinc-800/90 hover:border-blue-500/30 hover:shadow-[0_0_18px_-3px_rgba(59,130,246,0.18)] transition-all">
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-mono">
                 Your Wallet
@@ -141,7 +141,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
           <button
             id="btn-sidebar-connect-wallet"
             onClick={onOpenConnect}
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white hover:bg-zinc-200 text-xs font-bold text-black transition-all shadow-sm cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white hover:bg-zinc-200 text-xs font-bold text-black glow-blue-cta cursor-pointer"
           >
             <Wallet className="w-3.5 h-3.5" />
             <span>Connect Wallet</span>

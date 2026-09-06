@@ -70,7 +70,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onSelectTab, onOpenCo
         <button
           id="btn-header-sound-toggle"
           onClick={toggleSound}
-          className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+          className={`p-1.5 rounded-lg border transition-all cursor-pointer glow-blue-interactive ${
             !isMuted
               ? 'bg-[#111317] border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600'
               : 'bg-zinc-900 border-zinc-700 text-zinc-500 hover:text-zinc-300'
@@ -86,7 +86,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onSelectTab, onOpenCo
             id="btn-header-refresh"
             onClick={() => refreshData()}
             disabled={isRefreshing}
-            className={`p-1.5 rounded-lg bg-[#111317] border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600 transition-colors cursor-pointer ${
+            className={`p-1.5 rounded-lg bg-[#111317] border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600 transition-all cursor-pointer glow-blue-interactive ${
               isRefreshing ? 'opacity-70' : ''
             }`}
             title="Refresh blockchain data"
@@ -101,9 +101,9 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onSelectTab, onOpenCo
           <button
             id="btn-header-settings"
             onClick={() => onSelectTab('settings')}
-            className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+            className={`p-1.5 rounded-lg border transition-all cursor-pointer glow-blue-interactive ${
               activeTab === 'settings'
-                ? 'bg-zinc-800 border-zinc-600 text-white'
+                ? 'bg-blue-500/10 border-blue-500/40 text-white shadow-[0_0_12px_rgba(59,130,246,0.25)]'
                 : 'bg-[#111317] border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600'
             }`}
             title="Settings & Network"
@@ -125,7 +125,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onSelectTab, onOpenCo
           <button
             id="btn-header-connect"
             onClick={onOpenConnect}
-            className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg bg-white hover:bg-zinc-200 text-xs font-bold text-black transition-all shadow-sm cursor-pointer whitespace-nowrap"
+            className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg bg-white hover:bg-zinc-200 text-xs font-bold text-black glow-blue-cta cursor-pointer whitespace-nowrap"
           >
             <Wallet className="w-3.5 h-3.5" />
             <span>Connect</span>

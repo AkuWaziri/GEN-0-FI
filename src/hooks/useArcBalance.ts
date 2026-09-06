@@ -34,8 +34,13 @@ export function useArcBalance(address: `0x${string}` | string | undefined, isArc
   const activeAddressRef = useRef<string | undefined>(address);
   activeAddressRef.current = address;
 
+  const isMatchingAddress = useCallback((target: string) => {
+    if (!activeAddressRef.current) return false;
+    return activeAddressRef.current.toLowerCase() === target.toLowerCase();
+  }, []);
+
   const fetchBalance = useCallback(async () => {
-    if (!address || !address.startsWith('0x')) {
+    if (!address || typeof address !== 'string' || !address.startsWith('0x') || address.length < 42) {
       setRaw(0n);
       setFormatted('0.00');
       setIsLoading(false);
@@ -44,64 +49,17 @@ export function useArcBalance(address: `0x${string}` | string | undefined, isArc
       return;
     }
 
-    const targetAddr = address as `0x${string}`;
+    const targetAddr = address.toLowerCase() as `0x${string}`;
     setIsLoading(true);
     setIsError(false);
     setErrorMessage(null);
 
-    // 1. Try server endpoint first (server-side viem connection to Arc RPC)
     try {
-      const res = await fetch(`/api/blockchain/arc/balance/${targetAddr}`, {
-        cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (activeAddressRef.current === targetAddr && data && data.balanceUSDC) {
-          setRaw(BigInt(data.rawBalance || '0'));
-          setFormatted(data.balanceUSDC);
-          setIsLoading(false);
-          return;
-        }
-      }
-    } catch {
-      // Continue to direct public client query
-    }
+      // 1. Direct Viem RPC query on Arc Testnet (chain 5042002 native USDC 18 decimals)
+      try {
+        const balanceWei = await arcPublicClient.getBalance({ address: targetAddr });
 
-    // 2. Direct Viem RPC query on Arc Testnet
-    try {
-      const balanceWei = await arcPublicClient.getBalance({ address: targetAddr });
-
-      // Guard against stale response if address changed mid-request
-      if (activeAddressRef.current !== targetAddr) return;
-
-      setRaw(balanceWei);
-      // Native Arc gas token is USDC with 18 decimals
-      const rawUnits = formatUnits(balanceWei, 18);
-      const num = parseFloat(rawUnits);
-      // Human-readable formatted string with 4 decimals max for clean financial display
-      const displayStr = isNaN(num) ? '0.00' : num === 0 ? '0.00' : num.toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 4,
-      });
-
-      setFormatted(displayStr);
-      setIsLoading(false);
-      return;
-    } catch (rpcErr: unknown) {
-      console.warn(`Viem RPC balance query failed for ${targetAddr}, trying ArcScan explorer balance:`, rpcErr);
-    }
-
-    // 3. Fallback: Direct ArcScan Blockscout API v2 address lookup
-    try {
-      const scanRes = await fetch(`https://testnet.arcscan.app/api/v2/addresses/${targetAddr}`, {
-        cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
-      });
-      if (scanRes.ok) {
-        const scanData = await scanRes.json();
-        if (activeAddressRef.current === targetAddr && scanData && scanData.coin_balance !== undefined && scanData.coin_balance !== null) {
-          const balanceWei = BigInt(scanData.coin_balance);
+        if (isMatchingAddress(targetAddr)) {
           setRaw(balanceWei);
           const rawUnits = formatUnits(balanceWei, 18);
           const num = parseFloat(rawUnits);
@@ -109,20 +67,70 @@ export function useArcBalance(address: `0x${string}` | string | undefined, isArc
             minimumFractionDigits: 2,
             maximumFractionDigits: 4,
           });
+
           setFormatted(displayStr);
           setIsLoading(false);
           return;
         }
+      } catch (rpcErr: unknown) {
+        console.warn(`Direct Viem RPC balance query failed for ${targetAddr}, trying fallbacks:`, rpcErr);
       }
-    } catch (scanErr: unknown) {
-      console.warn(`ArcScan explorer balance lookup failed for ${targetAddr}:`, scanErr);
-    }
 
-    if (activeAddressRef.current !== targetAddr) return;
-    setIsError(true);
-    setErrorMessage('Could not retrieve real-time Arc Testnet balance.');
-    setIsLoading(false);
-  }, [address]);
+      // 2. Direct ArcScan Blockscout API v2 address lookup (high speed CORS-enabled fallback)
+      try {
+        const scanRes = await fetch(`https://testnet.arcscan.app/api/v2/addresses/${targetAddr}`, {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+        });
+        if (scanRes.ok) {
+          const scanData = await scanRes.json();
+          if (isMatchingAddress(targetAddr) && scanData && scanData.coin_balance !== undefined && scanData.coin_balance !== null) {
+            const balanceWei = BigInt(scanData.coin_balance);
+            setRaw(balanceWei);
+            const rawUnits = formatUnits(balanceWei, 18);
+            const num = parseFloat(rawUnits);
+            const displayStr = isNaN(num) ? '0.00' : num === 0 ? '0.00' : num.toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 4,
+            });
+            setFormatted(displayStr);
+            setIsLoading(false);
+            return;
+          }
+        }
+      } catch (scanErr: unknown) {
+        console.warn(`ArcScan explorer balance lookup failed for ${targetAddr}:`, scanErr);
+      }
+
+      // 3. Server-side API endpoint fallback (Express / Vercel serverless proxy)
+      try {
+        const res = await fetch(`/api/blockchain/arc/balance/${targetAddr}`, {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (isMatchingAddress(targetAddr) && data && data.balanceUSDC) {
+            setRaw(BigInt(data.rawBalance || '0'));
+            setFormatted(data.balanceUSDC);
+            setIsLoading(false);
+            return;
+          }
+        }
+      } catch {
+        // Fall through to error state
+      }
+
+      if (isMatchingAddress(targetAddr)) {
+        setIsError(true);
+        setErrorMessage('Could not retrieve real-time Arc Testnet balance.');
+      }
+    } finally {
+      if (isMatchingAddress(targetAddr)) {
+        setIsLoading(false);
+      }
+    }
+  }, [address, isMatchingAddress]);
 
   useEffect(() => {
     fetchBalance();
