@@ -124,7 +124,7 @@ export const WalletIdentityModal: React.FC<WalletIdentityModalProps> = ({ isOpen
           </button>
         </div>
 
-        {/* Non-custodial Note & Disconnect Action */}
+        {/* Security Note & Disconnect Action */}
         <div className="space-y-3 pt-2">
           <button
             id="btn-modal-disconnect-wallet"
@@ -138,7 +138,7 @@ export const WalletIdentityModal: React.FC<WalletIdentityModalProps> = ({ isOpen
 
           <div className="flex items-center justify-center gap-1.5 text-[11px] text-zinc-500 font-medium">
             <Shield className="w-3 h-3 text-zinc-500" />
-            <span>Non-custodial · You stay in control</span>
+            <span>You stay in control</span>
           </div>
         </div>
       </div>

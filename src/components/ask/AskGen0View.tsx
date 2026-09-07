@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useWallet } from '../../context/WalletContext';
 import { getArcScanTxUrl, formatShortHash } from '../../config/arc';
 import { ChatMessage } from '../../types/blockchain';
@@ -10,36 +10,25 @@ import {
   ExternalLink,
   ShieldCheck,
   RotateCcw,
-  Zap,
   Cpu,
-  BookOpen,
-  Wallet,
 } from 'lucide-react';
 
-interface PromptChip {
-  label: string;
-  category: 'wallet' | 'protocol' | 'features';
-}
-
-const PROMPT_SUGGESTIONS: PromptChip[] = [
-  // Wallet Intelligence mode prompts
-  { label: 'How much USDC do I have?', category: 'wallet' },
-  { label: 'What did I receive recently?', category: 'wallet' },
-  { label: 'How much have I spent on gas?', category: 'wallet' },
-  { label: 'What happened in my wallet today?', category: 'wallet' },
-  { label: 'Explain my recent transactions', category: 'wallet' },
-  { label: 'What contracts did I interact with?', category: 'wallet' },
-  // Protocol & Product knowledge prompts
-  { label: 'What is Arc?', category: 'protocol' },
-  { label: 'How does Arc use USDC for gas?', category: 'protocol' },
-  { label: 'What are the main features of GEN-0 FI?', category: 'features' },
-  { label: 'How does wallet intelligence work?', category: 'features' },
+const TYPING_EXAMPLES = [
+  'How much USDC do I have?',
+  'What did I receive recently?',
+  'How much have I spent on gas?',
+  'Explain my recent transactions',
+  'What contracts did I interact with?',
+  'What happened in my wallet today?',
+  'Did I send any USDC recently?',
+  'How does Arc use USDC for gas?',
+  'What is Arc?',
+  'What are the main features of GEN-0 FI?',
+  'How does wallet intelligence work?',
 ];
 
 export const AskGen0View: React.FC = () => {
   const { address, shortAddress, isConnected, walletSummary, transactions, balanceUSDC } = useWallet();
-
-  const [activeCategory, setActiveCategory] = useState<'all' | 'wallet' | 'protocol' | 'features'>('all');
 
   // Compute exact normalized wallet metrics matching OverviewView for 100% consistency
   const activeBalance = balanceUSDC || walletSummary?.balanceUSDC || '0.00';
@@ -70,7 +59,16 @@ export const AskGen0View: React.FC = () => {
 
   const [inputPrompt, setInputPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [activeModel, setActiveModel] = useState<string>('gemini-3.8-flash');
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPlaceholderIndex((prev) => (prev + 1) % TYPING_EXAMPLES.length);
+    }, 3200);
+    return () => clearInterval(interval);
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -79,11 +77,6 @@ export const AskGen0View: React.FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isGenerating]);
-
-  const filteredPrompts = useMemo(() => {
-    if (activeCategory === 'all') return PROMPT_SUGGESTIONS;
-    return PROMPT_SUGGESTIONS.filter((p) => p.category === activeCategory);
-  }, [activeCategory]);
 
   const handleSendMessage = async (textToSend?: string) => {
     const query = (textToSend || inputPrompt).trim();
@@ -129,11 +122,16 @@ export const AskGen0View: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate response');
+        const errJson = await response.json().catch(() => null);
+        const errMsg = errJson?.error || errJson?.message || `AI service returned error ${response.status}`;
+        throw new Error(errMsg);
       }
 
       const data = await response.json();
       const cleanAnswer = (data.answer || "I can't verify that from the available onchain data.").replace(/\*/g, '');
+      if (data.model) {
+        setActiveModel(data.model);
+      }
       setMessages((prev) => [
         ...prev,
         {
@@ -144,15 +142,16 @@ export const AskGen0View: React.FC = () => {
           referencedTxHashes: data.referencedTxHashes || [],
         },
       ]);
-    } catch {
+    } catch (err: any) {
+      const errorDetail = err?.message || 'Service temporarily unreachable';
       setMessages((prev) => [
         ...prev,
         {
           id: `ai-err-${Date.now()}`,
           role: 'assistant',
-          content: `Your wallet (${shortAddress || 'active'}) currently holds ${activeBalance} USDC on Arc across ${totalTxCount} transaction(s). Note: GEN-0 is operating in verified deterministic mode.`,
+          content: `AI Service Notice: ${errorDetail}. For Vercel production deployments, ensure GEMINI_API_KEY is configured in Vercel Project Settings > Environment Variables. Your live Arc wallet balance remains verified: ${activeBalance} USDC.`,
           timestamp: Date.now(),
-          isError: false,
+          isError: true,
         },
       ]);
     } finally {
@@ -183,9 +182,9 @@ export const AskGen0View: React.FC = () => {
             <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
               Ask GEN-0
             </h1>
-            <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[10px] font-mono text-emerald-400">
+            <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-[10px] font-mono text-blue-400">
               <Cpu className="w-2.5 h-2.5" />
-              Gemini 3.1 Flash-Lite
+              {activeModel === 'deterministic-verifier' ? 'Arc Deterministic Engine' : 'Gemini 3.8 Flash'}
             </span>
           </div>
         </div>
@@ -199,68 +198,6 @@ export const AskGen0View: React.FC = () => {
             <RotateCcw className="w-3 h-3" />
             <span className="hidden sm:inline">Reset</span>
           </button>
-        </div>
-      </div>
-
-      {/* Mode Filters & Prompt Categories */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2 justify-between">
-        <div className="flex items-center gap-1 bg-[#101216] p-0.5 rounded-lg border border-zinc-800 shrink-0 self-start">
-          <button
-            onClick={() => setActiveCategory('all')}
-            className={`px-2 py-0.5 rounded text-[11px] font-medium transition-all ${
-              activeCategory === 'all'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            All Prompts
-          </button>
-          <button
-            onClick={() => setActiveCategory('wallet')}
-            className={`px-2 py-0.5 rounded text-[11px] font-medium transition-all flex items-center gap-1 ${
-              activeCategory === 'wallet'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            <Wallet className="w-2.5 h-2.5" />
-            Wallet Data
-          </button>
-          <button
-            onClick={() => setActiveCategory('protocol')}
-            className={`px-2 py-0.5 rounded text-[11px] font-medium transition-all flex items-center gap-1 ${
-              activeCategory === 'protocol'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            <BookOpen className="w-2.5 h-2.5" />
-            Arc Protocol
-          </button>
-          <button
-            onClick={() => setActiveCategory('features')}
-            className={`px-2 py-0.5 rounded text-[11px] font-medium transition-all flex items-center gap-1 ${
-              activeCategory === 'features'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            <Zap className="w-2.5 h-2.5" />
-            GEN-0 FI
-          </button>
-        </div>
-
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none text-xs">
-          {filteredPrompts.map((p, idx) => (
-            <button
-              key={idx}
-              onClick={() => handleSendMessage(p.label)}
-              disabled={isGenerating}
-              className="px-2.5 py-1 rounded-lg bg-[#0d0f12] hover:bg-zinc-800/90 border border-zinc-800 hover:border-blue-500/35 hover:shadow-[0_0_12px_rgba(59,130,246,0.18)] text-zinc-400 hover:text-blue-200 transition-all whitespace-nowrap cursor-pointer shrink-0 disabled:opacity-50 text-[11px] font-medium"
-            >
-              {p.label}
-            </button>
-          ))}
         </div>
       </div>
 
@@ -349,32 +286,52 @@ export const AskGen0View: React.FC = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Box */}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSendMessage();
-        }}
-        className="relative"
-      >
-        <input
-          type="text"
-          value={inputPrompt}
-          onChange={(e) => setInputPrompt(e.target.value)}
-          placeholder="Ask anything: 'how much usdc do i have', 'what did i receive', 'how does arc use usdc for gas'..."
-          disabled={isGenerating}
-          className="w-full pl-3.5 pr-11 py-3 rounded-xl bg-[#0d0f12] border border-zinc-800 focus:border-blue-500/50 glow-blue-focus focus:outline-none text-xs sm:text-sm text-white placeholder:text-zinc-500 shadow-sm transition-all"
-        />
-
-        <button
-          type="submit"
-          disabled={!inputPrompt.trim() || isGenerating}
-          className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-white hover:bg-zinc-200 disabled:opacity-30 disabled:hover:bg-white text-black glow-blue-cta cursor-pointer"
-          aria-label="Send message"
+      {/* Input Box & Prompt Examples */}
+      <div className="space-y-2">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSendMessage();
+          }}
+          className="relative"
         >
-          <Send className="w-3.5 h-3.5" />
-        </button>
-      </form>
+          <input
+            type="text"
+            value={inputPrompt}
+            onChange={(e) => setInputPrompt(e.target.value)}
+            placeholder={`Ask anything e.g. "${TYPING_EXAMPLES[placeholderIndex]}"`}
+            disabled={isGenerating}
+            className="w-full pl-3.5 pr-11 py-3 rounded-xl bg-[#0d0f12] border border-zinc-800 focus:border-blue-500/50 glow-blue-focus focus:outline-none text-xs sm:text-sm text-white placeholder:text-zinc-500 shadow-sm transition-all"
+          />
+
+          <button
+            type="submit"
+            disabled={!inputPrompt.trim() || isGenerating}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-white hover:bg-zinc-200 disabled:opacity-30 disabled:hover:bg-white text-black glow-blue-cta cursor-pointer"
+            aria-label="Send message"
+          >
+            <Send className="w-3.5 h-3.5" />
+          </button>
+        </form>
+
+        {/* Example prompts in the typing box section */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-[11px]">
+          <span className="text-zinc-500 font-mono text-[10px] uppercase tracking-wider shrink-0 pl-0.5 font-medium">
+            Examples:
+          </span>
+          {TYPING_EXAMPLES.map((example, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => handleSendMessage(example)}
+              disabled={isGenerating}
+              className="px-2.5 py-1 rounded-lg bg-[#101216] hover:bg-zinc-800 border border-zinc-800/90 hover:border-blue-500/35 text-zinc-400 hover:text-white transition-all whitespace-nowrap cursor-pointer shrink-0 disabled:opacity-40"
+            >
+              {example}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Safety & Grounding Footnote */}
       <div className="flex items-center justify-between text-[10px] text-zinc-500 px-1 font-mono">
@@ -382,7 +339,7 @@ export const AskGen0View: React.FC = () => {
           <ShieldCheck className="w-3 h-3 text-emerald-400" />
           <span>Zero Hallucination Guarantee: Strictly grounded on Arc onchain state</span>
         </div>
-        <span>Arc (5042002) • Non-custodial</span>
+        <span>Arc. Testnet • Verified Onchain</span>
       </div>
     </div>
   );

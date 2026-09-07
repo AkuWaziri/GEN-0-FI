@@ -188,10 +188,10 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({ isOpen, 
           </div>
         )}
 
-        {/* Security / Non-custodial Reassurance */}
+        {/* Security Reassurance */}
         <div className="pt-2 border-t border-zinc-900/80 flex items-center justify-center gap-1.5 text-xs text-zinc-400">
           <Shield className="w-3.5 h-3.5 text-blue-400 drop-shadow-[0_0_6px_rgba(59,130,246,0.5)]" />
-          <span>Non-custodial</span>
+          <span>Private & Secure</span>
         </div>
       </div>
     </div>

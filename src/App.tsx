@@ -12,6 +12,7 @@ import { ConnectWalletModal } from './components/wallet/ConnectWalletModal';
 import { WrongNetworkView } from './components/wallet/WrongNetworkView';
 import { WelcomeOnboarding } from './components/wallet/WelcomeOnboarding';
 import { WalletIdentityModal } from './components/wallet/WalletIdentityModal';
+import { Footer } from './components/common/Footer';
 import { initGlobalClickSound } from './utils/sound';
 
 const AppContent: React.FC = () => {
@@ -82,19 +83,23 @@ const AppContent: React.FC = () => {
           onOpenConnect={() => setIsIdentityModalOpen(true)}
         />
 
-        <main className="flex-1 overflow-y-auto">
-          {activeTab === 'overview' && (
-            <OverviewView
-              onSelectTab={setActiveTab}
-              onOpenConnect={() => setIsIdentityModalOpen(true)}
-            />
-          )}
+        <main className="flex-1 overflow-y-auto flex flex-col justify-between">
+          <div>
+            {activeTab === 'overview' && (
+              <OverviewView
+                onSelectTab={setActiveTab}
+                onOpenConnect={() => setIsIdentityModalOpen(true)}
+              />
+            )}
 
-          {activeTab === 'activity' && <ActivityView />}
+            {activeTab === 'activity' && <ActivityView />}
 
-          {activeTab === 'ask' && <AskGen0View />}
+            {activeTab === 'ask' && <AskGen0View />}
 
-          {activeTab === 'settings' && <SettingsView />}
+            {activeTab === 'settings' && <SettingsView />}
+          </div>
+
+          {activeTab !== 'ask' && <Footer />}
         </main>
       </div>
 

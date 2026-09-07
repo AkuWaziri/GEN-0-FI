@@ -1,7 +1,7 @@
 import React from 'react';
 import { Logo } from '../common/Logo';
-import { ARC_NETWORK_CONFIG } from '../../config/arc';
-import { Wallet, Sparkles, Shield, Cpu, CheckCircle2, ExternalLink } from 'lucide-react';
+import { Footer } from '../common/Footer';
+import { Wallet, Sparkles, Shield, Cpu, CheckCircle2 } from 'lucide-react';
 
 interface LandingViewProps {
   onOpenConnect: () => void;
@@ -29,9 +29,9 @@ export const LandingView: React.FC<LandingViewProps> = ({ onOpenConnect }) => {
     },
     {
       icon: Shield,
-      title: 'Non-custodial by design',
+      title: 'Secure by design',
       description:
-        'We never ask for private keys, seed phrases, or custody. Purely public onchain intelligence.',
+        'We never ask for private keys or seed phrases. Purely public onchain intelligence.',
     },
   ];
 
@@ -41,18 +41,10 @@ export const LandingView: React.FC<LandingViewProps> = ({ onOpenConnect }) => {
       <header className="flex items-center justify-between px-4 sm:px-8 lg:px-12 py-4 border-b border-zinc-900 w-full bg-[#000000]/90 backdrop-blur-md sticky top-0 z-30">
         <Logo size="md" />
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-[#111317] border border-blue-500/25 text-xs font-mono text-zinc-300 shadow-[0_0_12px_rgba(59,130,246,0.15)]">
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#111317] border border-blue-500/25 text-xs font-mono text-zinc-300 shadow-[0_0_12px_rgba(59,130,246,0.15)]">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.8)]" />
-            <span>Arc Testnet</span>
+            <span>Arc. Testnet</span>
           </div>
-          <button
-            id="btn-landing-top-connect"
-            onClick={onOpenConnect}
-            className="flex items-center gap-2 py-2 px-4 rounded-xl bg-white hover:bg-zinc-200 text-xs font-bold text-black glow-blue-cta cursor-pointer"
-          >
-            <Wallet className="w-3.5 h-3.5" />
-            <span>Connect Wallet</span>
-          </button>
         </div>
       </header>
 
@@ -95,12 +87,6 @@ export const LandingView: React.FC<LandingViewProps> = ({ onOpenConnect }) => {
           </button>
         </div>
 
-        {/* Trust badge with blue shield icon and removed 'you stay in control' */}
-        <div className="mt-5 flex items-center justify-center gap-1.5 text-xs text-zinc-400 font-medium">
-          <Shield className="w-4 h-4 text-blue-400 drop-shadow-[0_0_6px_rgba(59,130,246,0.5)]" />
-          <span>Non-custodial</span>
-        </div>
-
         {/* 4 Pillars Section */}
         <div className="mt-14 sm:mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 text-left w-full">
           {pillars.map((pillar, idx) => {
@@ -129,25 +115,7 @@ export const LandingView: React.FC<LandingViewProps> = ({ onOpenConnect }) => {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-zinc-900 py-6 px-4 sm:px-8 lg:px-12 text-center text-xs text-zinc-500 w-full flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2 font-mono">
-          <span className="font-semibold text-zinc-300">GEN-0 FI</span>
-          <span>•</span>
-          <span>Official Arc Testnet (Chain ID 5042002)</span>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <a
-            href={ARC_NETWORK_CONFIG.explorerUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-white transition-colors flex items-center gap-1 font-mono"
-          >
-            <span>ArcScan Explorer</span>
-            <ExternalLink className="w-3 h-3" />
-          </a>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };

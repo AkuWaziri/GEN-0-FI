@@ -164,7 +164,7 @@ export const SettingsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Security & Non-Custodial Guarantee */}
+      {/* Security Guarantee */}
       <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 space-y-2.5 shadow-sm">
         <div className="flex items-center gap-2">
           <Shield className="w-4 h-4 text-white" />
@@ -177,7 +177,7 @@ export const SettingsView: React.FC = () => {
 
         <div className="pt-2 flex items-center justify-between text-[11px] text-zinc-500 border-t border-zinc-900 font-mono">
           <span>App Version 1.0.0 (Arc MVP)</span>
-          <span>Non-Custodial Architecture</span>
+          <span>Secure Read-Only Architecture</span>
         </div>
       </div>
     </div>

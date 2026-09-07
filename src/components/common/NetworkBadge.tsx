@@ -13,7 +13,7 @@ export const NetworkBadge: React.FC<{ compact?: boolean }> = ({ compact = false 
         className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#111317] border border-zinc-800 text-[11px] font-mono text-zinc-400 whitespace-nowrap"
       >
         <span className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
-        <span>Arc</span>
+        <span>Arc. Testnet</span>
       </div>
     );
   }
@@ -24,10 +24,10 @@ export const NetworkBadge: React.FC<{ compact?: boolean }> = ({ compact = false 
         id="network-badge-wrong-chain"
         onClick={() => switchToArc()}
         className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-700 text-[11px] font-mono font-medium text-white hover:bg-zinc-800 transition-colors whitespace-nowrap cursor-pointer"
-        title="Click to switch to Arc"
+        title="Click to switch to Arc. Testnet"
       >
         <AlertCircle className="w-3 h-3 text-zinc-400" />
-        <span>Switch to Arc</span>
+        <span>Switch to Arc. Testnet</span>
       </button>
     );
   }

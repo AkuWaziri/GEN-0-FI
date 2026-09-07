@@ -5,6 +5,7 @@ import { createPublicClient, formatUnits, http, isAddress } from 'viem';
 import { GoogleGenAI, Type } from '@google/genai';
 import { arcTestnetChain, ARC_NETWORK_CONFIG, ARC_TESTNET_RPC_URL } from './src/config/arc';
 import { normalizeTransaction, RawTxInput } from './src/services/blockchain/normalizer';
+import { handleAiAskPayload } from './src/services/ai/geminiService';
 
 dotenv.config();
 
@@ -902,137 +903,14 @@ CRITICAL FINANCIAL INTELLIGENCE MANDATES:
 // 6. ASK GEN-0 ASSISTANT (Dual-Mode: Wallet Intelligence + Protocol Chat)
 // -------------------------------------------------------------
 app.post(['/api/ai/ask', '/ai/ask'], async (req, res) => {
-  const { address, message, history } = req.body;
-  const walletDataRaw = req.body.walletData || req.body.walletSummary || req.body.summary || {};
-  const recentTransactions = req.body.recentTransactions || [];
-
-  if (!message || typeof message !== 'string') {
-    return res.status(400).json({ error: 'Message is required' });
-  }
-
-  const balance = walletDataRaw.balanceUSDC || '0.00';
-  const totalReceived = walletDataRaw.totalReceivedUSDC || walletDataRaw.receivedTotalUSDC || '0.00';
-  const totalSent = walletDataRaw.totalSentUSDC || walletDataRaw.sentTotalUSDC || '0.00';
-  const gasSpent = walletDataRaw.gasSpentUSDC || '0.000000';
-  const txCount = walletDataRaw.txCount ?? (recentTransactions.length || 0);
-  const contractCount = walletDataRaw.contractInteractionsCount ?? walletDataRaw.activeContractsCount ?? 0;
-  const historyStatus = walletDataRaw.historyStatus || (recentTransactions.length === 0 && parseFloat(balance.replace(/,/g, '')) > 0 ? 'incomplete' : 'complete');
-
-  const normalizedWalletSnapshot = {
-    address: address || '',
-    balance,
-    totalReceived,
-    totalSent,
-    gasSpent,
-    txCount,
-    contractCount,
-    historyStatus,
-  };
-
-  // Prepare normalized transaction list with human dates and full details
-  const formattedTxList = (recentTransactions || []).slice(0, 20).map((t: any) => ({
-    hash: t.hash,
-    date: t.timestamp
-      ? new Date(t.timestamp).toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-      : 'Confirmed',
-    direction: t.direction,
-    classification: t.classificationLabel || t.classification,
-    amountUSDC: t.value,
-    gasCostUSDC: t.gasCostUSDC,
-    from: t.from,
-    to: t.to,
-    status: t.status,
-    isContractInteraction: Boolean(t.isContractInteraction),
-    summary: t.summary || undefined,
-  }));
-
-  const systemInstruction = `You are GEN-0 FI, the official onchain financial intelligence assistant and Arc protocol expert.
-
-You operate in two primary modes:
-
-MODE 1: WALLET INTELLIGENCE
-- Answer user questions regarding their wallet activity, balances, incoming/outgoing funds, gas spending, contract interactions, and transaction dates.
-- Use ONLY the provided verified normalized wallet data and transaction list as the source of truth.
-- NEVER recalculate, invent, or contradict the normalized metrics:
-  * Current USDC balance: ${balance} USDC
-  * Total received: ${totalReceived} USDC
-  * Total sent: ${totalSent} USDC
-  * Total gas spent: ${gasSpent} USDC
-  * Total transactions: ${txCount}
-  * Smart contract interactions: ${contractCount}
-- When discussing specific transactions, explicitly cite their dates, amounts in USDC, and transaction hashes (e.g. 0x...).
-- Fallback requirement: If the user asks about an event, address, or transaction that does not exist in the provided onchain data, or if historical data is incomplete, clearly state:
-  "I can't verify that from the available onchain data."
-
-MODE 2: GEN-0 AI (CHAT) & PROTOCOL INTELLIGENCE
-- Answer user questions about Arc, native USDC for gas, GEN-0 FI platform features, and how wallet intelligence works using the verified knowledge base.
-- Do not claim features exist if they are not part of GEN-0 FI or Arc.
-
-CRITICAL FORMATTING MANDATES:
-- NEVER use asterisks (*) or double asterisks (**) anywhere in the response. Do NOT use markdown bold or italic asterisks. Output clean plain text.
-- Concise, intelligent, conversational, and easy for non-technical users to understand.`;
-
-  const formattedHistory = Array.isArray(history)
-    ? history.slice(-6).map((h) => `${h.role === 'user' ? 'User' : 'Assistant'}: ${h.content}`).join('\n')
-    : '';
-
-  const promptContent = `${VERIFIED_ARC_PROTOCOL_KNOWLEDGE}
-
-VERIFIED LIVE ONCHAIN WALLET DATA (AUTHORITATIVE SOURCE OF TRUTH):
-- Target Wallet Address: ${address || 'Not connected'}
-- Current USDC Balance: ${balance} USDC (Verified via live Arc RPC)
-- Total Received (USDC): ${totalReceived}
-- Total Sent (USDC): ${totalSent}
-- Total Gas Spent on Arc (USDC): ${gasSpent} USDC
-- Confirmed Transaction Count: ${txCount}
-- Smart Contract Interactions Count: ${contractCount}
-- Transaction History Status: ${historyStatus}
-- Recent Scanned Transactions (${formattedTxList.length} items):
-${JSON.stringify(formattedTxList, null, 2)}
-
-CONVERSATION HISTORY:
-${formattedHistory}
-
-USER QUESTION: "${message}"
-
-Answer the user directly and concisely following the instructions. Remember: strictly no asterisks.`;
-
   try {
-    const { text, modelUsed } = await callGeminiWithFallback(promptContent, {
-      systemInstruction,
-      temperature: 0.2, // low temperature for maximum factual adherence
+    const result = await handleAiAskPayload(req.body || {});
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(err.message === 'Message is required' ? 400 : 500).json({
+      error: err.message || 'Failed to process AI query',
     });
-
-    if (text) {
-      const cleanText = text.replace(/\*/g, '');
-      // Find referenced transaction hashes in the response
-      const referencedTxHashes = (recentTransactions || [])
-        .filter((t: any) => cleanText.includes(t.hash) || cleanText.includes(t.hash.slice(0, 10)))
-        .map((t: any) => t.hash);
-
-      return res.json({
-        answer: cleanText,
-        referencedTxHashes,
-        model: modelUsed,
-      });
-    }
-  } catch (geminiErr: any) {
-    console.info(`[Ask GEN-0] Gemini API fallback engaged (${geminiErr?.message?.slice(0, 80) || 'Unavailable'})`);
   }
-
-  // Factual deterministic fallback engine
-  const fallback = generateDeterministicChatAnswer(message, normalizedWalletSnapshot, formattedTxList);
-  return res.json({
-    answer: fallback.answer.replace(/\*/g, ''),
-    referencedTxHashes: fallback.referencedTxHashes,
-    model: 'deterministic-verifier',
-  });
 });
 
 // -------------------------------------------------------------
