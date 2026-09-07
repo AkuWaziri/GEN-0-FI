@@ -59,7 +59,7 @@ export const ActivityView: React.FC = () => {
             </h1>
           </div>
           <p className="text-xs text-zinc-400 mt-0.5">
-            Verified onchain transaction history on Arc Testnet.
+            Verified onchain transaction history on Arc.
           </p>
         </div>
 
@@ -144,7 +144,7 @@ export const ActivityView: React.FC = () => {
           <p className="text-xs text-zinc-400 max-w-md mx-auto">
             {searchQuery
               ? `No transactions match "${searchQuery}". Try adjusting your search or filters.`
-              : `No activity recorded for this filter category on Arc Testnet.`}
+              : `No activity recorded for this filter category on Arc.`}
           </p>
         </div>
       ) : (

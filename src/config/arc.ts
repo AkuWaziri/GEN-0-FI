@@ -32,7 +32,7 @@ export const arcTestnetChain = defineChain({
 
 export const ARC_NETWORK_CONFIG: NetworkConfig = {
   chainId: ARC_TESTNET_CHAIN_ID,
-  name: 'Arc Testnet',
+  name: 'Arc',
   networkId: 'arc-testnet',
   rpcUrl: ARC_TESTNET_RPC_URL,
   explorerUrl: ARC_TESTNET_EXPLORER_URL,

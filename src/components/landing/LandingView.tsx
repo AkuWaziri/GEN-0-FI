@@ -13,7 +13,7 @@ export const LandingView: React.FC<LandingViewProps> = ({ onOpenConnect }) => {
       icon: Cpu,
       title: 'Understand your wallet',
       description:
-        'Instant clarity on your Arc Testnet assets, native USDC balances, and complete transaction flow.',
+        'Instant clarity on your Arc assets, native USDC balances, and complete transaction flow.',
     },
     {
       icon: Sparkles,

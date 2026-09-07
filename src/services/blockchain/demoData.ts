@@ -24,8 +24,8 @@ export const DEMO_TRANSACTIONS: NormalizedTransaction[] = [
     gasCostUSDC: '0.000021',
     isContractInteraction: false,
     classification: 'received',
-    classificationLabel: 'Arc Testnet Faucet',
-    summary: 'Received 250.00 USDC from Arc Official Testnet Faucet',
+    classificationLabel: 'Arc Faucet',
+    summary: 'Received 250.00 USDC from Arc Official Faucet',
   },
   {
     id: 'demo-tx-2',
@@ -131,7 +131,7 @@ export const DEMO_TRANSACTIONS: NormalizedTransaction[] = [
     isContractInteraction: false,
     classification: 'received',
     classificationLabel: 'Genesis Allocation',
-    summary: 'Initial Arc Testnet allocation of 1,500.00 USDC',
+    summary: 'Initial Arc allocation of 1,500.00 USDC',
   },
 ];
 
@@ -159,11 +159,11 @@ export const DEMO_WALLET_SUMMARY: WalletSummary = {
 
 export const DEMO_AI_ANALYSIS: AiWalletAnalysis = {
   summary:
-    'Demo wallet holds 2,755.00 USDC on Arc Testnet. In the last 4 days, the wallet received 3,250.00 USDC (including Arc Faucet drops and Genesis allocations) and deployed 495.00 USDC across ArcSwap Router and Yield Vaults.',
+    'Demo wallet holds 2,755.00 USDC on Arc. In the last 4 days, the wallet received 3,250.00 USDC (including Arc Faucet drops and Genesis allocations) and deployed 495.00 USDC across ArcSwap Router and Yield Vaults.',
   keyObservations: [
     'Net positive cashflow (+2,755.00 USDC retained balance)',
     'Active participation in Arc DeFi protocols (ArcSwap Router & Yield Vault)',
-    'Low gas consumption on Arc Testnet (~0.00045 USDC total spent on gas)',
+    'Low gas consumption on Arc (~0.00045 USDC total spent on gas)',
     'Zero failed or reverted transactions detected',
   ],
   activityLevel: 'active',
@@ -178,5 +178,5 @@ export const DEMO_AI_ANALYSIS: AiWalletAnalysis = {
     hash: '0x4f5e6d7c8b9a0f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0d1c2b3a4f5e',
   },
   generatedAt: now,
-  disclaimer: 'Generated from Arc Testnet verified data & protocol telemetry.',
+  disclaimer: 'Generated from Arc verified data & protocol telemetry.',
 };

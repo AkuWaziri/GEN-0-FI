@@ -88,10 +88,10 @@ export function useWalletNetwork(): WalletNetworkHook {
       const errMsg =
         err instanceof Error ? err.message : 'Switch network request was rejected or unsupported.';
       if (errMsg.toLowerCase().includes('reject') || errMsg.toLowerCase().includes('user denied')) {
-        setError('Network switch request was rejected. Arc Testnet is required to use GEN-0 FI.');
+        setError('Network switch request was rejected. Arc is required to use GEN-0 FI.');
       } else {
         setError(
-          'Could not switch networks automatically. Please open your wallet and select Arc Testnet manually.'
+          'Could not switch networks automatically. Please open your wallet and select Arc manually.'
         );
       }
       setIsSwitching(false);

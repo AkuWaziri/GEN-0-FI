@@ -8,11 +8,9 @@ import {
   ExternalLink,
   CheckCircle2,
   AlertTriangle,
-  Search,
   Volume2,
   VolumeX,
 } from 'lucide-react';
-import { isAddress } from 'viem';
 import { soundEngine } from '../../utils/sound';
 
 export const SettingsView: React.FC = () => {
@@ -21,32 +19,13 @@ export const SettingsView: React.FC = () => {
     isCorrectNetwork,
     networkStatus,
     switchToArc,
-    inspectAddress,
-    isDemoMode,
-    exitDemoMode,
   } = useWallet();
 
-  const [inputAddr, setInputAddr] = useState('');
-  const [inputErr, setInputErr] = useState('');
   const [isMuted, setIsMuted] = useState(soundEngine.getIsMuted());
 
   const toggleSound = () => {
     const next = soundEngine.toggleMute();
     setIsMuted(next);
-  };
-
-  const handleInspect = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputAddr.trim()) {
-      setInputErr('Please enter an address');
-      return;
-    }
-    if (!isAddress(inputAddr.trim())) {
-      setInputErr('Invalid EVM address format');
-      return;
-    }
-    setInputErr('');
-    inspectAddress(inputAddr.trim(), false);
   };
 
   return (
@@ -59,9 +38,6 @@ export const SettingsView: React.FC = () => {
             Settings & Network
           </h1>
         </div>
-        <p className="text-xs text-zinc-400 mt-0.5">
-          Configuration, Arc Testnet parameters, and non-custodial privacy controls.
-        </p>
       </div>
 
       {/* Network Configuration Card */}
@@ -84,7 +60,7 @@ export const SettingsView: React.FC = () => {
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-700 text-white text-xs font-mono font-medium hover:bg-zinc-800 transition-colors cursor-pointer"
               >
                 <AlertTriangle className="w-3.5 h-3.5 text-zinc-400" />
-                <span>Switch to Arc Testnet</span>
+                <span>Switch to Arc</span>
               </button>
             )}
           </div>
@@ -151,49 +127,6 @@ export const SettingsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Address Inspector Mode */}
-      <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 glow-blue-card-hover space-y-3 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Search className="w-4 h-4 text-white" />
-            <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">Inspect Any Arc Address</h2>
-          </div>
-
-          {isDemoMode && (
-            <button
-              onClick={exitDemoMode}
-              className="text-xs text-zinc-400 hover:text-white underline cursor-pointer font-mono"
-            >
-              Exit Demo Inspection
-            </button>
-          )}
-        </div>
-
-        <p className="text-xs text-zinc-400">
-          Inspect real-time onchain balances and activity for any EVM wallet on Arc Testnet without connecting private keys.
-        </p>
-
-        <form onSubmit={handleInspect} className="flex gap-2">
-          <input
-            type="text"
-            value={inputAddr}
-            onChange={(e) => {
-              setInputAddr(e.target.value);
-              setInputErr('');
-            }}
-            placeholder="0x..."
-            className="flex-1 px-3 py-2 rounded-lg bg-[#131519] border border-zinc-800 text-xs text-white font-mono placeholder:text-zinc-500 focus:border-blue-500/50 glow-blue-focus focus:outline-none transition-all"
-          />
-          <button
-            type="submit"
-            className="py-2 px-4 rounded-lg bg-white hover:bg-zinc-200 text-xs font-bold text-black glow-blue-cta cursor-pointer shadow-sm"
-          >
-            Inspect
-          </button>
-        </form>
-        {inputErr && <p className="text-xs text-zinc-300 font-mono">{inputErr}</p>}
-      </div>
-
       {/* Audio & Tactile Feedback */}
       <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 space-y-3 shadow-sm">
         <div className="flex items-center justify-between">
@@ -239,11 +172,11 @@ export const SettingsView: React.FC = () => {
         </div>
 
         <p className="text-xs text-zinc-400 leading-relaxed">
-          GEN-0 FI operates under a strict read-only model. The application never accesses, requests, or stores private keys, seed phrases, or wallet passwords. All balances and transactions are verified directly against the public Arc Testnet blockchain.
+          GEN-0 FI operates under a strict read-only model. The application never accesses, requests, or stores private keys, seed phrases, or wallet passwords. All balances and transactions are verified directly against the public Arc blockchain.
         </p>
 
         <div className="pt-2 flex items-center justify-between text-[11px] text-zinc-500 border-t border-zinc-900 font-mono">
-          <span>App Version 1.0.0 (Arc Testnet MVP)</span>
+          <span>App Version 1.0.0 (Arc MVP)</span>
           <span>Non-Custodial Architecture</span>
         </div>
       </div>

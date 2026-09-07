@@ -46,11 +46,11 @@ export const WrongNetworkView: React.FC = () => {
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Switch to Arc Testnet
+            Switch to Arc
           </h1>
 
           <p className="text-sm text-zinc-300 max-w-md mx-auto leading-relaxed">
-            GEN-0 FI currently runs on <strong className="text-white font-semibold">Arc Testnet</strong>.
+            GEN-0 FI currently runs on <strong className="text-white font-semibold">Arc</strong>.
           </p>
         </div>
 
@@ -129,7 +129,7 @@ export const WrongNetworkView: React.FC = () => {
 
             <div className="flex items-center justify-between border-b border-zinc-800/60 pb-1.5">
               <span className="text-zinc-500">Network Name:</span>
-              <span className="text-white font-semibold">Arc Testnet</span>
+              <span className="text-white font-semibold">Arc</span>
             </div>
 
             <div className="flex items-center justify-between border-b border-zinc-800/60 pb-1.5">

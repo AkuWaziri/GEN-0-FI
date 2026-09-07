@@ -188,6 +188,64 @@ function getGeminiClient(): GoogleGenAI | null {
   return geminiAi;
 }
 
+/**
+ * Executes a Gemini prompt with progressive fallback across supported free models:
+ * Preferred order: gemini-3.1-flash-lite (Flash Lite) -> gemini-3.8-flash -> gemini-flash-latest
+ */
+async function callGeminiWithFallback(
+  contents: string,
+  config?: {
+    systemInstruction?: string;
+    temperature?: number;
+    responseMimeType?: string;
+    responseSchema?: any;
+  }
+): Promise<{ text: string; modelUsed: string }> {
+  const ai = getGeminiClient();
+  if (!ai) {
+    throw new Error('GEMINI_API_KEY_NOT_CONFIGURED');
+  }
+
+  // Preferred free model tier: prioritize gemini-3.1-flash-lite
+  const candidateModels = ['gemini-3.1-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest'];
+  let lastError: any = null;
+
+  for (const model of candidateModels) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents,
+        config: config
+          ? {
+              ...(config.systemInstruction ? { systemInstruction: config.systemInstruction } : {}),
+              ...(config.temperature !== undefined ? { temperature: config.temperature } : {}),
+              ...(config.responseMimeType ? { responseMimeType: config.responseMimeType } : {}),
+              ...(config.responseSchema ? { responseSchema: config.responseSchema } : {}),
+            }
+          : undefined,
+      });
+
+      const text = response.text?.trim() || '';
+      if (text) {
+        return { text, modelUsed: model };
+      }
+    } catch (err: any) {
+      lastError = err;
+      const status = err?.status;
+      const msg = String(err?.message || '');
+      // If 429 rate limit or quota exceeded, throw immediately to use factual deterministic engine
+      if (status === 429 || msg.includes('429') || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED')) {
+        console.warn(`[Gemini] Quota/Rate limit encountered on ${model}:`, msg.slice(0, 100));
+        throw err;
+      }
+      // If model not found (404) or permission issue, fallback to next model
+      console.warn(`[Gemini] Attempt with ${model} failed, falling back to next candidate:`, msg.slice(0, 80));
+    }
+  }
+
+  throw lastError || new Error('All candidate Gemini models failed to generate content');
+}
+
 // -------------------------------------------------------------
 // 1. HEALTH & NETWORK STATUS
 // -------------------------------------------------------------
@@ -195,7 +253,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'GEN-0 FI Blockchain Intelligence API',
-    network: 'Arc Testnet',
+    network: 'Arc',
     chainId: ARC_NETWORK_CONFIG.chainId,
     time: new Date().toISOString(),
   });
@@ -221,7 +279,7 @@ app.get('/api/blockchain/arc/status', async (req, res) => {
   } catch (error: any) {
     res.status(503).json({
       connected: false,
-      error: 'Arc Testnet RPC connection error',
+      error: 'Arc RPC connection error',
       message: error?.message || 'RPC request timed out',
       chainId: ARC_NETWORK_CONFIG.chainId,
       rpcUrl: ARC_NETWORK_CONFIG.rpcUrl,
@@ -255,7 +313,7 @@ app.get('/api/blockchain/arc/balance/:address', async (req, res) => {
       rawBalance: balanceWei.toString(),
       token: 'USDC',
       decimals: 18,
-      network: 'Arc Testnet',
+      network: 'Arc',
       isTestnet: true,
     });
   } catch (error: any) {
@@ -279,7 +337,7 @@ app.get('/api/blockchain/arc/balance/:address', async (req, res) => {
             rawBalance: balanceWei.toString(),
             token: 'USDC',
             decimals: 18,
-            network: 'Arc Testnet',
+            network: 'Arc',
             isTestnet: true,
           });
         }
@@ -412,7 +470,7 @@ app.get('/api/blockchain/arc/summary/:address', async (req, res) => {
       if (balanceNum > 0) {
         // Wallet holds verified native balance, but incoming funding tx is not in the scanned dataset
         historyStatus = 'incomplete';
-        historyStatusNote = 'Wallet is funded on Arc Testnet, but the inbound transfer occurred outside the scanned explorer dataset.';
+        historyStatusNote = 'Wallet is funded on Arc, but the inbound transfer occurred outside the scanned explorer dataset.';
         totalReceivedDisplay = 'Incomplete scan';
         totalSentDisplay = outgoingNonceNum === 0 ? '0.00' : '0.00';
       } else if (outgoingNonceNum === 0) {
@@ -489,7 +547,214 @@ app.get('/api/blockchain/arc/summary/:address', async (req, res) => {
 });
 
 // -------------------------------------------------------------
-// 4. AI WALLET SUMMARY (Powered by Gemini + In-Memory Caching)
+// 4. VERIFIED PROTOCOL KNOWLEDGE & AI HELPERS
+// -------------------------------------------------------------
+const VERIFIED_ARC_PROTOCOL_KNOWLEDGE = `
+VERIFIED PROTOCOL & PRODUCT KNOWLEDGE BASE:
+
+1. ARC PROTOCOL:
+- What is Arc: Arc is an institutional-grade, EVM-compatible Layer-1 blockchain engineered for high-throughput programmable finance, instant deterministic finality, and stablecoin-native settlement.
+- Native USDC for Gas: Unlike traditional EVM networks (e.g., Ethereum, Arbitrum, Polygon) where users must purchase and hold volatile native assets (ETH, MATIC) to execute transactions, Arc natively uses USDC (with 18 decimals) as its base gas and transaction fee token. Every transfer, contract deployment, and dApp interaction on Arc computes and pays its gas fee directly in native USDC.
+- Arc Parameters:
+  - Network Name: Arc
+  - Chain ID: 5042002 (Hex: 0x4cef52)
+  - Native Currency: USDC (Symbol: USDC, Decimals: 18)
+  - Block Explorer: ArcScan (https://testnet.arcscan.app)
+  - Official RPC: https://rpc.testnet.arc.network or https://rpc.testnet.arcscan.app
+
+2. GEN-0 FI PLATFORM & CORE CAPABILITIES:
+- What is GEN-0 FI: GEN-0 FI is the flagship onchain financial intelligence engine built specifically for the Arc ecosystem. It translates raw, cryptic EVM bytecode and transaction logs into clean, verified, human-readable financial insights.
+- Implemented Platform Features:
+  1. Financial Overview: Live real-time dashboard displaying verified USDC balance, total received, total sent, total gas spent in USDC, confirmed transactions, and active smart contract interactions.
+  2. AI Wallet Intelligence: Grounded AI summary that analyzes real onchain transactions, explainable metrics, counterparties, and activity levels without hallucinating figures.
+  3. Ask GEN-0 (AI Chat): A conversational AI assistant that answers questions about wallet activity (balances, transfers, gas, transactions) and explains Arc & GEN-0 protocol mechanics.
+  4. Activity Ledger: Comprehensive transaction normalizer with directional badges (Inbound, Outbound, Contract Interaction, Self-Transfer), gas cost breakdown in USDC, transaction hash verification, and 1-click ArcScan links.
+  5. Multi-Wallet Connection: Supports MetaMask, Coinbase Wallet, and Browser Injected wallets via Wagmi/AppKit, with 1-click Arc network switching.
+  6. Zero Hallucination Guarantee: Strict blockchain data layer grounding. When data is outside scanned blocks or unavailable, it explicitly states so instead of guessing.
+- How Wallet Intelligence Works:
+  GEN-0 FI reads the user's verified onchain state on Arc via RPC and ArcScan explorer APIs. The normalization engine calculates the current balance, inbound transfers, outbound transfers, and gas expenditure in USDC. These verified numbers are packaged into a structured wallet-data object and passed directly into the AI. The AI explains and synthesizes these figures without recalculating or inventing numbers. If records are outside the scanned explorer dataset, the assistant explicitly notes: "I can't verify that from the available onchain data."
+`;
+
+/**
+ * Deterministic answer generator when AI API key is missing or quota limited.
+ * Ensures 100% reliable responses for all standard wallet queries and protocol questions.
+ */
+function generateDeterministicChatAnswer(
+  query: string,
+  walletData: {
+    address: string;
+    balance: string;
+    totalReceived: string;
+    totalSent: string;
+    gasSpent: string;
+    txCount: number;
+    contractCount: number;
+    historyStatus: string;
+  },
+  transactions: any[]
+): { answer: string; referencedTxHashes: string[] } {
+  const q = query.toLowerCase().trim();
+  const short = walletData.address
+    ? `${walletData.address.slice(0, 6)}...${walletData.address.slice(-4)}`
+    : 'your wallet';
+  const referencedTxHashes: string[] = [];
+
+  // 1. Balance questions: "how much usdc do i have", "what is my balance"
+  if (q.includes('how much usdc') || q.includes('my balance') || q.includes('balance do i have') || q.includes('current balance') || q.includes('how many usdc')) {
+    return {
+      answer: `Your connected wallet (${short}) currently holds ${walletData.balance} USDC on Arc, verified live via the native Arc RPC.`,
+      referencedTxHashes,
+    };
+  }
+
+  // 2. Inbound / Received questions: "what did i receive recently", "how much received"
+  if (q.includes('receive') || q.includes('received') || q.includes('inbound') || q.includes('incoming') || q.includes('got') || q.includes('deposit')) {
+    const inboundTxs = transactions.filter((t: any) => t.direction === 'received');
+    if (inboundTxs.length > 0) {
+      const topIn = inboundTxs.slice(0, 3);
+      referencedTxHashes.push(...topIn.map((t: any) => t.hash));
+      const details = topIn.map((t: any) => {
+        const dateStr = t.timestamp ? new Date(t.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'recently';
+        const fromShort = t.from ? `${t.from.slice(0, 6)}...${t.from.slice(-4)}` : 'external sender';
+        return `- +${t.value} USDC on ${dateStr} from ${fromShort} (Tx: ${t.hash.slice(0, 10)}...)`;
+      }).join('\n');
+      return {
+        answer: `Your wallet (${short}) has a verified inbound total of ${walletData.totalReceived} USDC on Arc.\n\nRecent Inbound Transfers:\n${details}`,
+        referencedTxHashes,
+      };
+    }
+    if (walletData.historyStatus === 'incomplete') {
+      return {
+        answer: `Your wallet holds ${walletData.balance} USDC. Historical inbound funding occurred outside the recent scanned explorer dataset, so specific incoming transfer logs cannot be fully verified from recent records alone.`,
+        referencedTxHashes,
+      };
+    }
+    return {
+      answer: `Your wallet (${short}) has no recorded inbound transfers in the scanned Arc dataset (Total received: ${walletData.totalReceived} USDC).`,
+      referencedTxHashes,
+    };
+  }
+
+  // 3. Gas questions: "how much have i spent on gas", "gas spent"
+  if (q.includes('gas') || q.includes('fee') || q.includes('fees') || q.includes('gas spent') || q.includes('transaction cost')) {
+    return {
+      answer: `You have spent a total of ${walletData.gasSpent} USDC on Arc execution fees across ${walletData.txCount} transaction(s). Note that because Arc uses native USDC for gas, transaction fees are settled directly in USDC rather than a separate volatile coin.`,
+      referencedTxHashes,
+    };
+  }
+
+  // 4. Outbound / Sent questions: "how much have i sent", "what did i send"
+  if (q.includes('how much have i sent') || q.includes('total sent') || q.includes('outgoing') || q.includes('sent recently')) {
+    const outboundTxs = transactions.filter((t: any) => t.direction === 'sent');
+    if (outboundTxs.length > 0) {
+      const topOut = outboundTxs.slice(0, 3);
+      referencedTxHashes.push(...topOut.map((t: any) => t.hash));
+      const details = topOut.map((t: any) => {
+        const dateStr = t.timestamp ? new Date(t.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'recently';
+        const toShort = t.to ? `${t.to.slice(0, 6)}...${t.to.slice(-4)}` : 'recipient';
+        return `- -${t.value} USDC on ${dateStr} to ${toShort} (Tx: ${t.hash.slice(0, 10)}...)`;
+      }).join('\n');
+      return {
+        answer: `Your wallet has sent a verified total of ${walletData.totalSent} USDC on Arc across ${walletData.txCount} confirmed transaction(s).\n\nRecent Outbound Transfers:\n${details}`,
+        referencedTxHashes,
+      };
+    }
+    return {
+      answer: `Your wallet has sent a total of ${walletData.totalSent} USDC on Arc across ${walletData.txCount} transaction(s).`,
+      referencedTxHashes,
+    };
+  }
+
+  // 5. Activity / Recent transactions: "what happened in my wallet today", "explain my recent transactions"
+  if (q.includes('what happened') || q.includes('recent transaction') || q.includes('my transactions') || q.includes('activity today') || q.includes('explain my recent') || q.includes('wallet activity')) {
+    if (transactions.length === 0) {
+      if (walletData.historyStatus === 'incomplete') {
+        return {
+          answer: `Your wallet (${short}) verifiably holds ${walletData.balance} USDC on Arc with ${walletData.txCount} confirmed transaction nonce. However, detailed historical transaction logs occurred outside the recent scanned blocks, so transaction rows cannot be displayed from recent records.`,
+          referencedTxHashes,
+        };
+      }
+      return {
+        answer: `There are currently no recorded transactions for wallet ${short} on Arc. Current balance: ${walletData.balance} USDC.`,
+        referencedTxHashes,
+      };
+    }
+
+    const recent = transactions.slice(0, 4);
+    referencedTxHashes.push(...recent.map((t: any) => t.hash));
+    const items = recent.map((t: any) => {
+      const dateStr = t.timestamp ? new Date(t.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Confirmed';
+      const label = t.direction === 'received' ? `Received +${t.value} USDC` : t.direction === 'sent' ? `Sent -${t.value} USDC` : t.direction === 'contract_interaction' ? 'Smart Contract Call' : 'Self-Transfer';
+      return `- ${label} on ${dateStr} • Fee: ${t.gasCostUSDC} USDC • Hash: ${t.hash.slice(0, 10)}...`;
+    }).join('\n');
+
+    return {
+      answer: `Here is a summary of your recent Arc activity (${walletData.txCount} total transaction(s), balance: ${walletData.balance} USDC):\n\n${items}\n\nTotal gas spent: ${walletData.gasSpent} USDC. You can inspect any transaction directly on ArcScan using the links below.`,
+      referencedTxHashes,
+    };
+  }
+
+  // 6. Contract interactions: "what contracts did i interact with"
+  if (q.includes('contract') || q.includes('contracts') || q.includes('smart contract')) {
+    const contractTxs = transactions.filter((t: any) => t.isContractInteraction || t.direction === 'contract_interaction');
+    if (contractTxs.length > 0) {
+      referencedTxHashes.push(...contractTxs.slice(0, 3).map((t: any) => t.hash));
+      const list = contractTxs.slice(0, 3).map((t: any) => {
+        const cAddr = t.to ? `${t.to.slice(0, 8)}...${t.to.slice(-6)}` : 'Contract';
+        return `- Contract ${cAddr} • Tx: ${t.hash.slice(0, 10)}...`;
+      }).join('\n');
+      return {
+        answer: `Your wallet has verified ${walletData.contractCount} smart contract interaction(s) on Arc:\n\n${list}`,
+        referencedTxHashes,
+      };
+    }
+    return {
+      answer: `Your wallet has recorded ${walletData.contractCount} smart contract interactions in the confirmed Arc dataset.`,
+      referencedTxHashes,
+    };
+  }
+
+  // 7. Arc Protocol: "what is arc"
+  if (q.includes('what is arc') || q.includes('about arc') || q.includes('tell me about arc') || q.includes('what is the arc network')) {
+    return {
+      answer: `Arc is an institutional-grade, EVM-compatible Layer 1 blockchain engineered specifically for programmable finance and high-speed financial settlement.\n\nKey architectural pillars:\n- Native USDC Gas: Arc uses native USDC (with 18 decimals) as its base network token, meaning all transaction and execution fees are paid directly in USDC.\n- Chain ID: 5042002 (Arc)\n- Deterministic Finality: High throughput and sub-second block times designed for regulated capital markets and decentralized finance.\n- Explorer: ArcScan (https://testnet.arcscan.app)`,
+      referencedTxHashes,
+    };
+  }
+
+  // 8. Arc USDC for gas: "how does arc use usdc for gas"
+  if (q.includes('usdc for gas') || q.includes('usdc as gas') || q.includes('pay gas in usdc') || q.includes('how does arc use usdc')) {
+    return {
+      answer: `Unlike Ethereum or other Layer-1 networks where users must purchase and maintain volatile native coins (like ETH or MATIC) to execute transactions, Arc natively integrates USDC (18 decimals) at the protocol level as its base gas token.\n\nEvery transfer, contract deployment, and swap calculates and settles its gas execution fee directly in USDC. This eliminates volatile currency exposure and makes transaction fees completely predictable.`,
+      referencedTxHashes,
+    };
+  }
+
+  // 9. Main features of GEN-0 FI: "what are the main features of gen-0 fi"
+  if (q.includes('features of gen-0') || q.includes('features of gen-0 fi') || q.includes('main features') || q.includes('what can gen-0 do') || q.includes('what does gen-0 do')) {
+    return {
+      answer: `GEN-0 FI is an onchain financial intelligence engine built for Arc with 6 core features:\n\n1. Financial Overview: Real-time native USDC balance tracking (18 decimals), verified total received, total sent, total gas spent in USDC, confirmed transactions, and active contract interactions.\n2. AI Wallet Intelligence: Grounded AI summary that analyzes real onchain transactions, explainable metrics, counterparties, and activity levels without hallucinating figures.\n3. Ask GEN-0 (AI Chat): Natural language conversational assistant grounded directly in live Arc blockchain data, answering questions on balances, transfers, gas, transactions, and Arc protocol mechanics.\n4. Activity Ledger: Live transaction feed with directional categorizations (Inbound, Outbound, Contract Interaction, Self-Transfer), gas cost breakdown in USDC, and direct ArcScan links.\n5. Multi-Wallet Connection: Supports MetaMask, Coinbase Wallet, Browser Injected wallets via Wagmi/AppKit, and 1-click Arc switching.\n6. Zero Hallucination Guarantee: Strict blockchain data layer grounding. When data is outside scanned blocks or unavailable, it explicitly states so instead of guessing.`,
+      referencedTxHashes,
+    };
+  }
+
+  // 10. How wallet intelligence works: "how does wallet intelligence work"
+  if (q.includes('wallet intelligence work') || q.includes('how does wallet intelligence') || q.includes('how does the ai work')) {
+    return {
+      answer: `Wallet Intelligence operates on a strict zero-hallucination data architecture:\n\n1. Onchain Ingestion: The app queries the live Arc RPC and ArcScan explorer indexer for verified balances, nonces, and transaction receipts.\n2. Deterministic Normalization: The normalization engine calculates authoritative figures (current balance, total received, total sent, gas spent in USDC, and contract interactions).\n3. Structured Context Binding: This exact structured wallet dataset is passed directly to the Gemini AI model.\n4. Strict Grounding Mandate: The AI is instructed to explain and synthesize only the verified numbers. If data is outside recent scanned blocks or unavailable, it responds with: "I can't verify that from the available onchain data."`,
+      referencedTxHashes,
+    };
+  }
+
+  // Fallback for unverified or unknown queries
+  return {
+    answer: `I can't verify that from the available onchain data. Your wallet currently has a verified balance of ${walletData.balance} USDC across ${walletData.txCount} transaction(s) on Arc. If you have questions about your balance, recent transfers, gas spent, or the Arc protocol, feel free to ask!`,
+    referencedTxHashes,
+  };
+}
+
+// -------------------------------------------------------------
+// 5. AI WALLET SUMMARY (Powered by Gemini + In-Memory Caching)
 // -------------------------------------------------------------
 interface CachedAiSummary {
   data: any;
@@ -497,21 +762,23 @@ interface CachedAiSummary {
 }
 const aiSummaryCache = new Map<string, CachedAiSummary>();
 
-app.post('/api/ai/summary', async (req, res) => {
-  const { address, summary, recentTransactions } = req.body;
+app.post(['/api/ai/summary', '/ai/summary'], async (req, res) => {
+  const { address } = req.body;
+  const walletData = req.body.walletData || req.body.summary || {};
+  const recentTransactions = req.body.recentTransactions || [];
 
   if (!address || !isAddress(address, { strict: false })) {
     return res.status(400).json({ error: 'Valid wallet address is required' });
   }
 
-  const balance = summary?.balanceUSDC || '0.00';
-  const totalReceived = summary?.totalReceivedUSDC || summary?.receivedTotalUSDC || '0.00';
-  const totalSent = summary?.totalSentUSDC || summary?.sentTotalUSDC || '0.00';
-  const gasSpent = summary?.gasSpentUSDC || '0.000000';
-  const txCount = summary?.txCount ?? 0;
-  const contractCount = summary?.contractInteractionsCount ?? summary?.activeContractsCount ?? 0;
-  const historyStatus = summary?.historyStatus || (recentTransactions?.length === 0 && parseFloat(balance.replace(/,/g, '')) > 0 ? 'incomplete' : 'complete');
-  const historyNote = summary?.historyStatusNote || '';
+  const balance = walletData.balanceUSDC || '0.00';
+  const totalReceived = walletData.totalReceivedUSDC || walletData.receivedTotalUSDC || '0.00';
+  const totalSent = walletData.totalSentUSDC || walletData.sentTotalUSDC || '0.00';
+  const gasSpent = walletData.gasSpentUSDC || '0.000000';
+  const txCount = walletData.txCount ?? (recentTransactions.length || 0);
+  const contractCount = walletData.contractInteractionsCount ?? walletData.activeContractsCount ?? 0;
+  const historyStatus = walletData.historyStatus || (recentTransactions.length === 0 && parseFloat(balance.replace(/,/g, '')) > 0 ? 'incomplete' : 'complete');
+  const historyNote = walletData.historyStatusNote || '';
 
   // Check cache first (valid for 90 seconds per unique wallet state)
   const cacheKey = `${address.toLowerCase()}_${balance}_${txCount}_${historyStatus}`;
@@ -520,61 +787,17 @@ app.post('/api/ai/summary', async (req, res) => {
     return res.json(cached.data);
   }
 
-  const ai = getGeminiClient();
-  if (!ai) {
-    // Fallback deterministic summary when Gemini API key is not configured
-    let summaryText = '';
-    if (historyStatus === 'incomplete') {
-      summaryText = `Wallet verifiably holds ${balance} USDC on Arc Testnet with ${txCount} outgoing transaction(s). Inbound funding occurred outside the scanned explorer dataset, so historical received transfers cannot be fully determined.`;
-    } else if (historyStatus === 'unavailable') {
-      summaryText = `Wallet verifiably holds ${balance} USDC on Arc Testnet. Transaction history is temporarily unavailable from the explorer indexer.`;
-    } else if (txCount === 0 && parseFloat(balance.replace(/,/g, '')) === 0) {
-      summaryText = `Unfunded wallet on Arc Testnet with 0.00 USDC balance and no confirmed transactions.`;
-    } else {
-      summaryText = `Connected on Arc Testnet with ${balance} USDC balance across ${txCount} transaction(s). Verified transfers: ${totalReceived} USDC received and ${totalSent} USDC sent.`;
-    }
-
-    const observations = [
-      `Authoritative live balance: ${balance} USDC (native gas token on Arc)`,
-      `Lifetime outgoing transaction count (nonce): ${txCount}`,
-    ];
-
-    if (historyStatus === 'incomplete') {
-      observations.push(`Transaction scan is incomplete: inbound funding transfer was received outside the recent scanned blocks.`);
-    } else if (totalReceived !== '0.00' && totalReceived !== 'Incomplete scan' && totalReceived !== 'Unavailable') {
-      observations.push(`Verified incoming native USDC transfers: ${totalReceived} USDC`);
-    }
-
-    if (parseFloat(gasSpent) > 0) {
-      observations.push(`Total execution gas fees paid on Arc: ${gasSpent} USDC`);
-    }
-    if (contractCount > 0) {
-      observations.push(`Smart contract interactions: ${contractCount}`);
-    }
-
-    const fallbackResult = {
-      summary: summaryText,
-      keyObservations: observations,
-      activityLevel: txCount > 10 ? 'active' : txCount > 0 ? 'moderate' : 'low',
-      generatedAt: Date.now(),
-      disclaimer: 'Generated from real Arc Testnet onchain state.',
-    };
-    aiSummaryCache.set(cacheKey, { data: fallbackResult, timestamp: Date.now() });
-    return res.json(fallbackResult);
-  }
-
-  try {
-    const prompt = `You are the GEN-0 FI onchain financial intelligence engine.
-Analyze the following verified onchain data for wallet ${address} on Arc Testnet.
-Arc Testnet uses native USDC with 18 decimals for gas accounting and native transfers.
+  const structuredPrompt = `You are the GEN-0 FI onchain financial intelligence engine.
+Analyze the following verified onchain data for wallet ${address} on Arc.
+Arc uses native USDC with 18 decimals for gas accounting and native transfers.
 
 VERIFIED NORMALIZED BLOCKCHAIN DATA:
 - Address: ${address}
 - Current Wallet Balance: ${balance} USDC (Authoritative live RPC balance)
 - Lifetime Outgoing Transaction Count (Nonce): ${txCount}
 - Scanned Transactions In Dataset: ${recentTransactions?.length || 0}
-- Total USDC Received (Actual Inbound Transfers): ${totalReceived} ${totalReceived === 'Incomplete scan' || totalReceived === 'Unavailable' ? '' : 'USDC'}
-- Total USDC Sent (Actual Outbound Transfers): ${totalSent} ${totalSent === 'Incomplete scan' || totalSent === 'Unavailable' ? '' : 'USDC'}
+- Total USDC Received (Actual Inbound Transfers): ${totalReceived}
+- Total USDC Sent (Actual Outbound Transfers): ${totalSent}
 - Gas Spent on Arc: ${gasSpent} USDC
 - Contract Interactions: ${contractCount}
 - Transaction History Status: ${historyStatus}
@@ -591,212 +814,229 @@ CRITICAL FINANCIAL INTELLIGENCE MANDATES:
    - Transaction Count (${txCount}) is the account's confirmed transaction nonce on Arc.
 3. INCOMPLETE OR UNAVAILABLE HISTORY:
    - Do NOT assume "0 transactions" means "0 USDC received". A wallet can be funded and hold native USDC even when the scanned explorer dataset is incomplete.
-   - If historyStatus is 'incomplete', explicitly state that while the wallet holds ${balance} USDC, historical inbound funding occurred outside the scanned records, so lifetime received/sent volume cannot be fully determined.
+   - If historyStatus is 'incomplete', explicitly state that while the wallet holds ${balance} USDC, historical inbound funding occurred outside the scanned records, so lifetime received volume cannot be fully determined from recent logs.
    - If historyStatus is 'unavailable', explicitly state that transaction history is temporarily unavailable from the explorer indexer.
-4. Output format: Exactly a 2-sentence executive summary and 2-3 precise bullet points highlighting verifiable facts.`;
+4. NO ASTERISKS: Do NOT use asterisks (*) or double asterisks (**) anywhere in the output.
+5. Output format: Exactly a 2-sentence executive summary and 2-3 precise bullet points highlighting verifiable facts.`;
 
-    let parsed: any = null;
-    try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite',
-        contents: prompt,
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              summary: {
-                type: Type.STRING,
-                description: '2 sentence concise financial intelligence summary of real wallet activity.',
-              },
-              keyObservations: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: '2 to 3 bullet points highlighting verifiable facts from the data.',
-              },
-              activityLevel: {
-                type: Type.STRING,
-                enum: ['active', 'moderate', 'low', 'new_wallet'],
-              },
-            },
-            required: ['summary', 'keyObservations', 'activityLevel'],
+  try {
+    const { text } = await callGeminiWithFallback(structuredPrompt, {
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          summary: {
+            type: Type.STRING,
+            description: '2 sentence concise financial intelligence summary of real wallet activity.',
+          },
+          keyObservations: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
+            description: '2 to 3 bullet points highlighting verifiable facts from the data.',
+          },
+          activityLevel: {
+            type: Type.STRING,
+            enum: ['active', 'moderate', 'low', 'new_wallet'],
           },
         },
-      });
+        required: ['summary', 'keyObservations', 'activityLevel'],
+      },
+    });
 
-      parsed = JSON.parse(response.text?.trim() || '{}');
-    } catch (modelErr: any) {
-      const isRateLimit = modelErr?.status === 429 ||
-        String(modelErr?.message || '').includes('429') ||
-        String(modelErr?.message || '').includes('quota');
-      if (isRateLimit) {
-        console.info(`[AI Summary] Rate limit active; serving verified deterministic financial intelligence.`);
-      } else {
-        console.info(`[AI Summary] Model fallback engaged: ${modelErr?.message?.slice(0, 80) || 'Unavailable'}`);
-      }
-    }
-
+    const parsed = JSON.parse(text || '{}');
     if (parsed && parsed.summary) {
+      const cleanSummary = String(parsed.summary).replace(/\*/g, '');
+      const cleanObservations = (parsed.keyObservations || []).map((o: string) => String(o).replace(/\*/g, ''));
       const aiResult = {
-        summary: parsed.summary,
-        keyObservations: parsed.keyObservations || [],
-        activityLevel: parsed.activityLevel || 'low',
+        summary: cleanSummary,
+        keyObservations: cleanObservations,
+        activityLevel: parsed.activityLevel || (txCount > 5 ? 'active' : txCount > 0 ? 'moderate' : 'low'),
         generatedAt: Date.now(),
-        disclaimer: 'Generated from real Arc Testnet onchain state.',
+        disclaimer: 'Generated from real Arc onchain state.',
       };
       aiSummaryCache.set(cacheKey, { data: aiResult, timestamp: Date.now() });
       return res.json(aiResult);
     }
-
-    // Deterministic factual fallback if upstream AI spike or quota limit occurs
-    const short = `${address.slice(0, 6)}...${address.slice(-4)}`;
-    let fallbackSummary = '';
-    const observations: string[] = [];
-
-    if (historyStatus === 'incomplete') {
-      fallbackSummary = `Wallet ${short} verifiably holds ${balance} USDC on Arc Testnet across ${txCount} transaction(s). Historical inbound funding occurred outside the scanned explorer dataset, so lifetime received volume cannot be fully determined from recent logs.`;
-      observations.push(`Current authoritative balance: ${balance} USDC on Arc Testnet.`);
-      observations.push(`Confirmed outbound nonce: ${txCount} transaction(s).`);
-      observations.push(`Inbound funding happened outside scanned blocks; current balance is authoritative.`);
-    } else if (txCount === 0 && (balance === '0.00' || balance === '0')) {
-      fallbackSummary = `Wallet ${short} holds 0.00 USDC with zero recorded transactions on Arc Testnet.`;
-      observations.push(`Current verified balance: 0.00 USDC.`);
-      observations.push(`No incoming or outgoing transfers on Arc Testnet.`);
-    } else {
-      fallbackSummary = `Wallet ${short} holds ${balance} USDC on Arc Testnet across ${txCount} confirmed transaction(s). Total verified incoming transfers: ${totalReceived} USDC; outgoing transfers: ${totalSent} USDC.`;
-      observations.push(`Current verified balance: ${balance} USDC.`);
-      observations.push(`Verified inbound: ${totalReceived} USDC | Outbound: ${totalSent} USDC.`);
-      if (contractCount > 0) observations.push(`${contractCount} smart contract interaction(s) verified.`);
-    }
-
-    const fallbackResult = {
-      summary: fallbackSummary,
-      keyObservations: observations,
-      activityLevel: txCount > 5 ? 'active' : txCount > 0 ? 'moderate' : 'low',
-      generatedAt: Date.now(),
-      disclaimer: 'Generated from real Arc Testnet onchain state.',
-    };
-    aiSummaryCache.set(cacheKey, { data: fallbackResult, timestamp: Date.now() });
-
-    res.json(fallbackResult);
   } catch (err: any) {
-    console.error('Error generating AI wallet summary:', err?.message || err);
-    res.status(500).json({
-      error: 'AI analysis generation failed',
-      message: err?.message || 'Unexpected failure',
-    });
+    console.info('[AI Summary] Using deterministic factual synthesis:', err?.message?.slice(0, 80) || 'Fallback');
   }
+
+  // Deterministic factual fallback if Gemini is offline, rate limited, or key is unconfigured
+  const short = `${address.slice(0, 6)}...${address.slice(-4)}`;
+  let fallbackSummary = '';
+  const observations: string[] = [];
+
+  if (historyStatus === 'incomplete') {
+    fallbackSummary = `Wallet ${short} verifiably holds ${balance} USDC on Arc across ${txCount} transaction(s). Historical inbound funding occurred outside the scanned explorer dataset, so lifetime received volume cannot be fully determined from recent logs.`;
+    observations.push(`Current authoritative balance: ${balance} USDC on Arc.`);
+    observations.push(`Confirmed transactions: ${txCount} on Arc.`);
+    observations.push(`Inbound funding occurred outside scanned blocks; current balance is authoritative.`);
+  } else if (txCount === 0 && (balance === '0.00' || balance === '0')) {
+    fallbackSummary = `Wallet ${short} holds 0.00 USDC with zero recorded transactions on Arc.`;
+    observations.push(`Current verified balance: 0.00 USDC.`);
+    observations.push(`No incoming or outgoing transfers on Arc.`);
+  } else {
+    fallbackSummary = `Wallet ${short} holds ${balance} USDC on Arc across ${txCount} confirmed transaction(s). Total verified incoming transfers: ${totalReceived} USDC; outgoing transfers: ${totalSent} USDC.`;
+    observations.push(`Current verified balance: ${balance} USDC.`);
+    observations.push(`Verified inbound: ${totalReceived} USDC | Outbound: ${totalSent} USDC.`);
+    if (parseFloat(gasSpent) > 0) {
+      observations.push(`Total execution gas fees paid on Arc: ${gasSpent} USDC.`);
+    }
+    if (contractCount > 0) {
+      observations.push(`${contractCount} smart contract interaction(s) verified.`);
+    }
+  }
+
+  const fallbackResult = {
+    summary: fallbackSummary.replace(/\*/g, ''),
+    keyObservations: observations.map((o) => o.replace(/\*/g, '')),
+    activityLevel: txCount > 5 ? 'active' : txCount > 0 ? 'moderate' : 'low',
+    generatedAt: Date.now(),
+    disclaimer: 'Generated from real Arc onchain state.',
+  };
+  aiSummaryCache.set(cacheKey, { data: fallbackResult, timestamp: Date.now() });
+  return res.json(fallbackResult);
 });
 
 // -------------------------------------------------------------
-// 5. ASK GEN-0 ASSISTANT (Conversational onchain intelligence)
+// 6. ASK GEN-0 ASSISTANT (Dual-Mode: Wallet Intelligence + Protocol Chat)
 // -------------------------------------------------------------
-app.post('/api/ai/ask', async (req, res) => {
-  const { address, message, history, walletSummary, recentTransactions } = req.body;
+app.post(['/api/ai/ask', '/ai/ask'], async (req, res) => {
+  const { address, message, history } = req.body;
+  const walletDataRaw = req.body.walletData || req.body.walletSummary || req.body.summary || {};
+  const recentTransactions = req.body.recentTransactions || [];
 
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ error: 'Message is required' });
   }
 
-  const balance = walletSummary?.balanceUSDC || '0.00';
-  const totalReceived = walletSummary?.totalReceivedUSDC || walletSummary?.receivedTotalUSDC || '0.00';
-  const totalSent = walletSummary?.totalSentUSDC || walletSummary?.sentTotalUSDC || '0.00';
-  const gasSpent = walletSummary?.gasSpentUSDC || '0.000000';
-  const txCount = walletSummary?.txCount ?? (recentTransactions?.length || 0);
-  const contractCount = walletSummary?.contractInteractionsCount ?? walletSummary?.activeContractsCount ?? 0;
-  const historyStatus = walletSummary?.historyStatus || (recentTransactions?.length === 0 && parseFloat(balance.replace(/,/g, '')) > 0 ? 'incomplete' : 'complete');
+  const balance = walletDataRaw.balanceUSDC || '0.00';
+  const totalReceived = walletDataRaw.totalReceivedUSDC || walletDataRaw.receivedTotalUSDC || '0.00';
+  const totalSent = walletDataRaw.totalSentUSDC || walletDataRaw.sentTotalUSDC || '0.00';
+  const gasSpent = walletDataRaw.gasSpentUSDC || '0.000000';
+  const txCount = walletDataRaw.txCount ?? (recentTransactions.length || 0);
+  const contractCount = walletDataRaw.contractInteractionsCount ?? walletDataRaw.activeContractsCount ?? 0;
+  const historyStatus = walletDataRaw.historyStatus || (recentTransactions.length === 0 && parseFloat(balance.replace(/,/g, '')) > 0 ? 'incomplete' : 'complete');
 
-  const ai = getGeminiClient();
-  if (!ai) {
-    let fallbackText = `I am reading your real onchain data on Arc Testnet for ${address || 'your wallet'}. Current balance is ${balance} USDC with ${txCount} transaction(s).`;
-    if (historyStatus === 'incomplete') {
-      fallbackText += ` Note: Inbound funding occurred outside the scanned explorer dataset, so historical received amounts cannot be fully computed from recent logs alone.`;
-    }
-    return res.json({
-      answer: fallbackText,
-      referencedTxHashes: recentTransactions?.slice(0, 2).map((t: any) => t.hash) || [],
-    });
-  }
+  const normalizedWalletSnapshot = {
+    address: address || '',
+    balance,
+    totalReceived,
+    totalSent,
+    gasSpent,
+    txCount,
+    contractCount,
+    historyStatus,
+  };
+
+  // Prepare normalized transaction list with human dates and full details
+  const formattedTxList = (recentTransactions || []).slice(0, 20).map((t: any) => ({
+    hash: t.hash,
+    date: t.timestamp
+      ? new Date(t.timestamp).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : 'Confirmed',
+    direction: t.direction,
+    classification: t.classificationLabel || t.classification,
+    amountUSDC: t.value,
+    gasCostUSDC: t.gasCostUSDC,
+    from: t.from,
+    to: t.to,
+    status: t.status,
+    isContractInteraction: Boolean(t.isContractInteraction),
+    summary: t.summary || undefined,
+  }));
+
+  const systemInstruction = `You are GEN-0 FI, the official onchain financial intelligence assistant and Arc protocol expert.
+
+You operate in two primary modes:
+
+MODE 1: WALLET INTELLIGENCE
+- Answer user questions regarding their wallet activity, balances, incoming/outgoing funds, gas spending, contract interactions, and transaction dates.
+- Use ONLY the provided verified normalized wallet data and transaction list as the source of truth.
+- NEVER recalculate, invent, or contradict the normalized metrics:
+  * Current USDC balance: ${balance} USDC
+  * Total received: ${totalReceived} USDC
+  * Total sent: ${totalSent} USDC
+  * Total gas spent: ${gasSpent} USDC
+  * Total transactions: ${txCount}
+  * Smart contract interactions: ${contractCount}
+- When discussing specific transactions, explicitly cite their dates, amounts in USDC, and transaction hashes (e.g. 0x...).
+- Fallback requirement: If the user asks about an event, address, or transaction that does not exist in the provided onchain data, or if historical data is incomplete, clearly state:
+  "I can't verify that from the available onchain data."
+
+MODE 2: GEN-0 AI (CHAT) & PROTOCOL INTELLIGENCE
+- Answer user questions about Arc, native USDC for gas, GEN-0 FI platform features, and how wallet intelligence works using the verified knowledge base.
+- Do not claim features exist if they are not part of GEN-0 FI or Arc.
+
+CRITICAL FORMATTING MANDATES:
+- NEVER use asterisks (*) or double asterisks (**) anywhere in the response. Do NOT use markdown bold or italic asterisks. Output clean plain text.
+- Concise, intelligent, conversational, and easy for non-technical users to understand.`;
+
+  const formattedHistory = Array.isArray(history)
+    ? history.slice(-6).map((h) => `${h.role === 'user' ? 'User' : 'Assistant'}: ${h.content}`).join('\n')
+    : '';
+
+  const promptContent = `${VERIFIED_ARC_PROTOCOL_KNOWLEDGE}
+
+VERIFIED LIVE ONCHAIN WALLET DATA (AUTHORITATIVE SOURCE OF TRUTH):
+- Target Wallet Address: ${address || 'Not connected'}
+- Current USDC Balance: ${balance} USDC (Verified via live Arc RPC)
+- Total Received (USDC): ${totalReceived}
+- Total Sent (USDC): ${totalSent}
+- Total Gas Spent on Arc (USDC): ${gasSpent} USDC
+- Confirmed Transaction Count: ${txCount}
+- Smart Contract Interactions Count: ${contractCount}
+- Transaction History Status: ${historyStatus}
+- Recent Scanned Transactions (${formattedTxList.length} items):
+${JSON.stringify(formattedTxList, null, 2)}
+
+CONVERSATION HISTORY:
+${formattedHistory}
+
+USER QUESTION: "${message}"
+
+Answer the user directly and concisely following the instructions. Remember: strictly no asterisks.`;
 
   try {
-    const formattedHistory = Array.isArray(history)
-      ? history.slice(-6).map((h) => `${h.role === 'user' ? 'User' : 'Assistant'}: ${h.content}`).join('\n')
-      : '';
+    const { text, modelUsed } = await callGeminiWithFallback(promptContent, {
+      systemInstruction,
+      temperature: 0.2, // low temperature for maximum factual adherence
+    });
 
-    const systemPrompt = `You are GEN-0 FI, the onchain financial intelligence assistant.
-You have direct read access to verified blockchain data for the connected wallet on Arc Testnet.
-Arc Testnet uses native USDC (18 decimals) for transactions and gas.
+    if (text) {
+      const cleanText = text.replace(/\*/g, '');
+      // Find referenced transaction hashes in the response
+      const referencedTxHashes = (recentTransactions || [])
+        .filter((t: any) => cleanText.includes(t.hash) || cleanText.includes(t.hash.slice(0, 10)))
+        .map((t: any) => t.hash);
 
-VERIFIED NORMALIZED WALLET DATA:
-- Target Wallet Address: ${address || 'Not connected'}
-- Current Balance: ${balance} USDC (Verified onchain via Arc RPC)
-- Lifetime Outgoing Nonce: ${txCount}
-- Scanned Transactions: ${JSON.stringify((recentTransactions || []).slice(0, 15))}
-- Total USDC Received (Actual Inbound Transfers): ${totalReceived}
-- Total USDC Sent (Actual Outbound Transfers): ${totalSent}
-- Total Gas Spent on Arc: ${gasSpent} USDC
-- Smart Contract Interactions: ${contractCount}
-- History Status: ${historyStatus}
-
-SAFETY & ACCURACY MANDATES:
-1. STRICT DATA ACCURACY: Use the exact same normalized numbers provided above. Never invent transactions, balances, or fake figures.
-2. DISTINGUISH METRICS:
-   - Current balance is what the wallet holds right now (${balance} USDC).
-   - Total received is from actual verified incoming transfers (${totalReceived}).
-   - Total sent is from actual verified outgoing transfers (${totalSent}).
-   - Gas spent is fees paid by this address (${gasSpent} USDC).
-   - Transaction count is ${txCount}.
-3. INCOMPLETE HISTORY: Do NOT assume "0 transactions" means "0 USDC received". A wallet can be funded and hold native USDC even when the scanned dataset is incomplete. If historyStatus is 'incomplete', explain that inbound funding occurred outside the recent scanned blocks.
-4. If referring to a specific transaction, cite its exact hash so the user can verify it on ArcScan.`;
-
-    const fullPrompt = `${systemPrompt}\n\nCONVERSATION HISTORY:\n${formattedHistory}\n\nUSER QUESTION: ${message}`;
-
-    let answer = '';
-    try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite',
-        contents: fullPrompt,
+      return res.json({
+        answer: cleanText,
+        referencedTxHashes,
+        model: modelUsed,
       });
-      answer = response.text || '';
-    } catch (askModelErr: any) {
-      const isRateLimit = askModelErr?.status === 429 ||
-        String(askModelErr?.message || '').includes('429') ||
-        String(askModelErr?.message || '').includes('quota');
-      if (isRateLimit) {
-        console.info(`[AI Ask] Rate limit active; generating onchain answer for ${address}`);
-      } else {
-        console.info(`[AI Ask] Model fallback engaged: ${askModelErr?.message?.slice(0, 80) || 'Unavailable'}`);
-      }
     }
-
-    if (!answer) {
-      if (historyStatus === 'incomplete') {
-        answer = `Your wallet (${address}) currently holds **${balance} USDC** on Arc Testnet with ${txCount} outbound transaction(s). Note that inbound funding occurred outside the scanned explorer dataset, so lifetime received/sent volume cannot be fully determined from recent logs alone.`;
-      } else {
-        answer = `Your wallet (${address}) holds **${balance} USDC** on Arc Testnet across ${txCount} transaction(s). Total verified inbound transfers: ${totalReceived} USDC; outbound transfers: ${totalSent} USDC. Total gas spent on Arc: ${gasSpent} USDC.`;
-      }
-    }
-
-    // Extract any mentioned tx hashes
-    const txHashes = (recentTransactions || [])
-      .filter((t: any) => answer.includes(t.hash) || answer.includes(t.hash.slice(0, 8)))
-      .map((t: any) => t.hash);
-
-    res.json({
-      answer,
-      referencedTxHashes: txHashes,
-    });
-  } catch (err: any) {
-    console.error('Error answering question in Ask GEN-0:', err?.message || err);
-    res.status(500).json({
-      error: 'GEN-0 Assistant is temporarily unavailable. Your wallet data is still available.',
-      message: err?.message || 'Server error',
-    });
+  } catch (geminiErr: any) {
+    console.info(`[Ask GEN-0] Gemini API fallback engaged (${geminiErr?.message?.slice(0, 80) || 'Unavailable'})`);
   }
+
+  // Factual deterministic fallback engine
+  const fallback = generateDeterministicChatAnswer(message, normalizedWalletSnapshot, formattedTxList);
+  return res.json({
+    answer: fallback.answer.replace(/\*/g, ''),
+    referencedTxHashes: fallback.referencedTxHashes,
+    model: 'deterministic-verifier',
+  });
 });
 
 // -------------------------------------------------------------
-// 6. VITE MIDDLEWARE & SERVER STARTUP
+// 7. VITE MIDDLEWARE & SERVER STARTUP
 // -------------------------------------------------------------
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {

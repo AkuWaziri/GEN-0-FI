@@ -47,12 +47,6 @@ export const Logo: React.FC<LogoProps> = ({ size = 'md', showText = true, classN
               FI
             </span>
           </div>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="text-[9px] text-zinc-400 font-mono tracking-widest uppercase font-medium">
-              Arc Testnet
-            </span>
-            <span className="w-1 h-1 rounded-full bg-white/70" />
-          </div>
         </div>
       )}
     </div>

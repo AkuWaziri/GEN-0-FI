@@ -62,7 +62,7 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({ isOpen, 
         <div>
           <div className="flex items-center gap-2 mb-2">
             <span className="px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-300 text-[10px] font-mono tracking-wide uppercase font-semibold shadow-[0_0_10px_rgba(59,130,246,0.2)]">
-              Arc Testnet
+              Arc
             </span>
           </div>
           <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">

@@ -123,7 +123,7 @@ export function useArcBalance(address: `0x${string}` | string | undefined, isArc
 
       if (isMatchingAddress(targetAddr)) {
         setIsError(true);
-        setErrorMessage('Could not retrieve real-time Arc Testnet balance.');
+        setErrorMessage('Could not retrieve real-time Arc balance.');
       }
     } finally {
       if (isMatchingAddress(targetAddr)) {

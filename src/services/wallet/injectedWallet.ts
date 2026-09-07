@@ -169,13 +169,13 @@ class InjectedWalletManager {
           this.notify();
           return true;
         } catch (addError: any) {
-          console.error('Failed to add Arc Testnet to wallet:', addError);
-          this.state.error = addError.message || 'Failed to add Arc Testnet network.';
+          console.error('Failed to add Arc to wallet:', addError);
+          this.state.error = addError.message || 'Failed to add Arc network.';
           this.notify();
           return false;
         }
       }
-      console.error('Failed to switch to Arc Testnet:', switchError);
+      console.error('Failed to switch to Arc:', switchError);
       this.state.error = switchError.message || 'Failed to switch network.';
       this.notify();
       return false;

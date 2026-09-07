@@ -301,7 +301,7 @@ export class ArcBlockchainProvider implements BlockchainProvider {
       if (txs.length === 0) {
         if (balNum > 0) {
           historyStatus = 'incomplete';
-          historyStatusNote = 'Wallet is funded on Arc Testnet, but inbound funding occurred outside recent scanned blocks.';
+          historyStatusNote = 'Wallet is funded on Arc, but inbound funding occurred outside recent scanned blocks.';
           totalReceivedDisplay = 'Incomplete scan';
           totalSentDisplay = txCount === 0 ? '0.00' : '0.00';
         } else if (txCount === 0) {

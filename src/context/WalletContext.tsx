@@ -110,16 +110,16 @@ function buildFallbackAiAnalysis(
 
   let summaryText = '';
   if (historyStatus === 'incomplete' && recDisplay === 'Incomplete scan') {
-    summaryText = `Wallet ${short} verifiably holds ${balance} USDC on Arc Testnet across ${txCount} transaction(s). Historical inbound funding occurred outside the scanned explorer dataset, so lifetime received volume cannot be fully determined from recent logs.`;
-    observations.push(`Current authoritative balance: ${balance} USDC on Arc Testnet.`);
+    summaryText = `Wallet ${short} verifiably holds ${balance} USDC on Arc across ${txCount} transaction(s). Historical inbound funding occurred outside the scanned explorer dataset, so lifetime received volume cannot be fully determined from recent logs.`;
+    observations.push(`Current authoritative balance: ${balance} USDC on Arc.`);
     observations.push(`Confirmed transactions: ${txCount} on Arc.`);
     observations.push(`Inbound funding happened outside scanned blocks; current balance is authoritative.`);
   } else if (txCount === 0 && numBal === 0) {
-    summaryText = `Wallet ${short} holds 0.00 USDC with zero recorded transactions on Arc Testnet.`;
+    summaryText = `Wallet ${short} holds 0.00 USDC with zero recorded transactions on Arc.`;
     observations.push(`Current verified balance: 0.00 USDC.`);
-    observations.push(`No incoming or outgoing transfers on Arc Testnet.`);
+    observations.push(`No incoming or outgoing transfers on Arc.`);
   } else {
-    summaryText = `Wallet ${short} holds ${balance} USDC on Arc Testnet across ${txCount} confirmed transaction(s). Total verified incoming transfers: ${recDisplay} USDC; outgoing transfers: ${sentDisplay} USDC; gas spent: ${gasDisplay} USDC.`;
+    summaryText = `Wallet ${short} holds ${balance} USDC on Arc across ${txCount} confirmed transaction(s). Total verified incoming transfers: ${recDisplay} USDC; outgoing transfers: ${sentDisplay} USDC; gas spent: ${gasDisplay} USDC.`;
     observations.push(`Current verified balance: ${balance} USDC.`);
     observations.push(`Verified inbound: ${recDisplay} USDC | Outbound: ${sentDisplay} USDC.`);
     if (parseFloat(gasDisplay) > 0) {
@@ -132,11 +132,11 @@ function buildFallbackAiAnalysis(
   }
 
   return {
-    summary: summaryText,
-    keyObservations: observations,
+    summary: summaryText.replace(/\*/g, ''),
+    keyObservations: observations.map(o => o.replace(/\*/g, '')),
     activityLevel: txCount > 5 ? 'active' : txCount > 0 ? 'moderate' : 'low',
     generatedAt: Date.now(),
-    disclaimer: 'Generated from real Arc Testnet onchain state.',
+    disclaimer: 'Generated from real Arc onchain state.',
   };
 }
 
@@ -418,8 +418,8 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
       if (currentAddressRef.current?.toLowerCase() !== targetAddr.toLowerCase()) {
         return;
       }
-      console.warn('Failed to load Arc Testnet onchain activity:', err);
-      setDataError("Couldn't retrieve latest Arc Testnet activity. Live balance remains verified.");
+      console.warn('Failed to load Arc onchain activity:', err);
+      setDataError("Couldn't retrieve latest Arc activity. Live balance remains verified.");
     } finally {
       if (currentAddressRef.current?.toLowerCase() === targetAddr.toLowerCase()) {
         setIsLoadingData(false);

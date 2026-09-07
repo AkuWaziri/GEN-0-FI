@@ -138,7 +138,7 @@ export function normalizeTransaction(raw: RawTxInput, userAddress: string): Norm
       ? 'Deployed new smart contract'
       : `Interacted with contract ${raw.to ? formatShortAddress(raw.to) : 'contract'}`;
   } else {
-    summary = `Transaction on Arc Testnet`;
+    summary = `Transaction on Arc`;
   }
 
   return {

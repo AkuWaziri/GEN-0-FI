@@ -14,7 +14,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpenConnect }) => {
-  const { isConnected, address, shortAddress, disconnectWallet, isDemoMode, exitDemoMode } = useWallet();
+  const { isConnected, address, shortAddress, disconnectWallet } = useWallet();
 
   const navItems = [
     { id: 'overview' as TabType, label: 'Overview', icon: LayoutDashboard },
@@ -38,27 +38,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
         <div className="px-1">
           <NetworkBadge />
         </div>
-
-        {/* Demo Mode Indicator if active */}
-        {isDemoMode && (
-          <div className="p-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-white flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider">
-                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                Demo Inspector
-              </span>
-              <button
-                onClick={exitDemoMode}
-                className="text-[10px] text-zinc-400 hover:text-white underline cursor-pointer font-mono"
-              >
-                Exit
-              </button>
-            </div>
-            <p className="text-[11px] text-zinc-400 mt-1 leading-snug">
-              Inspecting Arc Testnet reference wallet.
-            </p>
-          </div>
-        )}
 
         {/* Navigation Items */}
         <nav className="space-y-1.5" aria-label="Main Navigation" role="tablist">
@@ -147,10 +126,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
             <span>Connect Wallet</span>
           </button>
         )}
-
-        <div className="text-center text-[10px] text-zinc-500 font-mono tracking-wider">
-          GEN-0 FI • Arc Testnet
-        </div>
       </div>
     </aside>
   );

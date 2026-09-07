@@ -1,23 +1,18 @@
 import React, { useMemo } from 'react';
 import { useWallet } from '../../context/WalletContext';
-import { AddressBadge } from '../common/AddressBadge';
-import { NetworkBadge } from '../common/NetworkBadge';
 import { Skeleton } from '../common/Skeleton';
-import { getArcScanTxUrl } from '../../config/arc';
-import { formatTimeAgo } from '../../services/blockchain/normalizer';
 import { TabType } from '../common/Sidebar';
 import {
   Sparkles,
-  ArrowDownLeft,
-  ArrowUpRight,
   Code2,
-  ExternalLink,
   Flame,
   Activity,
   AlertCircle,
   RefreshCw,
   Coins,
   ChevronRight,
+  ArrowDownLeft,
+  ArrowUpRight,
 } from 'lucide-react';
 
 interface OverviewViewProps {
@@ -164,7 +159,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
           </div>
           <h2 className="text-xl font-bold text-white tracking-tight">Connect your wallet to continue</h2>
           <p className="text-sm text-zinc-400 max-w-md mx-auto">
-            GEN-0 FI reads real onchain activity from Arc Testnet to deliver instant financial intelligence.
+            GEN-0 FI reads real onchain activity from Arc to deliver instant financial intelligence.
           </p>
           <button
             onClick={onOpenConnect}
@@ -187,7 +182,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
             <div>
               <p className="font-semibold text-white text-xs sm:text-sm">Wrong Network Detected</p>
               <p className="text-xs text-zinc-400">
-                GEN-0 FI operates on Arc Testnet (Chain ID 5042002). Please switch network to view live onchain state.
+                GEN-0 FI operates on Arc (Chain ID 5042002). Please switch network to view live onchain state.
               </p>
             </div>
           </div>
@@ -195,7 +190,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
             onClick={() => switchToArc()}
             className="py-1.5 px-3.5 rounded-lg bg-white hover:bg-zinc-200 text-xs font-semibold text-black whitespace-nowrap cursor-pointer transition-colors shadow"
           >
-            Switch to Arc Testnet
+            Switch to Arc
           </button>
         </div>
       )}
@@ -212,11 +207,6 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
           <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
             Financial Overview
           </h1>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <AddressBadge address={address} shortAddress={shortAddress} />
-          <NetworkBadge />
         </div>
       </div>
 
@@ -249,7 +239,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
                 </div>
                 <div className="text-xs text-zinc-400 mt-2 flex items-center gap-2 font-mono">
                   <span className="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)] animate-pulse" />
-                  <span>Arc Testnet • 18 Decimals Verified Onchain</span>
+                  <span>Arc • 18 Decimals Verified Onchain</span>
                 </div>
               </div>
             )}
@@ -426,10 +416,10 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
         ) : (
           <div className="space-y-3">
             <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-normal">
-              {aiSummary?.summary ||
+              {(aiSummary?.summary ||
                 (walletSummary?.historyStatus === 'incomplete' && verifiedReceivedDisplay === 'Incomplete scan'
-                  ? `Wallet verifiably holds ${activeBalanceUSDC} USDC on Arc Testnet across ${totalTransactions} transaction(s). Historical inbound funding occurred outside the scanned explorer dataset, so lifetime incoming transfer volume cannot be fully determined from recent logs.`
-                  : `Connected to Arc Testnet with ${activeBalanceUSDC} USDC across ${totalTransactions} transaction(s). Verified inbound: ${verifiedReceivedDisplay} USDC, outbound: ${verifiedSentDisplay} USDC, gas spent: ${verifiedGasSpentDisplay} USDC.`)}
+                  ? `Wallet verifiably holds ${activeBalanceUSDC} USDC on Arc across ${totalTransactions} transaction(s). Historical inbound funding occurred outside the scanned explorer dataset, so lifetime incoming transfer volume cannot be fully determined from recent logs.`
+                  : `Connected to Arc with ${activeBalanceUSDC} USDC across ${totalTransactions} transaction(s). Verified inbound: ${verifiedReceivedDisplay} USDC, outbound: ${verifiedSentDisplay} USDC, gas spent: ${verifiedGasSpentDisplay} USDC.`)).replace(/\*/g, '')}
             </p>
 
             {aiSummary?.keyObservations && aiSummary.keyObservations.length > 0 && (
@@ -437,7 +427,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
                 {aiSummary.keyObservations.map((obs, idx) => (
                   <div key={idx} className="flex items-start gap-2 text-xs text-zinc-400">
                     <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.6)] shrink-0 mt-1.5" />
-                    <span>{obs}</span>
+                    <span>{obs.replace(/\*/g, '')}</span>
                   </div>
                 ))}
               </div>
@@ -457,122 +447,6 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
               </span>
               <span className="text-zinc-400 font-medium">Gemini AI Engine</span>
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* Recent Activity Section */}
-      <div id="section-recent-activity" className="space-y-3">
-        <div className="flex items-center justify-between px-0.5">
-          <div className="flex items-center gap-2">
-            <Activity className="w-4 h-4 text-white" />
-            <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">Recent Onchain Activity</h2>
-          </div>
-
-          <button
-            onClick={() => onSelectTab('activity')}
-            className="text-xs text-zinc-400 hover:text-white font-semibold flex items-center gap-1 cursor-pointer font-mono"
-          >
-            <span>View All</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        {isLoadingData ? (
-          <div className="space-y-2">
-            <Skeleton className="h-14 rounded-xl" />
-            <Skeleton className="h-14 rounded-xl" />
-            <Skeleton className="h-14 rounded-xl" />
-          </div>
-        ) : transactions.length === 0 ? (
-          <div className="p-6 sm:p-8 rounded-xl bg-[#0d0f12] border border-zinc-800 text-center space-y-2">
-            <Activity className="w-6 h-6 text-zinc-600 mx-auto" />
-            <h3 className="text-xs sm:text-sm font-semibold text-white">No recent transactions indexed yet</h3>
-            <p className="text-xs text-zinc-400 max-w-sm mx-auto">
-              Confirmed onchain activity with this address on Arc Testnet will appear here automatically.
-            </p>
-            <div className="pt-2">
-              <button
-                onClick={() => refreshData()}
-                className="py-1.5 px-4 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-blue-500/35 hover:shadow-[0_0_14px_-2px_rgba(59,130,246,0.2)] text-xs font-medium text-zinc-200 cursor-pointer transition-all"
-              >
-                Scan Arc Blocks
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {transactions.slice(0, 5).map((tx) => {
-              const isReceived = tx.direction === 'received';
-              const isSent = tx.direction === 'sent';
-
-              return (
-                <div
-                  key={tx.hash}
-                  className="p-3.5 sm:p-4 rounded-xl bg-[#0d0f12] hover:bg-[#131519] border border-zinc-800/80 hover:border-blue-500/30 hover:shadow-[0_0_18px_-4px_rgba(59,130,246,0.16)] transition-all flex items-center justify-between gap-3 shadow-sm group"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-                        isReceived
-                          ? 'bg-zinc-900 text-white border border-zinc-700 group-hover:border-blue-500/40 group-hover:text-blue-300'
-                          : isSent
-                          ? 'bg-zinc-900 text-zinc-400 border border-zinc-800 group-hover:border-zinc-700'
-                          : 'bg-zinc-900 text-zinc-300 border border-zinc-800 group-hover:border-zinc-700'
-                      }`}
-                    >
-                      {isReceived ? (
-                        <ArrowDownLeft className="w-4 h-4" />
-                      ) : isSent ? (
-                        <ArrowUpRight className="w-4 h-4" />
-                      ) : (
-                        <Code2 className="w-4 h-4" />
-                      )}
-                    </div>
-
-                    <div className="min-w-0">
-                      <div className="text-xs sm:text-sm font-semibold text-white flex items-center gap-2">
-                        <span className="truncate">{tx.classificationLabel}</span>
-                        <span className="text-[11px] text-zinc-500 font-mono shrink-0">
-                          {formatTimeAgo(tx.timestamp)}
-                        </span>
-                      </div>
-                      <div className="text-xs text-zinc-400 truncate font-mono mt-0.5">
-                        {isReceived && tx.from && `From: ${tx.from.slice(0, 6)}...${tx.from.slice(-4)}`}
-                        {isSent && tx.to && `To: ${tx.to.slice(0, 6)}...${tx.to.slice(-4)}`}
-                        {!isReceived && !isSent && tx.summary}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-                    <div className="text-right">
-                      <div
-                        className={`text-xs sm:text-sm font-bold font-mono ${
-                          isReceived ? 'text-white' : isSent ? 'text-zinc-300' : 'text-white'
-                        }`}
-                      >
-                        {isReceived ? `+${tx.value}` : isSent ? `-${tx.value}` : `${tx.value}`} USDC
-                      </div>
-                      <div className="text-[10px] text-zinc-500 font-mono">
-                        Gas: {tx.gasCostUSDC} USDC
-                      </div>
-                    </div>
-
-                    <a
-                      href={getArcScanTxUrl(tx.hash)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-800 hover:shadow-[0_0_8px_rgba(59,130,246,0.2)] transition-all"
-                      title="View on ArcScan"
-                      aria-label="View on ArcScan Explorer"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         )}
       </div>

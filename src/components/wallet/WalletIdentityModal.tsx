@@ -54,7 +54,7 @@ export const WalletIdentityModal: React.FC<WalletIdentityModalProps> = ({ isOpen
           <div className="flex items-center gap-2 mb-1.5">
             <span className="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.8)]" />
             <span className="text-[11px] font-mono uppercase tracking-wider text-blue-300 font-semibold">
-              Arc Testnet (5042002)
+              Arc (5042002)
             </span>
           </div>
           <h2 className="text-xl font-bold text-white tracking-tight">Connected Wallet</h2>
@@ -107,7 +107,7 @@ export const WalletIdentityModal: React.FC<WalletIdentityModalProps> = ({ isOpen
         {/* Real Balance Section */}
         <div className="rounded-xl bg-[#12141a] border border-blue-500/20 glow-blue-wallet p-4 flex items-center justify-between">
           <div>
-            <span className="text-xs text-zinc-400 font-medium block">Arc Testnet Balance</span>
+            <span className="text-xs text-zinc-400 font-medium block">Arc Balance</span>
             <span className="text-2xl font-extrabold text-white tracking-tight font-mono">
               {balanceUSDC} <span className="text-sm font-sans font-semibold text-zinc-400">USDC</span>
             </span>
