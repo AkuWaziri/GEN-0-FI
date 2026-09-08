@@ -51,13 +51,13 @@ export const SettingsView: React.FC = () => {
           </div>
 
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-300 text-xs font-mono font-semibold">
-            {theme === 'dark' ? 'Dark Mode' : 'Grey Mode'}
+            {theme === 'dark' ? 'Black Mode' : 'Dark Grey Mode'}
           </span>
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
           <p className="text-xs text-zinc-400 leading-relaxed max-w-md">
-            Switch between Dark and Grey mode. Your display choice is immediately applied across the workspace and remembered for future visits.
+            Switch between Black and Dark Grey mode. Your display choice is immediately applied across the workspace and remembered for future visits.
           </p>
 
           {/* Switching Buttons */}
@@ -71,10 +71,10 @@ export const SettingsView: React.FC = () => {
                     ? 'bg-white text-black glow-blue-cta shadow-sm'
                     : 'text-zinc-400 hover:text-white'
                 }`}
-                aria-label="Switch to Dark Mode"
+                aria-label="Switch to Black Mode"
               >
                 <Moon className="w-3.5 h-3.5" />
-                <span>Dark</span>
+                <span>Black</span>
               </button>
 
               <button
@@ -85,10 +85,10 @@ export const SettingsView: React.FC = () => {
                     ? 'bg-white text-black glow-blue-cta shadow-sm'
                     : 'text-zinc-400 hover:text-white'
                 }`}
-                aria-label="Switch to Grey Mode"
+                aria-label="Switch to Dark Grey Mode"
               >
                 <Contrast className="w-3.5 h-3.5" />
-                <span>Grey</span>
+                <span>Dark Grey</span>
               </button>
             </div>
 

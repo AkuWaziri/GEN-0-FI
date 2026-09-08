@@ -17,24 +17,28 @@ const ThemeContext = createContext<ThemeContextType>({
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<ThemeMode>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('gen0_theme');
-      if (saved === 'grey' || saved === 'dark') return saved;
-      if (saved === 'light') return 'grey'; // Migrate previous light preference to grey
+      const explicitChoice = localStorage.getItem('gen0_theme_selection');
+      if (explicitChoice === 'dark' || explicitChoice === 'grey') {
+        return explicitChoice;
+      }
+      // Default to Dark Grey
+      return 'grey';
     }
-    return 'dark';
+    return 'grey';
   });
 
   useEffect(() => {
     const root = document.documentElement;
     if (theme === 'grey') {
       root.classList.add('grey');
-      root.classList.add('light'); // Keep light for backward compatibility
+      root.classList.add('light'); // Keep for selector compatibility
       root.classList.remove('dark');
     } else {
       root.classList.add('dark');
       root.classList.remove('grey');
       root.classList.remove('light');
     }
+    localStorage.setItem('gen0_theme_selection', theme);
     localStorage.setItem('gen0_theme', theme);
   }, [theme]);
 

@@ -122,7 +122,7 @@
 }
 
 /* =============================================================
-   GREY MODE / SLATE GRAPHITE THEME
+   DARK GREY MODE / DEEP CHARCOAL GRAPHITE THEME
    ============================================================= */
 html.grey,
 html.light {
@@ -133,23 +133,23 @@ html.grey body,
 html.grey #root,
 html.light body,
 html.light #root {
-  background-color: #1a1c22;
-  color: #f1f5f9;
+  background-color: #16171b;
+  color: #f3f4f6;
 }
 
 html.grey ::-webkit-scrollbar-track,
 html.light ::-webkit-scrollbar-track {
-  background: #1a1c22;
+  background: #16171b;
 }
 
 html.grey ::-webkit-scrollbar-thumb,
 html.light ::-webkit-scrollbar-thumb {
-  background: #383e4a;
+  background: #2f323a;
 }
 
 html.grey ::-webkit-scrollbar-thumb:hover,
 html.light ::-webkit-scrollbar-thumb:hover {
-  background: #4c5464;
+  background: #424652;
 }
 
 /* Base Canvas & Layout Overrides */
@@ -157,7 +157,7 @@ html.grey .bg-\[\#07080a\],
 html.grey .bg-\[\#000000\],
 html.light .bg-\[\#07080a\],
 html.light .bg-\[\#000000\] {
-  background-color: #1a1c22 !important;
+  background-color: #16171b !important;
 }
 
 html.grey #desktop-sidebar,
@@ -166,8 +166,8 @@ html.grey .bg-\[\#08090b\]\/95,
 html.light #desktop-sidebar,
 html.light .bg-\[\#08090b\],
 html.light .bg-\[\#08090b\]\/95 {
-  background-color: #21242c !important;
-  border-color: #2f3440 !important;
+  background-color: #1c1e23 !important;
+  border-color: #2b2e36 !important;
 }
 
 html.grey #main-app-header,
@@ -178,8 +178,8 @@ html.light #main-app-header,
 html.light #mobile-bottom-nav,
 html.light .bg-\[\#000000\]\/90,
 html.light .bg-\[\#000000\]\/60 {
-  background-color: rgba(33, 36, 44, 0.95) !important;
-  border-color: #2f3440 !important;
+  background-color: rgba(28, 30, 35, 0.95) !important;
+  border-color: #2b2e36 !important;
 }
 
 /* Primary Card Surfaces */
@@ -199,8 +199,8 @@ html.light .bg-\[\#0d0f13\],
 html.light .bg-\[\#0d0f14\],
 html.light .bg-\[\#0f1012\],
 html.light .bg-\[\#0c0d10\] {
-  background-color: #262a33 !important;
-  border-color: #383e4a !important;
+  background-color: #22242a !important;
+  border-color: #2e313a !important;
 }
 
 /* Secondary Surfaces, Inset Boxes, Badges & Pills */
@@ -236,26 +236,26 @@ html.light .bg-\[\#12151b\],
 html.light .bg-\[\#13161c\],
 html.light .bg-\[\#1a1d24\],
 html.light .bg-\[\#050608\] {
-  background-color: #2f3440 !important;
-  border-color: #3e4554 !important;
+  background-color: #292c34 !important;
+  border-color: #363a45 !important;
 }
 
-/* Utility background classes in grey mode */
+/* Utility background classes in dark grey mode */
 html.grey .bg-zinc-900,
 html.grey .bg-zinc-950,
 html.light .bg-zinc-900,
 html.light .bg-zinc-950 {
-  background-color: #2f3440 !important;
-  border-color: #3e4554 !important;
+  background-color: #292c34 !important;
+  border-color: #363a45 !important;
 }
 
 html.grey .bg-zinc-800,
 html.light .bg-zinc-800 {
-  background-color: #393f4e !important;
-  border-color: #4a5364 !important;
+  background-color: #333742 !important;
+  border-color: #404552 !important;
 }
 
-/* Hover background states in grey mode */
+/* Hover background states in dark grey mode */
 html.grey .hover\:bg-zinc-800:hover,
 html.grey .hover\:bg-zinc-800\/40:hover,
 html.grey .hover\:bg-zinc-800\/50:hover,
@@ -274,10 +274,10 @@ html.light .hover\:bg-zinc-900:hover,
 html.light .hover\:bg-zinc-900\/40:hover,
 html.light .hover\:bg-\[\#131519\]:hover,
 html.light .hover\:bg-\[\#151720\]:hover {
-  background-color: #393f4e !important;
+  background-color: #333742 !important;
 }
 
-/* Borders in grey mode */
+/* Borders in dark grey mode */
 html.grey .border-zinc-900,
 html.grey .border-zinc-900\/80,
 html.grey .border-zinc-900\/90,
@@ -296,10 +296,10 @@ html.light .border-zinc-800\/80,
 html.light .border-zinc-800\/50,
 html.light .border-zinc-700,
 html.light .border-zinc-700\/80 {
-  border-color: #383e4a !important;
+  border-color: #2e313a !important;
 }
 
-/* Typography in grey mode for optimal contrast */
+/* Typography in dark grey mode for optimal contrast */
 html.grey .text-white,
 html.light .text-white {
   color: #ffffff !important;
@@ -309,27 +309,27 @@ html.grey .text-zinc-100,
 html.grey .text-zinc-200,
 html.light .text-zinc-100,
 html.light .text-zinc-200 {
-  color: #f1f5f9 !important;
+  color: #f3f4f6 !important;
 }
 
 html.grey .text-zinc-300,
 html.light .text-zinc-300 {
-  color: #cbd5e1 !important;
+  color: #d1d5db !important;
 }
 
 html.grey .text-zinc-400,
 html.light .text-zinc-400 {
-  color: #94a3b8 !important;
+  color: #9ca3af !important;
 }
 
 html.grey .text-zinc-500,
 html.light .text-zinc-500 {
-  color: #64748b !important;
+  color: #6b7280 !important;
 }
 
 html.grey .text-zinc-600,
 html.light .text-zinc-600 {
-  color: #475569 !important;
+  color: #4b5563 !important;
 }
 
 html.grey .hover\:text-white:hover,
@@ -346,16 +346,16 @@ html.grey input,
 html.grey textarea,
 html.light input,
 html.light textarea {
-  background-color: #2f3440 !important;
+  background-color: #292c34 !important;
   color: #ffffff !important;
-  border-color: #3e4554 !important;
+  border-color: #363a45 !important;
 }
 
 html.grey input::placeholder,
 html.grey textarea::placeholder,
 html.light input::placeholder,
 html.light textarea::placeholder {
-  color: #64748b !important;
+  color: #6b7280 !important;
 }
 
 html.grey input:focus,
@@ -366,7 +366,7 @@ html.light textarea:focus {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.22) !important;
 }
 
-/* Primary CTA buttons: Crisp White on Slate in Grey Mode */
+/* Primary CTA buttons: Crisp White on Dark Grey Mode */
 html.grey .bg-white.text-black,
 html.grey button.bg-white.text-black,
 html.grey a.bg-white.text-black,
@@ -399,7 +399,7 @@ html.grey a.bg-white.text-black:hover,
 html.light .bg-white.text-black:hover,
 html.light button.bg-white.text-black:hover,
 html.light a.bg-white.text-black:hover {
-  background-color: #e2e8f0 !important;
+  background-color: #f3f4f6 !important;
   color: #0f172a !important;
 }
 
@@ -408,7 +408,7 @@ html.light .bg-white.text-black:hover * {
   color: #0f172a !important;
 }
 
-/* Colored texts & badges in grey mode */
+/* Colored texts & badges in dark grey mode */
 html.grey .text-blue-300,
 html.light .text-blue-300 {
   color: #93c5fd !important;
@@ -489,7 +489,7 @@ html.light [role="tab"][aria-selected="true"] {
   color: #60a5fa !important;
 }
 
-/* Logo mark in grey mode */
+/* Logo mark in dark grey mode */
 html.grey #gen0-brand-logo svg path,
 html.grey .project-logo-mark,
 html.light #gen0-brand-logo svg path,
@@ -498,11 +498,11 @@ html.light .project-logo-mark {
   color: #ffffff !important;
 }
 
-/* Card glows & ambient lighting in grey mode */
+/* Card glows & ambient lighting in dark grey mode */
 html.grey .glow-blue-card,
 html.light .glow-blue-card {
   box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3), 0 0 14px rgba(59, 130, 246, 0.08) !important;
-  border-color: #383e4a !important;
+  border-color: #2e313a !important;
 }
 
 html.grey .glow-blue-card-hover:hover,
@@ -511,17 +511,17 @@ html.light .glow-blue-card-hover:hover {
   box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.4), 0 0 16px rgba(59, 130, 246, 0.16) !important;
 }
 
-/* Skeleton pulse in grey mode */
+/* Skeleton pulse in dark grey mode */
 html.grey .animate-pulse,
 html.light .animate-pulse {
-  background-color: #333845 !important;
-  border-color: #3e4554 !important;
+  background-color: #292c34 !important;
+  border-color: #363a45 !important;
 }
 
-/* Modal backdrops in grey mode */
+/* Modal backdrops in dark grey mode */
 html.grey .bg-black\/80,
 html.light .bg-black\/80 {
-  background-color: rgba(15, 17, 21, 0.8) !important;
+  background-color: rgba(14, 15, 18, 0.82) !important;
 }
 
 
