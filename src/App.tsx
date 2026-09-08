@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { WalletProvider, useWallet } from './context/WalletContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { Sidebar, TabType } from './components/common/Sidebar';
 import { Header } from './components/common/Header';
 import { MobileNav } from './components/common/MobileNav';
@@ -123,8 +124,10 @@ const AppContent: React.FC = () => {
 
 export default function App() {
   return (
-    <WalletProvider>
-      <AppContent />
-    </WalletProvider>
+    <ThemeProvider>
+      <WalletProvider>
+        <AppContent />
+      </WalletProvider>
+    </ThemeProvider>
   );
 }

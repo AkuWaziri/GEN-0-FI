@@ -116,7 +116,12 @@ export class ArcBlockchainProvider implements BlockchainProvider {
     try {
       const scanRes = await fetch(`https://testnet.arcscan.app/api/v2/addresses/${address}`, {
         cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+        headers: {
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache',
+          Pragma: 'no-cache',
+        },
+        signal: AbortSignal.timeout(3000),
       });
       if (scanRes.ok) {
         const scanData = await scanRes.json();
@@ -134,8 +139,8 @@ export class ArcBlockchainProvider implements BlockchainProvider {
           };
         }
       }
-    } catch (scanErr) {
-      console.warn('ArcScan explorer balance lookup failed:', scanErr);
+    } catch {
+      // Quiet fallback
     }
 
     if (isDemo) {
@@ -182,16 +187,17 @@ export class ArcBlockchainProvider implements BlockchainProvider {
           return data.transactions;
         }
       }
-    } catch (err) {
-      console.warn('Backend activity endpoint call failed, querying direct explorer fallback:', err);
+    } catch {
+      // Backend activity unavailable, query direct explorer fallback
     }
 
-    // 2. Direct client-side ArcScan Blockscout API v2 query (supported with CORS * on ArcScan)
+    // 2. Direct client-side ArcScan Blockscout API v2 query
     try {
       const v2Url = `https://testnet.arcscan.app/api/v2/addresses/${address}/transactions`;
       const scanRes = await fetch(v2Url, {
-        signal: AbortSignal.timeout(6000),
+        signal: AbortSignal.timeout(3000),
         cache: 'no-store',
+        headers: { 'Accept': 'application/json' },
       });
       if (scanRes.ok) {
         const scanData: any = await scanRes.json();
@@ -220,8 +226,52 @@ export class ArcBlockchainProvider implements BlockchainProvider {
           }
         }
       }
-    } catch (directErr) {
-      console.warn('Direct ArcScan client fetch error:', directErr);
+    } catch {
+      // Quiet fallback
+    }
+
+    // 2b. Direct client-side token-transfers fallback
+    try {
+      const tokenUrl = `https://testnet.arcscan.app/api/v2/addresses/${address}/token-transfers`;
+      const tokenRes = await fetch(tokenUrl, {
+        signal: AbortSignal.timeout(3000),
+        cache: 'no-store',
+        headers: { 'Accept': 'application/json' },
+      });
+      if (tokenRes.ok) {
+        const tokenData: any = await tokenRes.json();
+        if (tokenData && Array.isArray(tokenData.items) && tokenData.items.length > 0) {
+          const directTxs: NormalizedTransaction[] = [];
+          for (const item of tokenData.items.slice(0, limit)) {
+            const tokenDecimals = parseInt(item.total?.decimals || '6', 10);
+            const rawVal = item.total?.value || '0';
+            const multiplier = 10n ** BigInt(Math.max(0, 18 - tokenDecimals));
+            const valWei = BigInt(rawVal) * multiplier;
+
+            const rawTx: RawTxInput = {
+              hash: item.transaction_hash,
+              blockNumber: BigInt(item.block_number || '0'),
+              from: item.from?.hash || '',
+              to: item.to?.hash || null,
+              value: valWei,
+              fee: undefined,
+              gas: 21000n,
+              gasPrice: 25000000000n,
+              gasUsed: 21000n,
+              input: item.method || '0x',
+              timestamp: item.timestamp ? new Date(item.timestamp).getTime() : Date.now(),
+              status: 1,
+              contractAddress: null,
+            };
+            directTxs.push(normalizeTransaction(rawTx, address));
+          }
+          if (directTxs.length > 0) {
+            return directTxs;
+          }
+        }
+      }
+    } catch {
+      // Quiet fallback
     }
 
     // If demo address has no recent scanned transactions on chain, return demo activity

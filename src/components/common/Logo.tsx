@@ -15,7 +15,8 @@ export const ProjectLogoMark: React.FC<{ className?: string }> = ({ className = 
   >
     <path
       d="M 12 18 H 54 A 32 32 0 0 1 86 50 A 32 32 0 0 1 54 82 H 12 A 6 6 0 0 1 6 76 V 24 A 6 6 0 0 1 12 18 Z"
-      fill="#FFFFFF"
+      fill="currentColor"
+      className="text-white fill-current project-logo-mark transition-colors"
     />
   </svg>
 );

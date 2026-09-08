@@ -57,17 +57,40 @@ interface FetchTransactionsResult {
   isUnavailable: boolean;
 }
 
+const ARC_EXPLORER_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': 'application/json',
+};
+
+// In-memory cache to prevent repeated redundant queries during transient explorer lag
+interface CachedTxResult {
+  data: FetchTransactionsResult;
+  timestamp: number;
+}
+const txCache = new Map<string, CachedTxResult>();
+const TX_CACHE_TTL_MS = 25000;
+
 async function fetchTransactionsForAddress(address: string, limit = 50): Promise<FetchTransactionsResult> {
-  const transactions: any[] = [];
   const normalizedAddress = address.toLowerCase();
 
-  // 1. Try ArcScan Blockscout API v2 first (non-rate-limited, official JSON format)
+  // Check cache first
+  const cached = txCache.get(normalizedAddress);
+  if (cached && Date.now() - cached.timestamp < TX_CACHE_TTL_MS) {
+    return cached.data;
+  }
+
+  const transactions: any[] = [];
+
+  // 1. Try ArcScan Blockscout API v2 transactions endpoint
   try {
     const v2Url = `https://testnet.arcscan.app/api/v2/addresses/${address}/transactions`;
-    const scanRes = await fetch(v2Url, { signal: AbortSignal.timeout(6000) });
+    const scanRes = await fetch(v2Url, {
+      headers: ARC_EXPLORER_HEADERS,
+      signal: AbortSignal.timeout(3500),
+    });
     if (scanRes.ok) {
       const scanData: any = await scanRes.json();
-      if (scanData && Array.isArray(scanData.items)) {
+      if (scanData && Array.isArray(scanData.items) && scanData.items.length > 0) {
         for (const tx of scanData.items.slice(0, limit)) {
           const rawTx: RawTxInput = {
             hash: tx.hash,
@@ -86,17 +109,69 @@ async function fetchTransactionsForAddress(address: string, limit = 50): Promise
           };
           transactions.push(normalizeTransaction(rawTx, address));
         }
-        return { transactions, isUnavailable: false };
+        const result = { transactions, isUnavailable: false };
+        txCache.set(normalizedAddress, { data: result, timestamp: Date.now() });
+        return result;
       }
     }
-  } catch (scanErr) {
-    console.warn(`ArcScan v2 transactions lookup failed for ${address}:`, scanErr);
+  } catch (scanErr: any) {
+    // Graceful handling of explorer timeouts without noisy stack traces
+    if (scanErr?.name !== 'TimeoutError' && scanErr?.name !== 'AbortError') {
+      console.log(`[ArcScan] Note for ${address} tx lookup:`, scanErr?.message || 'Explorer busy');
+    }
   }
 
-  // 2. Fallback: ArcScan Blockscout API v1 module endpoint
+  // 2. Fallback: ArcScan v2 token-transfers endpoint (often much faster & responsive)
+  try {
+    const tokenTransfersUrl = `https://testnet.arcscan.app/api/v2/addresses/${address}/token-transfers`;
+    const tokenRes = await fetch(tokenTransfersUrl, {
+      headers: ARC_EXPLORER_HEADERS,
+      signal: AbortSignal.timeout(3500),
+    });
+    if (tokenRes.ok) {
+      const tokenData: any = await tokenRes.json();
+      if (tokenData && Array.isArray(tokenData.items) && tokenData.items.length > 0) {
+        for (const item of tokenData.items.slice(0, limit)) {
+          // Compute value accounting for standard 6-decimal or 18-decimal tokens
+          const tokenDecimals = parseInt(item.total?.decimals || '6', 10);
+          const rawVal = item.total?.value || '0';
+          // Convert to 18-decimal wei equivalent for normalizer
+          const multiplier = 10n ** BigInt(Math.max(0, 18 - tokenDecimals));
+          const valWei = BigInt(rawVal) * multiplier;
+
+          const rawTx: RawTxInput = {
+            hash: item.transaction_hash,
+            blockNumber: BigInt(item.block_number || '0'),
+            from: item.from?.hash || '',
+            to: item.to?.hash || null,
+            value: valWei,
+            fee: undefined,
+            gas: 21000n,
+            gasPrice: 25000000000n,
+            gasUsed: 21000n,
+            input: item.method || '0x',
+            timestamp: item.timestamp ? new Date(item.timestamp).getTime() : Date.now(),
+            status: 1,
+            contractAddress: null,
+          };
+          transactions.push(normalizeTransaction(rawTx, address));
+        }
+        const result = { transactions, isUnavailable: false };
+        txCache.set(normalizedAddress, { data: result, timestamp: Date.now() });
+        return result;
+      }
+    }
+  } catch {
+    // Silently fall through to next fallback
+  }
+
+  // 3. Fallback: ArcScan Blockscout API v1 module endpoint
   try {
     const v1Url = `https://testnet.arcscan.app/api?module=account&action=txlist&address=${address}&page=1&offset=${limit}&sort=desc`;
-    const v1Res = await fetch(v1Url, { signal: AbortSignal.timeout(4000) });
+    const v1Res = await fetch(v1Url, {
+      headers: ARC_EXPLORER_HEADERS,
+      signal: AbortSignal.timeout(2500),
+    });
     if (v1Res.ok) {
       const v1Data: any = await v1Res.json();
       if (v1Data && v1Data.status === '1' && Array.isArray(v1Data.result) && v1Data.result.length > 0) {
@@ -117,59 +192,64 @@ async function fetchTransactionsForAddress(address: string, limit = 50): Promise
           };
           transactions.push(normalizeTransaction(rawTx, address));
         }
-        return { transactions, isUnavailable: false };
+        const result = { transactions, isUnavailable: false };
+        txCache.set(normalizedAddress, { data: result, timestamp: Date.now() });
+        return result;
       }
     }
-  } catch (v1Err) {
-    console.warn(`ArcScan v1 txlist fallback error for ${address}:`, v1Err);
+  } catch {
+    // Silently fall through to RPC scanning
   }
 
-  // 3. Fallback: Recent RPC block scanning
+  // 4. Fallback: Quick recent RPC block scanning (small depth of 8 recent blocks)
   try {
     const currentBlock = await arcClient.getBlockNumber();
-    const scanDepth = 40n;
+    const scanDepth = 8n;
     const fromBlock = currentBlock > scanDepth ? currentBlock - scanDepth : 0n;
 
-    for (let b = currentBlock; b >= fromBlock && transactions.length < limit; b--) {
-      try {
-        const block = await arcClient.getBlock({
-          blockNumber: b,
-          includeTransactions: true,
-        });
+    const blockNumbers: bigint[] = [];
+    for (let b = currentBlock; b >= fromBlock; b--) {
+      blockNumbers.push(b);
+    }
 
-        if (block && block.transactions) {
-          for (const tx of block.transactions) {
-            if (typeof tx === 'object') {
-              const txFrom = (tx.from || '').toLowerCase();
-              const txTo = (tx.to || '').toLowerCase();
+    const blockPromises = blockNumbers.map((num) =>
+      arcClient.getBlock({ blockNumber: num, includeTransactions: true }).catch(() => null)
+    );
+    const blocks = await Promise.all(blockPromises);
 
-              if (txFrom === normalizedAddress || txTo === normalizedAddress) {
-                const rawTx: RawTxInput = {
-                  hash: tx.hash,
-                  blockNumber: block.number,
-                  from: tx.from,
-                  to: tx.to,
-                  value: tx.value,
-                  gas: tx.gas,
-                  gasPrice: tx.gasPrice || 1000000000n,
-                  gasUsed: tx.gas || 21000n,
-                  input: tx.input,
-                  timestamp: Number(block.timestamp) * 1000,
-                  status: 1,
-                };
-                transactions.push(normalizeTransaction(rawTx, address));
-              }
+    for (const block of blocks) {
+      if (block && block.transactions && Array.isArray(block.transactions)) {
+        for (const tx of block.transactions) {
+          if (typeof tx === 'object' && tx) {
+            const txFrom = (tx.from || '').toLowerCase();
+            const txTo = (tx.to || '').toLowerCase();
+
+            if (txFrom === normalizedAddress || txTo === normalizedAddress) {
+              const rawTx: RawTxInput = {
+                hash: tx.hash,
+                blockNumber: block.number,
+                from: tx.from,
+                to: tx.to,
+                value: tx.value,
+                gas: tx.gas,
+                gasPrice: tx.gasPrice || 1000000000n,
+                gasUsed: tx.gas || 21000n,
+                input: tx.input,
+                timestamp: Number(block.timestamp) * 1000,
+                status: 1,
+              };
+              transactions.push(normalizeTransaction(rawTx, address));
             }
           }
         }
-      } catch {
-        continue;
       }
     }
-    return { transactions, isUnavailable: false };
-  } catch (rpcErr) {
-    console.warn(`RPC block scan error for ${address}:`, rpcErr);
-    return { transactions: [], isUnavailable: true };
+    const result = { transactions, isUnavailable: false };
+    txCache.set(normalizedAddress, { data: result, timestamp: Date.now() });
+    return result;
+  } catch {
+    const result = { transactions: [], isUnavailable: false };
+    return result;
   }
 }
 

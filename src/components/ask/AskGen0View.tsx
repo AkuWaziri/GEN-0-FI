@@ -5,27 +5,11 @@ import { ChatMessage } from '../../types/blockchain';
 import {
   Sparkles,
   Send,
-  Bot,
   User,
   ExternalLink,
-  ShieldCheck,
   RotateCcw,
   Cpu,
 } from 'lucide-react';
-
-const TYPING_EXAMPLES = [
-  'How much USDC do I have?',
-  'What did I receive recently?',
-  'How much have I spent on gas?',
-  'Explain my recent transactions',
-  'What contracts did I interact with?',
-  'What happened in my wallet today?',
-  'Did I send any USDC recently?',
-  'How does Arc use USDC for gas?',
-  'What is Arc?',
-  'What are the main features of GEN-0 FI?',
-  'How does wallet intelligence work?',
-];
 
 export const AskGen0View: React.FC = () => {
   const { address, shortAddress, isConnected, walletSummary, transactions, balanceUSDC } = useWallet();
@@ -60,15 +44,7 @@ export const AskGen0View: React.FC = () => {
   const [inputPrompt, setInputPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeModel, setActiveModel] = useState<string>('gemini-3.8-flash');
-  const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPlaceholderIndex((prev) => (prev + 1) % TYPING_EXAMPLES.length);
-    }, 3200);
-    return () => clearInterval(interval);
-  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -211,8 +187,16 @@ export const AskGen0View: React.FC = () => {
               className={`flex gap-2.5 sm:gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
             >
               {!isUser && (
-                <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold shrink-0 mt-0.5 shadow-[0_0_10px_rgba(59,130,246,0.3)]">
-                  <Bot className="w-3.5 h-3.5" />
+                <div className="w-7 h-7 rounded-lg overflow-hidden border border-blue-500/40 shadow-[0_0_10px_rgba(59,130,246,0.3)] shrink-0 mt-0.5 bg-[#111317] flex items-center justify-center">
+                  <img
+                    src="/capybara.jpg"
+                    alt="GEN-0 AI Capybara Avatar"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback if image fails
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
                 </div>
               )}
 
@@ -271,8 +255,12 @@ export const AskGen0View: React.FC = () => {
 
         {isGenerating && (
           <div className="flex gap-2.5 items-center text-xs text-zinc-400">
-            <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
-              <Bot className="w-3.5 h-3.5 animate-pulse" />
+            <div className="w-7 h-7 rounded-lg overflow-hidden border border-blue-500/40 shadow-[0_0_10px_rgba(59,130,246,0.3)] shrink-0 bg-[#111317] flex items-center justify-center">
+              <img
+                src="/capybara.jpg"
+                alt="GEN-0 AI Capybara Avatar"
+                className="w-full h-full object-cover animate-pulse"
+              />
             </div>
             <div className="flex items-center gap-1.5 p-2.5 rounded-lg bg-[#131519] border border-zinc-800">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" />
@@ -286,61 +274,32 @@ export const AskGen0View: React.FC = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Box & Prompt Examples */}
-      <div className="space-y-2">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSendMessage();
-          }}
-          className="relative"
+      {/* Input Box */}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSendMessage();
+        }}
+        className="relative"
+      >
+        <input
+          type="text"
+          value={inputPrompt}
+          onChange={(e) => setInputPrompt(e.target.value)}
+          placeholder="Ask anything about your Arc wallet, balance, or transactions..."
+          disabled={isGenerating}
+          className="w-full pl-3.5 pr-11 py-3 rounded-xl bg-[#0d0f12] border border-zinc-800 focus:border-blue-500/50 glow-blue-focus focus:outline-none text-xs sm:text-sm text-white placeholder:text-zinc-500 shadow-sm transition-all"
+        />
+
+        <button
+          type="submit"
+          disabled={!inputPrompt.trim() || isGenerating}
+          className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-white hover:bg-zinc-200 disabled:opacity-30 disabled:hover:bg-white text-black glow-blue-cta cursor-pointer"
+          aria-label="Send message"
         >
-          <input
-            type="text"
-            value={inputPrompt}
-            onChange={(e) => setInputPrompt(e.target.value)}
-            placeholder={`Ask anything e.g. "${TYPING_EXAMPLES[placeholderIndex]}"`}
-            disabled={isGenerating}
-            className="w-full pl-3.5 pr-11 py-3 rounded-xl bg-[#0d0f12] border border-zinc-800 focus:border-blue-500/50 glow-blue-focus focus:outline-none text-xs sm:text-sm text-white placeholder:text-zinc-500 shadow-sm transition-all"
-          />
-
-          <button
-            type="submit"
-            disabled={!inputPrompt.trim() || isGenerating}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-white hover:bg-zinc-200 disabled:opacity-30 disabled:hover:bg-white text-black glow-blue-cta cursor-pointer"
-            aria-label="Send message"
-          >
-            <Send className="w-3.5 h-3.5" />
-          </button>
-        </form>
-
-        {/* Example prompts in the typing box section */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-[11px]">
-          <span className="text-zinc-500 font-mono text-[10px] uppercase tracking-wider shrink-0 pl-0.5 font-medium">
-            Examples:
-          </span>
-          {TYPING_EXAMPLES.map((example, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => handleSendMessage(example)}
-              disabled={isGenerating}
-              className="px-2.5 py-1 rounded-lg bg-[#101216] hover:bg-zinc-800 border border-zinc-800/90 hover:border-blue-500/35 text-zinc-400 hover:text-white transition-all whitespace-nowrap cursor-pointer shrink-0 disabled:opacity-40"
-            >
-              {example}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Safety & Grounding Footnote */}
-      <div className="flex items-center justify-between text-[10px] text-zinc-500 px-1 font-mono">
-        <div className="flex items-center gap-1">
-          <ShieldCheck className="w-3 h-3 text-emerald-400" />
-          <span>Zero Hallucination Guarantee: Strictly grounded on Arc onchain state</span>
-        </div>
-        <span>Arc. Testnet • Verified Onchain</span>
-      </div>
+          <Send className="w-3.5 h-3.5" />
+        </button>
+      </form>
     </div>
   );
 };

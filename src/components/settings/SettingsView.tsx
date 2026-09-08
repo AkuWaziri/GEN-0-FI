@@ -1,31 +1,27 @@
 import React, { useState } from 'react';
-import { useWallet } from '../../context/WalletContext';
-import { ARC_NETWORK_CONFIG, ARC_TESTNET_CHAIN_ID } from '../../config/arc';
 import {
   Settings as SettingsIcon,
   Shield,
-  Radio,
-  ExternalLink,
-  CheckCircle2,
-  AlertTriangle,
   Volume2,
   VolumeX,
+  Contrast,
+  Moon,
 } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
 import { soundEngine } from '../../utils/sound';
 
 export const SettingsView: React.FC = () => {
-  const {
-    chainId,
-    isCorrectNetwork,
-    networkStatus,
-    switchToArc,
-  } = useWallet();
-
+  const { theme, toggleTheme, setTheme } = useTheme();
   const [isMuted, setIsMuted] = useState(soundEngine.getIsMuted());
 
   const toggleSound = () => {
     const next = soundEngine.toggleMute();
     setIsMuted(next);
+  };
+
+  const handleThemeChange = (mode: 'dark' | 'grey') => {
+    soundEngine.playSoftClick(520, 0.05);
+    setTheme(mode);
   };
 
   return (
@@ -35,95 +31,80 @@ export const SettingsView: React.FC = () => {
         <div className="flex items-center gap-2">
           <SettingsIcon className="w-4 h-4 text-white" />
           <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
-            Settings & Network
+            Settings
           </h1>
         </div>
       </div>
 
-      {/* Network Configuration Card */}
+      {/* Theme: Dark and Grey Mode Switcher */}
       <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 glow-blue-card-hover space-y-4 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Radio className="w-4 h-4 text-blue-400 drop-shadow-[0_0_6px_rgba(59,130,246,0.5)]" />
-            <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">Active Blockchain Network</h2>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {isCorrectNetwork ? (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-300 text-xs font-mono font-semibold shadow-[0_0_10px_rgba(59,130,246,0.2)]">
-                <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" />
-                <span>Connected</span>
-              </span>
+            {theme === 'dark' ? (
+              <Moon className="w-4 h-4 text-blue-400 drop-shadow-[0_0_6px_rgba(59,130,246,0.5)]" />
             ) : (
-              <button
-                onClick={() => switchToArc()}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-700 text-white text-xs font-mono font-medium hover:bg-zinc-800 transition-colors cursor-pointer"
-              >
-                <AlertTriangle className="w-3.5 h-3.5 text-zinc-400" />
-                <span>Switch to Arc</span>
-              </button>
+              <Contrast className="w-4 h-4 text-slate-300 drop-shadow-[0_0_6px_rgba(148,163,184,0.5)]" />
             )}
+            <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">
+              Theme & Appearance
+            </h2>
           </div>
+
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-300 text-xs font-mono font-semibold">
+            {theme === 'dark' ? 'Dark Mode' : 'Grey Mode'}
+          </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-          <div className="p-3 rounded-lg bg-[#131519] border border-zinc-800 space-y-1">
-            <span className="text-zinc-500 uppercase tracking-wider font-mono text-[10px]">
-              Network Name
-            </span>
-            <div className="font-semibold text-white text-xs sm:text-sm font-mono">{ARC_NETWORK_CONFIG.name}</div>
-          </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
+          <p className="text-xs text-zinc-400 leading-relaxed max-w-md">
+            Switch between Dark and Grey mode. Your display choice is immediately applied across the workspace and remembered for future visits.
+          </p>
 
-          <div className="p-3 rounded-lg bg-[#131519] border border-zinc-800 space-y-1">
-            <span className="text-zinc-500 uppercase tracking-wider font-mono text-[10px]">
-              Chain ID
-            </span>
-            <div className="font-mono font-semibold text-white text-xs sm:text-sm">
-              {ARC_NETWORK_CONFIG.chainId} (0x{ARC_TESTNET_CHAIN_ID.toString(16)})
+          {/* Switching Buttons */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center bg-[#131519] p-1 rounded-xl border border-zinc-800">
+              <button
+                type="button"
+                onClick={() => handleThemeChange('dark')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold font-mono transition-all cursor-pointer ${
+                  theme === 'dark'
+                    ? 'bg-white text-black glow-blue-cta shadow-sm'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+                aria-label="Switch to Dark Mode"
+              >
+                <Moon className="w-3.5 h-3.5" />
+                <span>Dark</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleThemeChange('grey')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold font-mono transition-all cursor-pointer ${
+                  theme === 'grey'
+                    ? 'bg-white text-black glow-blue-cta shadow-sm'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+                aria-label="Switch to Grey Mode"
+              >
+                <Contrast className="w-3.5 h-3.5" />
+                <span>Grey</span>
+              </button>
             </div>
+
+            {/* Quick 1-click Toggle Button */}
+            <button
+              type="button"
+              onClick={() => {
+                soundEngine.playSoftClick(520, 0.05);
+                toggleTheme();
+              }}
+              className="px-3 py-1.5 rounded-xl bg-[#131519] hover:bg-zinc-800 border border-zinc-800 text-xs font-mono text-zinc-300 hover:text-white transition-all cursor-pointer whitespace-nowrap"
+              aria-label="Toggle Theme"
+            >
+              Toggle
+            </button>
           </div>
-
-          <div className="p-3 rounded-lg bg-[#131519] border border-zinc-800 space-y-1">
-            <span className="text-zinc-500 uppercase tracking-wider font-mono text-[10px]">
-              RPC Endpoint
-            </span>
-            <div className="font-mono text-zinc-300 truncate text-xs">
-              {ARC_NETWORK_CONFIG.rpcUrl}
-            </div>
-            {networkStatus?.latencyMs ? (
-              <div className="text-[10px] text-zinc-400 pt-0.5 font-mono">
-                Latency: {networkStatus.latencyMs}ms • Block #{networkStatus.blockNumber}
-              </div>
-            ) : null}
-          </div>
-
-          <div className="p-3 rounded-lg bg-[#131519] border border-zinc-800 space-y-1">
-            <span className="text-zinc-500 uppercase tracking-wider font-mono text-[10px]">
-              Native Gas Token
-            </span>
-            <div className="font-semibold text-white text-xs sm:text-sm font-mono">
-              USDC (USD Coin • 18 Decimals)
-            </div>
-          </div>
-        </div>
-
-        <div className="pt-2 flex items-center justify-between text-xs text-zinc-400 border-t border-zinc-800/80">
-          <a
-            href={ARC_NETWORK_CONFIG.explorerUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-zinc-300 hover:text-white flex items-center gap-1 font-mono text-[11px] transition-colors"
-          >
-            <span>Open ArcScan Block Explorer</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
-
-          <button
-            onClick={() => switchToArc()}
-            className="text-xs text-zinc-400 hover:text-white underline cursor-pointer font-mono"
-          >
-            Re-sync Wallet Network
-          </button>
         </div>
       </div>
 

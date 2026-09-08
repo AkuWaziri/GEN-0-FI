@@ -72,15 +72,20 @@ export function useArcBalance(address: `0x${string}` | string | undefined, isArc
           setIsLoading(false);
           return;
         }
-      } catch (rpcErr: unknown) {
-        console.warn(`Direct Viem RPC balance query failed for ${targetAddr}, trying fallbacks:`, rpcErr);
+      } catch {
+        // Direct Viem RPC balance query failed, try fallbacks
       }
 
       // 2. Direct ArcScan Blockscout API v2 address lookup (high speed CORS-enabled fallback)
       try {
         const scanRes = await fetch(`https://testnet.arcscan.app/api/v2/addresses/${targetAddr}`, {
           cache: 'no-store',
-          headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+          headers: {
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache',
+            Pragma: 'no-cache',
+          },
+          signal: AbortSignal.timeout(3000),
         });
         if (scanRes.ok) {
           const scanData = await scanRes.json();
@@ -98,8 +103,8 @@ export function useArcBalance(address: `0x${string}` | string | undefined, isArc
             return;
           }
         }
-      } catch (scanErr: unknown) {
-        console.warn(`ArcScan explorer balance lookup failed for ${targetAddr}:`, scanErr);
+      } catch {
+        // Direct ArcScan lookup unavailable, proceed to backend proxy
       }
 
       // 3. Server-side API endpoint fallback (Express / Vercel serverless proxy)

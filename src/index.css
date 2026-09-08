@@ -121,3 +121,407 @@
   box-shadow: 0 0 8px 1px rgba(59, 130, 246, 0.6), 0 0 16px 2px rgba(59, 130, 246, 0.28);
 }
 
+/* =============================================================
+   GREY MODE / SLATE GRAPHITE THEME
+   ============================================================= */
+html.grey,
+html.light {
+  color-scheme: dark;
+}
+
+html.grey body,
+html.grey #root,
+html.light body,
+html.light #root {
+  background-color: #1a1c22;
+  color: #f1f5f9;
+}
+
+html.grey ::-webkit-scrollbar-track,
+html.light ::-webkit-scrollbar-track {
+  background: #1a1c22;
+}
+
+html.grey ::-webkit-scrollbar-thumb,
+html.light ::-webkit-scrollbar-thumb {
+  background: #383e4a;
+}
+
+html.grey ::-webkit-scrollbar-thumb:hover,
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: #4c5464;
+}
+
+/* Base Canvas & Layout Overrides */
+html.grey .bg-\[\#07080a\],
+html.grey .bg-\[\#000000\],
+html.light .bg-\[\#07080a\],
+html.light .bg-\[\#000000\] {
+  background-color: #1a1c22 !important;
+}
+
+html.grey #desktop-sidebar,
+html.grey .bg-\[\#08090b\],
+html.grey .bg-\[\#08090b\]\/95,
+html.light #desktop-sidebar,
+html.light .bg-\[\#08090b\],
+html.light .bg-\[\#08090b\]\/95 {
+  background-color: #21242c !important;
+  border-color: #2f3440 !important;
+}
+
+html.grey #main-app-header,
+html.grey #mobile-bottom-nav,
+html.grey .bg-\[\#000000\]\/90,
+html.grey .bg-\[\#000000\]\/60,
+html.light #main-app-header,
+html.light #mobile-bottom-nav,
+html.light .bg-\[\#000000\]\/90,
+html.light .bg-\[\#000000\]\/60 {
+  background-color: rgba(33, 36, 44, 0.95) !important;
+  border-color: #2f3440 !important;
+}
+
+/* Primary Card Surfaces */
+html.grey .bg-\[\#0d0f12\],
+html.grey .bg-\[\#0b0d10\],
+html.grey .bg-\[\#0b0d10\]\/95,
+html.grey .bg-\[\#0c0e12\],
+html.grey .bg-\[\#0d0f13\],
+html.grey .bg-\[\#0d0f14\],
+html.grey .bg-\[\#0f1012\],
+html.grey .bg-\[\#0c0d10\],
+html.light .bg-\[\#0d0f12\],
+html.light .bg-\[\#0b0d10\],
+html.light .bg-\[\#0b0d10\]\/95,
+html.light .bg-\[\#0c0e12\],
+html.light .bg-\[\#0d0f13\],
+html.light .bg-\[\#0d0f14\],
+html.light .bg-\[\#0f1012\],
+html.light .bg-\[\#0c0d10\] {
+  background-color: #262a33 !important;
+  border-color: #383e4a !important;
+}
+
+/* Secondary Surfaces, Inset Boxes, Badges & Pills */
+html.grey .bg-\[\#101216\],
+html.grey .bg-\[\#111317\],
+html.grey .bg-\[\#111418\],
+html.grey .bg-\[\#131519\],
+html.grey .bg-\[\#14161a\],
+html.grey .bg-\[\#14161d\],
+html.grey .bg-\[\#151720\],
+html.grey .bg-\[\#16181d\],
+html.grey .bg-\[\#0e1014\],
+html.grey .bg-\[\#090b0e\],
+html.grey .bg-\[\#08090c\],
+html.grey .bg-\[\#12141a\],
+html.grey .bg-\[\#12151b\],
+html.grey .bg-\[\#13161c\],
+html.grey .bg-\[\#1a1d24\],
+html.grey .bg-\[\#050608\],
+html.light .bg-\[\#101216\],
+html.light .bg-\[\#111317\],
+html.light .bg-\[\#111418\],
+html.light .bg-\[\#131519\],
+html.light .bg-\[\#14161a\],
+html.light .bg-\[\#14161d\],
+html.light .bg-\[\#151720\],
+html.light .bg-\[\#16181d\],
+html.light .bg-\[\#0e1014\],
+html.light .bg-\[\#090b0e\],
+html.light .bg-\[\#08090c\],
+html.light .bg-\[\#12141a\],
+html.light .bg-\[\#12151b\],
+html.light .bg-\[\#13161c\],
+html.light .bg-\[\#1a1d24\],
+html.light .bg-\[\#050608\] {
+  background-color: #2f3440 !important;
+  border-color: #3e4554 !important;
+}
+
+/* Utility background classes in grey mode */
+html.grey .bg-zinc-900,
+html.grey .bg-zinc-950,
+html.light .bg-zinc-900,
+html.light .bg-zinc-950 {
+  background-color: #2f3440 !important;
+  border-color: #3e4554 !important;
+}
+
+html.grey .bg-zinc-800,
+html.light .bg-zinc-800 {
+  background-color: #393f4e !important;
+  border-color: #4a5364 !important;
+}
+
+/* Hover background states in grey mode */
+html.grey .hover\:bg-zinc-800:hover,
+html.grey .hover\:bg-zinc-800\/40:hover,
+html.grey .hover\:bg-zinc-800\/50:hover,
+html.grey .hover\:bg-zinc-800\/80:hover,
+html.grey .hover\:bg-zinc-800\/90:hover,
+html.grey .hover\:bg-zinc-900:hover,
+html.grey .hover\:bg-zinc-900\/40:hover,
+html.grey .hover\:bg-\[\#131519\]:hover,
+html.grey .hover\:bg-\[\#151720\]:hover,
+html.light .hover\:bg-zinc-800:hover,
+html.light .hover\:bg-zinc-800\/40:hover,
+html.light .hover\:bg-zinc-800\/50:hover,
+html.light .hover\:bg-zinc-800\/80:hover,
+html.light .hover\:bg-zinc-800\/90:hover,
+html.light .hover\:bg-zinc-900:hover,
+html.light .hover\:bg-zinc-900\/40:hover,
+html.light .hover\:bg-\[\#131519\]:hover,
+html.light .hover\:bg-\[\#151720\]:hover {
+  background-color: #393f4e !important;
+}
+
+/* Borders in grey mode */
+html.grey .border-zinc-900,
+html.grey .border-zinc-900\/80,
+html.grey .border-zinc-900\/90,
+html.grey .border-zinc-800,
+html.grey .border-zinc-800\/90,
+html.grey .border-zinc-800\/80,
+html.grey .border-zinc-800\/50,
+html.grey .border-zinc-700,
+html.grey .border-zinc-700\/80,
+html.light .border-zinc-900,
+html.light .border-zinc-900\/80,
+html.light .border-zinc-900\/90,
+html.light .border-zinc-800,
+html.light .border-zinc-800\/90,
+html.light .border-zinc-800\/80,
+html.light .border-zinc-800\/50,
+html.light .border-zinc-700,
+html.light .border-zinc-700\/80 {
+  border-color: #383e4a !important;
+}
+
+/* Typography in grey mode for optimal contrast */
+html.grey .text-white,
+html.light .text-white {
+  color: #ffffff !important;
+}
+
+html.grey .text-zinc-100,
+html.grey .text-zinc-200,
+html.light .text-zinc-100,
+html.light .text-zinc-200 {
+  color: #f1f5f9 !important;
+}
+
+html.grey .text-zinc-300,
+html.light .text-zinc-300 {
+  color: #cbd5e1 !important;
+}
+
+html.grey .text-zinc-400,
+html.light .text-zinc-400 {
+  color: #94a3b8 !important;
+}
+
+html.grey .text-zinc-500,
+html.light .text-zinc-500 {
+  color: #64748b !important;
+}
+
+html.grey .text-zinc-600,
+html.light .text-zinc-600 {
+  color: #475569 !important;
+}
+
+html.grey .hover\:text-white:hover,
+html.grey .hover\:text-zinc-200:hover,
+html.grey .hover\:text-zinc-300:hover,
+html.light .hover\:text-white:hover,
+html.light .hover\:text-zinc-200:hover,
+html.light .hover\:text-zinc-300:hover {
+  color: #ffffff !important;
+}
+
+/* Inputs and textareas */
+html.grey input,
+html.grey textarea,
+html.light input,
+html.light textarea {
+  background-color: #2f3440 !important;
+  color: #ffffff !important;
+  border-color: #3e4554 !important;
+}
+
+html.grey input::placeholder,
+html.grey textarea::placeholder,
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #64748b !important;
+}
+
+html.grey input:focus,
+html.grey textarea:focus,
+html.light input:focus,
+html.light textarea:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.22) !important;
+}
+
+/* Primary CTA buttons: Crisp White on Slate in Grey Mode */
+html.grey .bg-white.text-black,
+html.grey button.bg-white.text-black,
+html.grey a.bg-white.text-black,
+html.light .bg-white.text-black,
+html.light button.bg-white.text-black,
+html.light a.bg-white.text-black {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #ffffff !important;
+}
+
+html.grey .bg-white.text-black *,
+html.grey .bg-white.text-black svg,
+html.grey .bg-white.text-black span,
+html.grey button.bg-white.text-black *,
+html.grey button.bg-white.text-black svg,
+html.grey button.bg-white.text-black span,
+html.light .bg-white.text-black *,
+html.light .bg-white.text-black svg,
+html.light .bg-white.text-black span,
+html.light button.bg-white.text-black *,
+html.light button.bg-white.text-black svg,
+html.light button.bg-white.text-black span {
+  color: #0f172a !important;
+}
+
+html.grey .bg-white.text-black:hover,
+html.grey button.bg-white.text-black:hover,
+html.grey a.bg-white.text-black:hover,
+html.light .bg-white.text-black:hover,
+html.light button.bg-white.text-black:hover,
+html.light a.bg-white.text-black:hover {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+html.grey .bg-white.text-black:hover *,
+html.light .bg-white.text-black:hover * {
+  color: #0f172a !important;
+}
+
+/* Colored texts & badges in grey mode */
+html.grey .text-blue-300,
+html.light .text-blue-300 {
+  color: #93c5fd !important;
+}
+
+html.grey .text-blue-400,
+html.light .text-blue-400 {
+  color: #60a5fa !important;
+}
+
+html.grey .text-emerald-400,
+html.light .text-emerald-400 {
+  color: #34d399 !important;
+}
+
+html.grey .text-amber-400,
+html.light .text-amber-400 {
+  color: #fbbf24 !important;
+}
+
+html.grey .text-red-400,
+html.light .text-red-400 {
+  color: #f87171 !important;
+}
+
+html.grey .text-orange-400,
+html.light .text-orange-400 {
+  color: #fb923c !important;
+}
+
+html.grey .text-yellow-400,
+html.light .text-yellow-400 {
+  color: #facc15 !important;
+}
+
+html.grey .text-purple-400,
+html.light .text-purple-400 {
+  color: #c084fc !important;
+}
+
+/* Blue tinted badges & buttons */
+html.grey .bg-blue-500\/10,
+html.grey .bg-blue-500\/15,
+html.grey .bg-blue-500\/20,
+html.grey .bg-blue-500\/\[0\.08\],
+html.grey .bg-blue-500\/\[0\.09\],
+html.light .bg-blue-500\/10,
+html.light .bg-blue-500\/15,
+html.light .bg-blue-500\/20,
+html.light .bg-blue-500\/\[0\.08\],
+html.light .bg-blue-500\/\[0\.09\] {
+  background-color: rgba(59, 130, 246, 0.14) !important;
+}
+
+html.grey .border-blue-500\/20,
+html.grey .border-blue-500\/25,
+html.grey .border-blue-500\/30,
+html.grey .border-blue-500\/35,
+html.grey .border-blue-500\/40,
+html.light .border-blue-500\/20,
+html.light .border-blue-500\/25,
+html.light .border-blue-500\/30,
+html.light .border-blue-500\/35,
+html.light .border-blue-500\/40 {
+  border-color: rgba(59, 130, 246, 0.35) !important;
+}
+
+/* Active navigation & tab styling */
+html.grey .glow-blue-tab,
+html.light .glow-blue-tab {
+  background-color: rgba(59, 130, 246, 0.16) !important;
+  border-color: rgba(59, 130, 246, 0.38) !important;
+  color: #60a5fa !important;
+}
+
+html.grey [role="tab"][aria-selected="true"],
+html.light [role="tab"][aria-selected="true"] {
+  color: #60a5fa !important;
+}
+
+/* Logo mark in grey mode */
+html.grey #gen0-brand-logo svg path,
+html.grey .project-logo-mark,
+html.light #gen0-brand-logo svg path,
+html.light .project-logo-mark {
+  fill: #ffffff !important;
+  color: #ffffff !important;
+}
+
+/* Card glows & ambient lighting in grey mode */
+html.grey .glow-blue-card,
+html.light .glow-blue-card {
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3), 0 0 14px rgba(59, 130, 246, 0.08) !important;
+  border-color: #383e4a !important;
+}
+
+html.grey .glow-blue-card-hover:hover,
+html.light .glow-blue-card-hover:hover {
+  border-color: rgba(59, 130, 246, 0.45) !important;
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.4), 0 0 16px rgba(59, 130, 246, 0.16) !important;
+}
+
+/* Skeleton pulse in grey mode */
+html.grey .animate-pulse,
+html.light .animate-pulse {
+  background-color: #333845 !important;
+  border-color: #3e4554 !important;
+}
+
+/* Modal backdrops in grey mode */
+html.grey .bg-black\/80,
+html.light .bg-black\/80 {
+  background-color: rgba(15, 17, 21, 0.8) !important;
+}
+
+
