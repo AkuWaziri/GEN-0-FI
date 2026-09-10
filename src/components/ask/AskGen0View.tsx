@@ -9,6 +9,7 @@ import {
   ExternalLink,
   RotateCcw,
   Cpu,
+  Bot,
 } from 'lucide-react';
 
 export const AskGen0View: React.FC = () => {
@@ -119,13 +120,12 @@ export const AskGen0View: React.FC = () => {
         },
       ]);
     } catch (err: any) {
-      const errorDetail = err?.message || 'Service temporarily unreachable';
       setMessages((prev) => [
         ...prev,
         {
           id: `ai-err-${Date.now()}`,
           role: 'assistant',
-          content: `AI Service Notice: ${errorDetail}. For Vercel production deployments, ensure GEMINI_API_KEY is configured in Vercel Project Settings > Environment Variables. Your live Arc wallet balance remains verified: ${activeBalance} USDC.`,
+          content: `Unable to process your request right now. Your live Arc wallet balance (${activeBalance} USDC) remains verified onchain. Please try asking again in a moment.`,
           timestamp: Date.now(),
           isError: true,
         },
@@ -187,16 +187,8 @@ export const AskGen0View: React.FC = () => {
               className={`flex gap-2.5 sm:gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
             >
               {!isUser && (
-                <div className="w-7 h-7 rounded-lg overflow-hidden border border-blue-500/40 shadow-[0_0_10px_rgba(59,130,246,0.3)] shrink-0 mt-0.5 bg-[#111317] flex items-center justify-center">
-                  <img
-                    src="/capybara.jpg"
-                    alt="GEN-0 AI Capybara Avatar"
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      // Fallback if image fails
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
+                <div className="w-7 h-7 rounded-lg border border-blue-500/40 shadow-[0_0_10px_rgba(59,130,246,0.3)] shrink-0 mt-0.5 bg-[#111317] flex items-center justify-center text-blue-400">
+                  <Bot className="w-4 h-4 text-blue-400" />
                 </div>
               )}
 
@@ -255,12 +247,8 @@ export const AskGen0View: React.FC = () => {
 
         {isGenerating && (
           <div className="flex gap-2.5 items-center text-xs text-zinc-400">
-            <div className="w-7 h-7 rounded-lg overflow-hidden border border-blue-500/40 shadow-[0_0_10px_rgba(59,130,246,0.3)] shrink-0 bg-[#111317] flex items-center justify-center">
-              <img
-                src="/capybara.jpg"
-                alt="GEN-0 AI Capybara Avatar"
-                className="w-full h-full object-cover animate-pulse"
-              />
+            <div className="w-7 h-7 rounded-lg border border-blue-500/40 shadow-[0_0_10px_rgba(59,130,246,0.3)] shrink-0 bg-[#111317] flex items-center justify-center text-blue-400">
+              <Bot className="w-4 h-4 text-blue-400 animate-pulse" />
             </div>
             <div className="flex items-center gap-1.5 p-2.5 rounded-lg bg-[#131519] border border-zinc-800">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" />

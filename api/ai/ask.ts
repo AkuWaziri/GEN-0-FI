@@ -37,8 +37,13 @@ export default async function handler(req: any, res: any) {
     return res.status(200).json(result);
   } catch (err: any) {
     console.error('[Vercel Serverless /api/ai/ask] Error:', err);
-    return res.status(err.message === 'Message is required' ? 400 : 500).json({
-      error: err.message || 'Failed to process AI query',
+    if (err?.message === 'Message is required') {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+    return res.status(200).json({
+      answer: "I am temporarily unable to process this question. Your live Arc wallet data remains verified onchain. Please try asking again in a moment.",
+      referencedTxHashes: [],
+      model: 'fallback-safe',
     });
   }
 }

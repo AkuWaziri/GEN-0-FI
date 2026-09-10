@@ -31,43 +31,51 @@ VERIFIED PROTOCOL & PRODUCT KNOWLEDGE BASE:
 
 /**
  * Resolve Gemini API key across all supported production and deployment environments:
- * - Vercel / Netlify / Cloud Run: GEMINI_API_KEY, GOOGLE_GENAI_API_KEY, GOOGLE_API_KEY
- * - Accidental client-prefix config: VITE_GEMINI_API_KEY
+ * - Vercel / Netlify / Cloud Run / Container: GEMINI_API_KEY, GOOGLE_GENAI_API_KEY, GOOGLE_API_KEY
+ * Strips accidental whitespace and quotes to prevent header validation failures.
  */
 export function getGeminiApiKey(): string | null {
-  const env = typeof process !== 'undefined' ? process.env : (import.meta as any).env || {};
-  return (
+  const env = typeof process !== 'undefined' && process.env ? process.env : ((import.meta as any).env || {});
+  const rawKey =
     env.GEMINI_API_KEY ||
     env.GOOGLE_GENAI_API_KEY ||
     env.GOOGLE_API_KEY ||
-    env.VITE_GEMINI_API_KEY ||
-    null
-  );
+    '';
+  if (!rawKey || typeof rawKey !== 'string') return null;
+  const cleanKey = rawKey.trim().replace(/^["']|["']$/g, '').trim();
+  return cleanKey.length > 0 ? cleanKey : null;
 }
 
 /**
- * Lazy-initialized Gemini client
+ * Lazy-initialized Gemini client with production configuration
  */
 export function getGeminiClient(): GoogleGenAI | null {
   const apiKey = getGeminiApiKey();
   if (!apiKey) return null;
-  return new GoogleGenAI({ apiKey });
+  return new GoogleGenAI({
+    apiKey,
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
+      },
+    },
+  });
 }
 
 /**
  * Preferred model cascade for production:
- * 1. gemini-3.8-flash (Standard recommended text model for general tasks)
- * 2. gemini-3.1-flash-lite (Fastest, low latency free tier)
- * 3. gemini-flash-latest (Universal fallback alias)
+ * 1. gemini-3.1-flash-lite (Fastest, sub-second latency, optimal for serverless budgets)
+ * 2. gemini-flash-latest (Universal alias fallback)
+ * 3. gemini-3.8-flash (Standard general task model)
  */
 const CANDIDATE_MODELS = [
-  'gemini-3.8-flash',
   'gemini-3.1-flash-lite',
   'gemini-flash-latest',
+  'gemini-3.8-flash',
 ];
 
 /**
- * Call Gemini with progressive model fallback and execution timeout
+ * Call Gemini with progressive model fallback and snappy execution timeout
  */
 export async function callGeminiWithFallback(
   contents: string,
@@ -75,7 +83,7 @@ export async function callGeminiWithFallback(
     systemInstruction?: string;
     temperature?: number;
   },
-  timeoutMs = 8500
+  timeoutMs = 5000
 ): Promise<{ text: string; modelUsed: string }> {
   const ai = getGeminiClient();
   if (!ai) {
@@ -86,7 +94,6 @@ export async function callGeminiWithFallback(
 
   for (const model of CANDIDATE_MODELS) {
     try {
-      // Wrap call in timeout promise so Vercel serverless function never terminates hard
       const callPromise = ai.models.generateContent({
         model,
         contents,
@@ -111,8 +118,8 @@ export async function callGeminiWithFallback(
     } catch (err: any) {
       lastError = err;
       const msg = String(err?.message || '');
-      console.warn(`[Gemini] Model ${model} attempt error:`, msg.slice(0, 100));
-      // If 429 quota exhausted or rate limit, break cascade and fallback to deterministic engine
+      console.warn(`[Gemini] Model ${model} attempt notice:`, msg.slice(0, 100));
+      // If 429 quota exhausted or rate limit, break cascade and fallback cleanly to deterministic engine
       if (err?.status === 429 || msg.includes('429') || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED')) {
         throw err;
       }
@@ -165,15 +172,59 @@ export function generateDeterministicChatAnswer(
 
   // 1. Balance questions
   if (
+    q.includes('balance') ||
     q.includes('how much usdc') ||
-    q.includes('my balance') ||
-    q.includes('balance do i have') ||
-    q.includes('current balance') ||
     q.includes('how many usdc') ||
+    q.includes('how much money') ||
+    q.includes('funds') ||
+    q.includes('holdings') ||
     q === 'balance'
   ) {
     return {
       answer: `Your connected wallet (${short}) currently holds ${walletData.balance} USDC on Arc. Testnet, verified live via the native Arc RPC.`,
+      referencedTxHashes,
+    };
+  }
+
+  // 1b. Last / Latest transaction questions
+  if (
+    q.includes('last transaction') ||
+    q.includes('latest transaction') ||
+    q.includes('previous transaction') ||
+    q.includes('last tx') ||
+    q.includes('latest tx') ||
+    q.includes('most recent transaction')
+  ) {
+    if (transactions.length > 0) {
+      const lastTx = transactions[0];
+      referencedTxHashes.push(lastTx.hash);
+      const dateStr =
+        lastTx.date ||
+        (lastTx.timestamp
+          ? new Date(lastTx.timestamp).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : 'recently');
+      const val = lastTx.amountUSDC || lastTx.value || '0.00';
+      const label =
+        lastTx.direction === 'received'
+          ? `Inbound transfer of +${val} USDC from ${lastTx.from ? `${lastTx.from.slice(0, 6)}...${lastTx.from.slice(-4)}` : 'external sender'}`
+          : lastTx.direction === 'sent'
+          ? `Outbound transfer of -${val} USDC to ${lastTx.to ? `${lastTx.to.slice(0, 6)}...${lastTx.to.slice(-4)}` : 'recipient'}`
+          : lastTx.direction === 'contract_interaction'
+          ? `Smart contract call with ${lastTx.to ? `${lastTx.to.slice(0, 6)}...${lastTx.to.slice(-4)}` : 'contract'}`
+          : `Self-transfer of ${val} USDC`;
+      return {
+        answer: `Your last transaction on Arc was confirmed on ${dateStr}. It was a ${label}. The transaction hash is ${lastTx.hash}, with an execution gas fee of ${lastTx.gasCostUSDC || '0.000000'} USDC.`,
+        referencedTxHashes,
+      };
+    }
+    return {
+      answer: `There are no recent transactions recorded for wallet ${short} in the scanned Arc dataset. Current verified balance is ${walletData.balance} USDC.`,
       referencedTxHashes,
     };
   }
@@ -438,15 +489,16 @@ export async function handleAiAskPayload(payload: {
     throw new Error('Message is required');
   }
 
-  const balance = walletDataRaw.balanceUSDC || '0.00';
-  const totalReceived = walletDataRaw.totalReceivedUSDC || walletDataRaw.receivedTotalUSDC || '0.00';
-  const totalSent = walletDataRaw.totalSentUSDC || walletDataRaw.sentTotalUSDC || '0.00';
-  const gasSpent = walletDataRaw.gasSpentUSDC || '0.000000';
-  const txCount = walletDataRaw.txCount ?? (recentTransactions.length || 0);
-  const contractCount = walletDataRaw.contractInteractionsCount ?? walletDataRaw.activeContractsCount ?? 0;
+  const balance = String(walletDataRaw.balanceUSDC ?? '0.00');
+  const totalReceived = String(walletDataRaw.totalReceivedUSDC ?? walletDataRaw.receivedTotalUSDC ?? '0.00');
+  const totalSent = String(walletDataRaw.totalSentUSDC ?? walletDataRaw.sentTotalUSDC ?? '0.00');
+  const gasSpent = String(walletDataRaw.gasSpentUSDC ?? '0.000000');
+  const txCount = Number(walletDataRaw.txCount ?? (recentTransactions.length || 0));
+  const contractCount = Number(walletDataRaw.contractInteractionsCount ?? walletDataRaw.activeContractsCount ?? 0);
+  const parsedBal = parseFloat(balance.replace(/,/g, '')) || 0;
   const historyStatus =
     walletDataRaw.historyStatus ||
-    (recentTransactions.length === 0 && parseFloat(balance.replace(/,/g, '')) > 0
+    (recentTransactions.length === 0 && parsedBal > 0
       ? 'incomplete'
       : 'complete');
 
@@ -566,6 +618,5 @@ Answer the user directly and concisely following the instructions. Remember: str
     answer: fallback.answer.replace(/\*/g, ''),
     referencedTxHashes: fallback.referencedTxHashes,
     model: 'deterministic-verifier',
-    notice: !getGeminiApiKey() ? 'Running on verified deterministic onchain engine (GEMINI_API_KEY not configured)' : undefined,
   };
 }

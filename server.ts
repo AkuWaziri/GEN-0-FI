@@ -987,8 +987,13 @@ app.post(['/api/ai/ask', '/ai/ask'], async (req, res) => {
     const result = await handleAiAskPayload(req.body || {});
     return res.json(result);
   } catch (err: any) {
-    return res.status(err.message === 'Message is required' ? 400 : 500).json({
-      error: err.message || 'Failed to process AI query',
+    if (err?.message === 'Message is required') {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+    return res.json({
+      answer: "I am temporarily unable to process this question. Your live Arc wallet data remains verified onchain. Please try asking again in a moment.",
+      referencedTxHashes: [],
+      model: 'fallback-safe',
     });
   }
 });
