@@ -1,5 +1,6 @@
 import { isAddress } from 'viem';
 import { callGeminiWithFallback } from '../../src/services/ai/geminiService';
+import { fetchCompleteWalletState } from '../../src/services/blockchain/arcService';
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -29,12 +30,29 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: 'Valid wallet address is required' });
     }
 
-    const balance = walletData.balanceUSDC || '0.00';
-    const totalReceived = walletData.totalReceivedUSDC || walletData.receivedTotalUSDC || '0.00';
-    const totalSent = walletData.totalSentUSDC || walletData.sentTotalUSDC || '0.00';
-    const gasSpent = walletData.gasSpentUSDC || '0.000000';
-    const txCount = walletData.txCount ?? (recentTransactions.length || 0);
-    const contractCount = walletData.contractInteractionsCount ?? walletData.activeContractsCount ?? 0;
+    let balance = walletData.balanceUSDC || '0.00';
+    let totalReceived = walletData.totalReceivedUSDC || walletData.receivedTotalUSDC || '0.00';
+    let totalSent = walletData.totalSentUSDC || walletData.sentTotalUSDC || '0.00';
+    let gasSpent = walletData.gasSpentUSDC || '0.000000';
+    let txCount = walletData.txCount ?? (recentTransactions.length || 0);
+    let contractCount = walletData.contractInteractionsCount ?? walletData.activeContractsCount ?? 0;
+
+    if (parseFloat(balance.replace(/,/g, '')) === 0 || recentTransactions.length === 0) {
+      try {
+        const liveState = await fetchCompleteWalletState(address);
+        if (liveState) {
+          balance = liveState.currentBalance || balance;
+          totalReceived = liveState.totalReceived || totalReceived;
+          totalSent = liveState.totalSent || totalSent;
+          gasSpent = liveState.totalGasSpent || gasSpent;
+          txCount = liveState.totalTransactions || txCount;
+          contractCount = liveState.contractInteractions || contractCount;
+        }
+      } catch (onchainErr) {
+        console.warn(`[Summary API] Live onchain fallback check notice:`, onchainErr);
+      }
+    }
+
     const historyStatus = walletData.historyStatus || (recentTransactions.length === 0 && parseFloat(balance.replace(/,/g, '')) > 0 ? 'incomplete' : 'complete');
 
     // Deterministic baseline

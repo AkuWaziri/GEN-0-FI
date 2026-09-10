@@ -80,11 +80,21 @@ export const AskGen0View: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           address,
+          walletAddress: address,
           message: query,
           history: newMessages.slice(-6).map((m) => ({ role: m.role, content: m.content.replace(/\*/g, '') })),
+          currentBalance: activeBalance,
+          totalReceived: verifiedReceived,
+          totalSent: verifiedSent,
+          totalGasSpent: verifiedGas,
+          totalTransactions: totalTxCount,
+          contractInteractions: contractCount,
+          recentTransactions: transactions,
           walletData: {
             address,
+            walletAddress: address,
             balanceUSDC: activeBalance,
+            currentBalance: activeBalance,
             totalReceivedUSDC: verifiedReceived,
             totalSentUSDC: verifiedSent,
             gasSpentUSDC: verifiedGas,
@@ -94,7 +104,6 @@ export const AskGen0View: React.FC = () => {
             historyStatusNote: walletSummary?.historyStatusNote || '',
           },
           walletSummary,
-          recentTransactions: transactions,
         }),
       });
 

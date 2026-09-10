@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { ARC_NETWORK_CONFIG } from '../../config/arc';
+import { fetchCompleteWalletState } from '../blockchain/arcService';
 
 /**
  * Verified knowledge base on Arc protocol & GEN-0 FI platform.
@@ -83,7 +84,7 @@ export async function callGeminiWithFallback(
     systemInstruction?: string;
     temperature?: number;
   },
-  timeoutMs = 5000
+  timeoutMs = 15_000
 ): Promise<{ text: string; modelUsed: string }> {
   const ai = getGeminiClient();
   if (!ai) {
@@ -468,37 +469,124 @@ export function generateDeterministicChatAnswer(
  * Unified AI Ask request handler used by both Express (dev server) and Vercel Serverless Functions.
  */
 export async function handleAiAskPayload(payload: {
+  walletAddress?: string;
   address?: string;
   message?: string;
+  currentBalance?: string;
+  totalReceived?: string;
+  totalSent?: string;
+  totalGasSpent?: string;
+  totalTransactions?: number;
+  contractInteractions?: number;
+  recentTransactions?: any[];
   history?: Array<{ role: string; content: string }>;
   walletData?: any;
   walletSummary?: any;
   summary?: any;
-  recentTransactions?: any[];
 }): Promise<{
   answer: string;
   referencedTxHashes: string[];
   model: string;
   notice?: string;
 }> {
-  const { address, message, history } = payload;
   const walletDataRaw = payload.walletData || payload.walletSummary || payload.summary || {};
-  const recentTransactions = payload.recentTransactions || [];
+  let address =
+    payload.walletAddress ||
+    payload.address ||
+    walletDataRaw.walletAddress ||
+    walletDataRaw.address ||
+    '';
+  const { message, history } = payload;
 
   if (!message || typeof message !== 'string') {
     throw new Error('Message is required');
   }
 
-  const balance = String(walletDataRaw.balanceUSDC ?? '0.00');
-  const totalReceived = String(walletDataRaw.totalReceivedUSDC ?? walletDataRaw.receivedTotalUSDC ?? '0.00');
-  const totalSent = String(walletDataRaw.totalSentUSDC ?? walletDataRaw.sentTotalUSDC ?? '0.00');
-  const gasSpent = String(walletDataRaw.gasSpentUSDC ?? '0.000000');
-  const txCount = Number(walletDataRaw.txCount ?? (recentTransactions.length || 0));
-  const contractCount = Number(walletDataRaw.contractInteractionsCount ?? walletDataRaw.activeContractsCount ?? 0);
-  const parsedBal = parseFloat(balance.replace(/,/g, '')) || 0;
+  let balance = String(
+    payload.currentBalance ||
+      walletDataRaw.currentBalance ||
+      walletDataRaw.balanceUSDC ||
+      walletDataRaw.balance ||
+      ''
+  );
+  let totalReceived = String(
+    payload.totalReceived ||
+      walletDataRaw.totalReceived ||
+      walletDataRaw.totalReceivedUSDC ||
+      walletDataRaw.receivedTotalUSDC ||
+      ''
+  );
+  let totalSent = String(
+    payload.totalSent ||
+      walletDataRaw.totalSent ||
+      walletDataRaw.totalSentUSDC ||
+      walletDataRaw.sentTotalUSDC ||
+      ''
+  );
+  let totalGasSpent = String(
+    payload.totalGasSpent ||
+      walletDataRaw.totalGasSpent ||
+      walletDataRaw.gasSpentUSDC ||
+      walletDataRaw.gasSpent ||
+      ''
+  );
+  let txCount =
+    payload.totalTransactions ??
+    walletDataRaw.totalTransactions ??
+    walletDataRaw.txCount ??
+    (payload.recentTransactions?.length || 0);
+  let contractCount =
+    payload.contractInteractions ??
+    walletDataRaw.contractInteractions ??
+    walletDataRaw.contractInteractionsCount ??
+    walletDataRaw.activeContractsCount ??
+    0;
+  let recentTransactions: any[] = payload.recentTransactions || walletDataRaw.recentTransactions || [];
+
+  // Live onchain verification fallback: If walletAddress provided and balance is missing/0 or txs are empty
+  if (address && address.startsWith('0x')) {
+    const parsedBal = parseFloat(balance.replace(/,/g, '')) || 0;
+    if (parsedBal === 0 || recentTransactions.length === 0 || !balance) {
+      try {
+        const liveOnchain = await fetchCompleteWalletState(address);
+        if (liveOnchain) {
+          if (!balance || parsedBal === 0) {
+            balance = liveOnchain.currentBalance;
+          }
+          if (recentTransactions.length === 0 && liveOnchain.recentTransactions.length > 0) {
+            recentTransactions = liveOnchain.recentTransactions;
+          }
+          if (!totalReceived || totalReceived === '0.00') {
+            totalReceived = liveOnchain.totalReceived;
+          }
+          if (!totalSent || totalSent === '0.00') {
+            totalSent = liveOnchain.totalSent;
+          }
+          if (!totalGasSpent || totalGasSpent === '0.000000') {
+            totalGasSpent = liveOnchain.totalGasSpent;
+          }
+          if (!txCount || txCount === 0) {
+            txCount = liveOnchain.totalTransactions;
+          }
+          if (!contractCount || contractCount === 0) {
+            contractCount = liveOnchain.contractInteractions;
+          }
+        }
+      } catch (onchainErr) {
+        console.warn(`[Ask GEN-0] Live onchain fallback check failed for ${address}:`, onchainErr);
+      }
+    }
+  }
+
+  balance = balance || '0.00';
+  totalReceived = totalReceived || '0.00';
+  totalSent = totalSent || '0.00';
+  totalGasSpent = totalGasSpent || '0.000000';
+
+  const parsedBalFinal = parseFloat(balance.replace(/,/g, '')) || 0;
   const historyStatus =
     walletDataRaw.historyStatus ||
-    (recentTransactions.length === 0 && parsedBal > 0
+    (recentTransactions.length === 0 && parsedBalFinal > 0
       ? 'incomplete'
       : 'complete');
 
@@ -507,11 +595,33 @@ export async function handleAiAskPayload(payload: {
     balance,
     totalReceived,
     totalSent,
-    gasSpent,
-    txCount,
-    contractCount,
+    gasSpent: totalGasSpent,
+    txCount: Number(txCount) || 0,
+    contractCount: Number(contractCount) || 0,
     historyStatus,
   };
+
+  // If no wallet is connected and user asks a personal wallet question, answer immediately with guidance
+  const qLower = message.toLowerCase().trim();
+  const isPersonalWalletQuery =
+    qLower.includes('balance') ||
+    qLower.includes('last transaction') ||
+    qLower.includes('latest transaction') ||
+    qLower.includes('how much have i received') ||
+    qLower.includes('how much have i sent') ||
+    qLower.includes('gas') ||
+    qLower.includes('my transaction') ||
+    qLower.includes('contract') ||
+    qLower.includes('my wallet');
+
+  if (!address && isPersonalWalletQuery) {
+    return {
+      answer:
+        'No wallet is currently connected. Please connect your Web3 wallet (MetaMask, Coinbase Wallet, or injected) or provide an Arc address so I can query your verified live balance and transaction activity on Arc Testnet.',
+      referencedTxHashes: [],
+      model: 'deterministic-verifier',
+    };
+  }
 
   // Prepare normalized transaction list with human dates and full details
   const formattedTxList = (recentTransactions || []).slice(0, 20).map((t: any) => ({
@@ -547,7 +657,7 @@ MODE 1: WALLET INTELLIGENCE
   * Current USDC balance: ${balance} USDC
   * Total received: ${totalReceived} USDC
   * Total sent: ${totalSent} USDC
-  * Total gas spent: ${gasSpent} USDC
+  * Total gas spent: ${totalGasSpent} USDC
   * Total transactions: ${txCount}
   * Smart contract interactions: ${contractCount}
 - When discussing specific transactions, explicitly cite their dates, amounts in USDC, and transaction hashes (e.g. 0x...).
@@ -576,7 +686,7 @@ VERIFIED LIVE ONCHAIN WALLET DATA (AUTHORITATIVE SOURCE OF TRUTH):
 - Current USDC Balance: ${balance} USDC (Verified via live Arc RPC)
 - Total Received (USDC): ${totalReceived}
 - Total Sent (USDC): ${totalSent}
-- Total Gas Spent on Arc (USDC): ${gasSpent} USDC
+- Total Gas Spent on Arc (USDC): ${totalGasSpent} USDC
 - Confirmed Transaction Count: ${txCount}
 - Smart Contract Interactions Count: ${contractCount}
 - Transaction History Status: ${historyStatus}
@@ -609,7 +719,7 @@ Answer the user directly and concisely following the instructions. Remember: str
       };
     }
   } catch (geminiErr: any) {
-    console.info(`[Ask GEN-0] Gemini API fallback engaged (${geminiErr?.message?.slice(0, 80) || 'Unavailable'})`);
+    console.error(`[Ask GEN-0 Production Error] Gemini call failed (${geminiErr?.message || 'Error'}). Engaging deterministic zero-hallucination verifier.`);
   }
 
   // Factual deterministic fallback engine
