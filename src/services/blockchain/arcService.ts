@@ -30,9 +30,11 @@ const TX_CACHE_TTL_MS = 20_000;
 /**
  * Fetch verified onchain balance directly from Arc Testnet RPC.
  */
-export async function fetchBalanceFromArcRpc(address: string): Promise<{ formatted: string; raw: string }> {
+export async function fetchBalanceFromArcRpc(
+  address: string
+): Promise<{ formatted: string; raw: string; isVerified: boolean }> {
   if (!address || !isAddress(address, { strict: false })) {
-    return { formatted: '0.00', raw: '0' };
+    return { formatted: '0.00', raw: '0', isVerified: false };
   }
 
   const targetAddr = address.toLowerCase() as `0x${string}`;
@@ -49,6 +51,7 @@ export async function fetchBalanceFromArcRpc(address: string): Promise<{ formatt
     return {
       formatted: displayStr,
       raw: balanceWei.toString(),
+      isVerified: true,
     };
   } catch (rpcErr) {
     console.warn(`[ArcService] RPC getBalance failed for ${address}:`, rpcErr);
@@ -73,6 +76,7 @@ export async function fetchBalanceFromArcRpc(address: string): Promise<{ formatt
         return {
           formatted: displayStr,
           raw: balanceWei.toString(),
+          isVerified: true,
         };
       }
     }
@@ -80,7 +84,7 @@ export async function fetchBalanceFromArcRpc(address: string): Promise<{ formatt
     console.warn(`[ArcService] ArcScan fallback getBalance failed for ${address}:`, scanErr);
   }
 
-  return { formatted: '0.00', raw: '0' };
+  return { formatted: 'Unavailable', raw: '0', isVerified: false };
 }
 
 /**

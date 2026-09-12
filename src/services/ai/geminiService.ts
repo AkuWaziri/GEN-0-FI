@@ -36,14 +36,24 @@ VERIFIED PROTOCOL & PRODUCT KNOWLEDGE BASE:
  * Strips accidental whitespace and quotes to prevent header validation failures.
  */
 export function getGeminiApiKey(): string | null {
-  const env = typeof process !== 'undefined' && process.env ? process.env : ((import.meta as any).env || {});
-  const rawKey =
-    env.GEMINI_API_KEY ||
-    env.GOOGLE_GENAI_API_KEY ||
-    env.GOOGLE_API_KEY ||
-    '';
-  if (!rawKey || typeof rawKey !== 'string') return null;
-  const cleanKey = rawKey.trim().replace(/^["']|["']$/g, '').trim();
+  let key = '';
+  if (typeof process !== 'undefined' && process.env) {
+    key =
+      process.env.GEMINI_API_KEY ||
+      process.env.GOOGLE_GENAI_API_KEY ||
+      process.env.GOOGLE_API_KEY ||
+      '';
+  }
+  if (!key) {
+    try {
+      // @ts-ignore
+      key = (import.meta && import.meta.env && (import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.GEMINI_API_KEY)) || '';
+    } catch {
+      // safe fallback if import.meta is unavailable in CommonJS/serverless build
+    }
+  }
+  if (!key || typeof key !== 'string') return null;
+  const cleanKey = key.trim().replace(/^["']|["']$/g, '').trim();
   return cleanKey.length > 0 ? cleanKey : null;
 }
 
@@ -181,6 +191,12 @@ export function generateDeterministicChatAnswer(
     q.includes('holdings') ||
     q === 'balance'
   ) {
+    if (walletData.balance === 'Unavailable') {
+      return {
+        answer: `Your live Arc wallet balance is currently unavailable from the network RPC. Your wallet data is still available in Financial Overview.`,
+        referencedTxHashes,
+      };
+    }
     return {
       answer: `Your connected wallet (${short}) currently holds ${walletData.balance} USDC on Arc. Testnet, verified live via the native Arc RPC.`,
       referencedTxHashes,
@@ -546,12 +562,14 @@ export async function handleAiAskPayload(payload: {
   // Live onchain verification fallback: If walletAddress provided and balance is missing/0 or txs are empty
   if (address && address.startsWith('0x')) {
     const parsedBal = parseFloat(balance.replace(/,/g, '')) || 0;
-    if (parsedBal === 0 || recentTransactions.length === 0 || !balance) {
+    if (parsedBal === 0 || recentTransactions.length === 0 || !balance || balance === 'Unavailable') {
       try {
         const liveOnchain = await fetchCompleteWalletState(address);
         if (liveOnchain) {
-          if (!balance || parsedBal === 0) {
-            balance = liveOnchain.currentBalance;
+          if (!balance || parsedBal === 0 || balance === 'Unavailable') {
+            if (liveOnchain.currentBalance && liveOnchain.currentBalance !== 'Unavailable') {
+              balance = liveOnchain.currentBalance;
+            }
           }
           if (recentTransactions.length === 0 && liveOnchain.recentTransactions.length > 0) {
             recentTransactions = liveOnchain.recentTransactions;
@@ -578,7 +596,7 @@ export async function handleAiAskPayload(payload: {
     }
   }
 
-  balance = balance || '0.00';
+  balance = balance || (address ? 'Unavailable' : '0.00');
   totalReceived = totalReceived || '0.00';
   totalSent = totalSent || '0.00';
   totalGasSpent = totalGasSpent || '0.000000';
@@ -604,15 +622,23 @@ export async function handleAiAskPayload(payload: {
   // If no wallet is connected and user asks a personal wallet question, answer immediately with guidance
   const qLower = message.toLowerCase().trim();
   const isPersonalWalletQuery =
-    qLower.includes('balance') ||
+    qLower.includes('my balance') ||
+    qLower.includes('my wallet') ||
+    qLower.includes('my transaction') ||
+    qLower.includes('my funds') ||
+    qLower.includes('my holdings') ||
+    qLower.includes('my account') ||
+    qLower.includes('my gas') ||
+    qLower.includes('how much have i') ||
+    qLower.includes('have i received') ||
+    qLower.includes('have i sent') ||
+    qLower.includes('how much gas have i') ||
     qLower.includes('last transaction') ||
     qLower.includes('latest transaction') ||
-    qLower.includes('how much have i received') ||
-    qLower.includes('how much have i sent') ||
-    qLower.includes('gas') ||
-    qLower.includes('my transaction') ||
-    qLower.includes('contract') ||
-    qLower.includes('my wallet');
+    qLower === 'balance' ||
+    qLower === 'my balance' ||
+    qLower === 'what is my balance' ||
+    qLower === 'how much do i have';
 
   if (!address && isPersonalWalletQuery) {
     return {

@@ -991,7 +991,7 @@ app.post(['/api/ai/ask', '/ai/ask'], async (req, res) => {
       return res.status(400).json({ error: 'Message is required' });
     }
     return res.json({
-      answer: "I am temporarily unable to process this question. Your live Arc wallet data remains verified onchain. Please try asking again in a moment.",
+      answer: "GEN-0 AI is temporarily unavailable. Your wallet data is still available in Financial Overview.",
       referencedTxHashes: [],
       model: 'fallback-safe',
     });

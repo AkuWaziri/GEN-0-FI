@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useWallet } from '../../context/WalletContext';
 import { getArcScanTxUrl, formatShortHash } from '../../config/arc';
 import { ChatMessage } from '../../types/blockchain';
@@ -15,19 +15,81 @@ import {
 export const AskGen0View: React.FC = () => {
   const { address, shortAddress, isConnected, walletSummary, transactions, balanceUSDC } = useWallet();
 
-  // Compute exact normalized wallet metrics matching OverviewView for 100% consistency
-  const activeBalance = balanceUSDC || walletSummary?.balanceUSDC || '0.00';
-  const verifiedReceived = walletSummary
-    ? (walletSummary.totalReceivedUSDC === 'Incomplete scan' || walletSummary.totalReceivedUSDC === 'Unavailable')
-      ? walletSummary.totalReceivedUSDC
-      : `${walletSummary.totalReceivedUSDC} USDC`
-    : '0.00 USDC';
-  const verifiedSent = walletSummary
-    ? (walletSummary.totalSentUSDC === 'Incomplete scan' || walletSummary.totalSentUSDC === 'Unavailable')
-      ? walletSummary.totalSentUSDC
-      : `${walletSummary.totalSentUSDC} USDC`
-    : '0.00 USDC';
-  const verifiedGas = walletSummary ? `${walletSummary.gasSpentUSDC} USDC` : '0.000000 USDC';
+  // Synchronized active balance: uses whichever source holds the live verified balance
+  const activeBalance = useMemo(() => {
+    if (balanceUSDC && balanceUSDC !== '0.00' && balanceUSDC !== 'Unavailable') {
+      return balanceUSDC;
+    }
+    if (
+      walletSummary?.balanceUSDC &&
+      walletSummary.balanceUSDC !== '0.00' &&
+      walletSummary.balanceUSDC !== 'Unavailable'
+    ) {
+      return walletSummary.balanceUSDC;
+    }
+    return balanceUSDC || walletSummary?.balanceUSDC || '0.00';
+  }, [balanceUSDC, walletSummary?.balanceUSDC]);
+
+  // Derived totals directly from confirmed onchain transactions for complete consistency
+  const { derivedReceived, derivedSent, derivedGasSpent } = useMemo(() => {
+    if (!address || !transactions.length) {
+      return { derivedReceived: '0.00', derivedSent: '0.00', derivedGasSpent: '0.000000' };
+    }
+    const norm = address.toLowerCase();
+    let rec = 0;
+    let sent = 0;
+    let gas = 0;
+    for (const t of transactions) {
+      const val = parseFloat(t.value.replace(/,/g, '')) || 0;
+      const from = (t.from || '').toLowerCase();
+      const to = (t.to || '').toLowerCase();
+      if (to === norm && from !== norm) {
+        rec += val;
+      } else if (from === norm) {
+        sent += val;
+        gas += parseFloat(t.gasCostUSDC) || 0;
+      }
+    }
+    return {
+      derivedReceived: rec > 0 ? rec.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '0.00',
+      derivedSent: sent > 0 ? sent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '0.00',
+      derivedGasSpent: gas > 0 ? gas.toFixed(6) : '0.000000',
+    };
+  }, [address, transactions]);
+
+  const verifiedReceivedDisplay = useMemo(() => {
+    const fromSummary = walletSummary?.totalReceivedUSDC || walletSummary?.receivedTotalUSDC;
+    if (fromSummary && fromSummary !== '0.00' && fromSummary !== 'Incomplete scan' && fromSummary !== 'Unavailable') {
+      return fromSummary;
+    }
+    if (derivedReceived !== '0.00') {
+      return derivedReceived;
+    }
+    return fromSummary || derivedReceived || '0.00';
+  }, [walletSummary, derivedReceived]);
+
+  const verifiedSentDisplay = useMemo(() => {
+    const fromSummary = walletSummary?.totalSentUSDC || walletSummary?.sentTotalUSDC;
+    if (fromSummary && fromSummary !== '0.00' && fromSummary !== 'Incomplete scan' && fromSummary !== 'Unavailable') {
+      return fromSummary;
+    }
+    if (derivedSent !== '0.00') {
+      return derivedSent;
+    }
+    return fromSummary || derivedSent || '0.00';
+  }, [walletSummary, derivedSent]);
+
+  const verifiedGasSpentDisplay = useMemo(() => {
+    const fromSummary = walletSummary?.gasSpentUSDC;
+    if (fromSummary && fromSummary !== '0.000000') {
+      return fromSummary;
+    }
+    if (derivedGasSpent !== '0.000000') {
+      return derivedGasSpent;
+    }
+    return fromSummary || derivedGasSpent || '0.000000';
+  }, [walletSummary, derivedGasSpent]);
+
   const totalTxCount = walletSummary?.txCount ?? transactions.length;
   const contractCount = walletSummary?.contractInteractionsCount ?? 0;
 
@@ -36,7 +98,7 @@ export const AskGen0View: React.FC = () => {
       id: 'welcome',
       role: 'assistant',
       content: isConnected
-        ? `Hello! I am GEN-0 FI, your blockchain-grounded assistant for Arc.\n\nI operate in two modes:\n1. Wallet Intelligence: Ask about your live USDC balance (${activeBalance} USDC), verified incoming/outgoing transfers, gas expenditures (${verifiedGas}), or recent transaction history.\n2. Protocol & GEN-0 Knowledge: Ask about Arc's native USDC gas model, protocol architecture, or how GEN-0 FI works.`
+        ? `Hello! I am GEN-0 FI, your blockchain-grounded assistant for Arc.\n\nI operate in two modes:\n1. Wallet Intelligence: Ask about your live USDC balance, verified incoming/outgoing transfers, gas expenditures, or recent transaction history.\n2. Protocol & GEN-0 Knowledge: Ask about Arc's native USDC gas model, protocol architecture, or how GEN-0 FI works.`
         : `Welcome to GEN-0 AI. I am your blockchain-grounded assistant for Arc.\n\nYou can ask general questions about Arc and GEN-0 FI right now, or connect your wallet to unlock live Wallet Intelligence.`,
       timestamp: Date.now(),
     },
@@ -84,9 +146,9 @@ export const AskGen0View: React.FC = () => {
           message: query,
           history: newMessages.slice(-6).map((m) => ({ role: m.role, content: m.content.replace(/\*/g, '') })),
           currentBalance: activeBalance,
-          totalReceived: verifiedReceived,
-          totalSent: verifiedSent,
-          totalGasSpent: verifiedGas,
+          totalReceived: verifiedReceivedDisplay,
+          totalSent: verifiedSentDisplay,
+          totalGasSpent: verifiedGasSpentDisplay,
           totalTransactions: totalTxCount,
           contractInteractions: contractCount,
           recentTransactions: transactions,
@@ -95,9 +157,9 @@ export const AskGen0View: React.FC = () => {
             walletAddress: address,
             balanceUSDC: activeBalance,
             currentBalance: activeBalance,
-            totalReceivedUSDC: verifiedReceived,
-            totalSentUSDC: verifiedSent,
-            gasSpentUSDC: verifiedGas,
+            totalReceivedUSDC: verifiedReceivedDisplay,
+            totalSentUSDC: verifiedSentDisplay,
+            gasSpentUSDC: verifiedGasSpentDisplay,
             txCount: totalTxCount,
             contractInteractionsCount: contractCount,
             historyStatus: walletSummary?.historyStatus || (transactions.length === 0 && parseFloat(activeBalance.replace(/,/g, '')) > 0 ? 'incomplete' : 'complete'),
@@ -114,7 +176,7 @@ export const AskGen0View: React.FC = () => {
       }
 
       const data = await response.json();
-      const cleanAnswer = (data.answer || "I can't verify that from the available onchain data.").replace(/\*/g, '');
+      const cleanAnswer = (data.answer || 'GEN-0 AI is temporarily unavailable. Your wallet data is still available in Financial Overview.').replace(/\*/g, '');
       if (data.model) {
         setActiveModel(data.model);
       }
@@ -134,7 +196,7 @@ export const AskGen0View: React.FC = () => {
         {
           id: `ai-err-${Date.now()}`,
           role: 'assistant',
-          content: `Unable to process your request right now. Your live Arc wallet balance (${activeBalance} USDC) remains verified onchain. Please try asking again in a moment.`,
+          content: 'GEN-0 AI is temporarily unavailable. Your wallet data is still available in Financial Overview.',
           timestamp: Date.now(),
           isError: true,
         },
