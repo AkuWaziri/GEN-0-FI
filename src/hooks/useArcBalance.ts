@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPublicClient, http, formatUnits } from 'viem';
-import { arcTestnetChain, ARC_TESTNET_RPC_URL } from '../config/arc';
+import { arcChain, ARC_RPC_URL } from '../config/arc';
 
 export interface ArcBalanceState {
   raw: bigint;
@@ -13,10 +13,10 @@ export interface ArcBalanceState {
   refetch: () => Promise<void>;
 }
 
-// Direct public client targeted strictly to Arc Testnet
+// Direct public client targeted strictly to Arc Mainnet
 const arcPublicClient = createPublicClient({
-  chain: arcTestnetChain,
-  transport: http(ARC_TESTNET_RPC_URL, {
+  chain: arcChain,
+  transport: http(ARC_RPC_URL, {
     retryCount: 3,
     retryDelay: 1000,
     timeout: 10000,
@@ -55,7 +55,7 @@ export function useArcBalance(address: `0x${string}` | string | undefined, isArc
     setErrorMessage(null);
 
     try {
-      // 1. Direct Viem RPC query on Arc Testnet (chain 5042002 native USDC 18 decimals)
+      // 1. Direct Viem RPC query on Arc Mainnet (chain 5042 native USDC 18 decimals)
       try {
         const balanceWei = await arcPublicClient.getBalance({ address: targetAddr });
 

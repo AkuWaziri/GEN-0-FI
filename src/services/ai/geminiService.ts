@@ -10,14 +10,14 @@ export const VERIFIED_ARC_PROTOCOL_KNOWLEDGE = `
 VERIFIED PROTOCOL & PRODUCT KNOWLEDGE BASE:
 
 1. ARC PROTOCOL:
-- What is Arc: Arc is an institutional-grade, EVM-compatible Layer-1 blockchain engineered for high-throughput programmable finance, instant deterministic finality, and stablecoin-native settlement.
+- What is Arc: Arc is an institutional-grade, EVM-compatible Layer-1 blockchain engineered for high-throughput programmable finance, instant deterministic finality, and stablecoin-native settlement. Arc is officially LIVE on Mainnet.
 - Native USDC for Gas: Unlike traditional EVM networks (e.g. Ethereum, Arbitrum, Polygon) where users must hold volatile native assets (ETH, MATIC) to execute transactions, Arc natively uses USDC (with 18 decimals) as its base gas and transaction fee token. Every transfer, contract deployment, and dApp interaction on Arc computes and pays its gas fee directly in native USDC.
 - Arc Parameters:
-  - Network Name: Arc. Testnet
-  - Chain ID: 5042002 (Hex: 0x4cef52)
+  - Network Name: Arc (Mainnet)
+  - Chain ID: 5042 (Hex: 0x13b2)
   - Native Currency: USDC (Symbol: USDC, Decimals: 18)
-  - Block Explorer: ArcScan (https://testnet.arcscan.app)
-  - Official RPC: https://rpc.testnet.arc.io or https://rpc.testnet.arcscan.app
+  - Block Explorer: ArcScan (https://arc.etherscan.io) & Arc Explorer (https://explorer.arc.io)
+  - Official RPC: https://rpc.mainnet.arc.io (Secondary: https://rpc.arc.io)
 
 2. GEN-0 FI PLATFORM & CORE CAPABILITIES:
 - What is GEN-0 FI: An onchain financial intelligence engine built specifically for Arc. It transforms raw hexadecimal blocks, internal transactions, and gas logs into human-readable accounting and real-time portfolio intelligence.
@@ -176,7 +176,7 @@ export function generateDeterministicChatAnswer(
     q.includes('help me')
   ) {
     return {
-      answer: `Hello! I am GEN-0 FI, your onchain financial intelligence assistant for Arc. Testnet. I can answer questions about your connected wallet's live USDC balance, recent transfers, gas fees, and transactions, as well as explain the Arc protocol and its native USDC gas mechanics. How can I help you today?`,
+      answer: `Hello! I am GEN-0 FI, your onchain financial intelligence assistant for Arc Mainnet. I can answer questions about your connected wallet's live USDC balance, recent transfers, gas fees, and transactions, as well as explain the Arc protocol and its native USDC gas mechanics. How can I help you today?`,
       referencedTxHashes: [],
     };
   }
@@ -198,7 +198,7 @@ export function generateDeterministicChatAnswer(
       };
     }
     return {
-      answer: `Your connected wallet (${short}) currently holds ${walletData.balance} USDC on Arc. Testnet, verified live via the native Arc RPC.`,
+      answer: `Your connected wallet (${short}) currently holds ${walletData.balance} USDC on Arc Mainnet, verified live via the native Arc RPC.`,
       referencedTxHashes,
     };
   }
@@ -430,7 +430,7 @@ export function generateDeterministicChatAnswer(
     q.includes('chain id')
   ) {
     return {
-      answer: `Arc is an institutional-grade, EVM-compatible Layer-1 blockchain engineered specifically for programmable finance and high-speed financial settlement.\n\nKey architectural pillars:\n- Native USDC Gas: Arc uses native USDC (with 18 decimals) as its base network token, meaning all transaction and execution fees are paid directly in USDC.\n- Network: Arc. Testnet (Chain ID: 5042002)\n- Deterministic Finality: High throughput and sub-second block times designed for regulated capital markets and decentralized finance.\n- Explorer: ArcScan (https://testnet.arcscan.app)\n- RPC: https://rpc.testnet.arc.io`,
+      answer: `Arc is an institutional-grade, EVM-compatible Layer-1 blockchain engineered specifically for programmable finance and high-speed financial settlement. Arc is officially live on Mainnet.\n\nKey architectural pillars:\n- Native USDC Gas: Arc uses native USDC (with 18 decimals) as its base network token, meaning all transaction and execution fees are paid directly in USDC.\n- Network: Arc Mainnet (Chain ID: 5042)\n- Deterministic Finality: High throughput and sub-second block times designed for regulated capital markets and decentralized finance.\n- Explorer: ArcScan (https://arc.etherscan.io)\n- RPC: https://rpc.mainnet.arc.io`,
       referencedTxHashes,
     };
   }

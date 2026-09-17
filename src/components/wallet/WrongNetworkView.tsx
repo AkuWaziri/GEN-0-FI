@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useWallet } from '../../context/WalletContext';
-import { ARC_NETWORK_CONFIG, ARC_TESTNET_CHAIN_ID, ARC_TESTNET_RPC_URL, ARC_TESTNET_EXPLORER_URL } from '../../config/arc';
+import { ARC_NETWORK_CONFIG, ARC_CHAIN_ID, ARC_RPC_URL, ARC_EXPLORER_URL } from '../../config/arc';
 import { AlertTriangle, RefreshCw, LogOut, ExternalLink, HelpCircle, Check, Copy } from 'lucide-react';
 
 export const WrongNetworkView: React.FC = () => {
@@ -26,7 +26,7 @@ export const WrongNetworkView: React.FC = () => {
   };
 
   const copyRpcUrl = () => {
-    navigator.clipboard.writeText(ARC_TESTNET_RPC_URL);
+    navigator.clipboard.writeText(ARC_RPC_URL);
     setCopiedRpc(true);
     setTimeout(() => setCopiedRpc(false), 2000);
   };
@@ -46,11 +46,11 @@ export const WrongNetworkView: React.FC = () => {
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Switch to Arc
+            Switch to Arc Mainnet
           </h1>
 
           <p className="text-sm text-zinc-300 max-w-md mx-auto leading-relaxed">
-            GEN-0 FI currently runs on <strong className="text-white font-semibold">Arc</strong>.
+            GEN-0 FI currently runs on <strong className="text-white font-semibold">Arc Mainnet</strong>.
           </p>
         </div>
 
@@ -68,7 +68,7 @@ export const WrongNetworkView: React.FC = () => {
             <span className="text-zinc-400">Required Network:</span>
             <span className="font-mono text-white font-semibold flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              {ARC_NETWORK_CONFIG.name} ({ARC_TESTNET_CHAIN_ID})
+              {ARC_NETWORK_CONFIG.name} ({ARC_CHAIN_ID})
             </span>
           </div>
         </div>
@@ -134,7 +134,7 @@ export const WrongNetworkView: React.FC = () => {
 
             <div className="flex items-center justify-between border-b border-zinc-800/60 pb-1.5">
               <span className="text-zinc-500">Chain ID:</span>
-              <span className="text-white font-semibold">5042002</span>
+              <span className="text-white font-semibold">{ARC_CHAIN_ID}</span>
             </div>
 
             <div className="flex items-center justify-between border-b border-zinc-800/60 pb-1.5">
@@ -145,7 +145,7 @@ export const WrongNetworkView: React.FC = () => {
             <div className="flex items-center justify-between border-b border-zinc-800/60 pb-1.5">
               <span className="text-zinc-500">RPC URL:</span>
               <div className="flex items-center gap-1.5">
-                <span className="text-zinc-200 truncate max-w-[170px]">{ARC_TESTNET_RPC_URL}</span>
+                <span className="text-zinc-200 truncate max-w-[170px]">{ARC_RPC_URL}</span>
                 <button
                   type="button"
                   onClick={copyRpcUrl}
@@ -160,12 +160,12 @@ export const WrongNetworkView: React.FC = () => {
             <div className="flex items-center justify-between pt-0.5">
               <span className="text-zinc-500">Block Explorer:</span>
               <a
-                href={ARC_TESTNET_EXPLORER_URL}
+                href={ARC_EXPLORER_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-zinc-300 hover:text-white flex items-center gap-1"
               >
-                <span>arcscan.app</span>
+                <span>{ARC_EXPLORER_URL.replace(/^https?:\/\//, '')}</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>

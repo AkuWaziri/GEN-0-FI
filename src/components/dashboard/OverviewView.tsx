@@ -182,7 +182,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
             <div>
               <p className="font-semibold text-white text-xs sm:text-sm">Wrong Network Detected</p>
               <p className="text-xs text-zinc-400">
-                GEN-0 FI operates on Arc (Chain ID 5042002). Please switch network to view live onchain state.
+                GEN-0 FI operates on Arc Mainnet (Chain ID 5042). Please switch network to view live onchain state.
               </p>
             </div>
           </div>

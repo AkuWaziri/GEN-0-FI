@@ -30,7 +30,7 @@ export default async function handler(req: any, res: any) {
       token: 'USDC',
       decimals: 18,
       network: 'Arc',
-      isTestnet: true,
+      isTestnet: false,
     });
   } catch (error: any) {
     console.error(`[Balance API] Error for ${address}:`, error);

@@ -3,7 +3,7 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { createPublicClient, formatUnits, http, isAddress } from 'viem';
 import { GoogleGenAI, Type } from '@google/genai';
-import { arcTestnetChain, ARC_NETWORK_CONFIG, ARC_TESTNET_RPC_URL } from './src/config/arc';
+import { arcChain, ARC_NETWORK_CONFIG, ARC_RPC_URL } from './src/config/arc';
 import { normalizeTransaction, RawTxInput } from './src/services/blockchain/normalizer';
 import { handleAiAskPayload } from './src/services/ai/geminiService';
 
@@ -43,8 +43,8 @@ app.use('/api', (req, res, next) => {
 
 // Arc Viem Client
 const arcClient = createPublicClient({
-  chain: arcTestnetChain,
-  transport: http(process.env.ARC_TESTNET_RPC_URL || ARC_TESTNET_RPC_URL, {
+  chain: arcChain,
+  transport: http(process.env.ARC_MAINNET_RPC_URL || process.env.ARC_RPC_URL || ARC_RPC_URL, {
     timeout: 15_000,
     retryCount: 3,
     retryDelay: 1000,
@@ -395,7 +395,7 @@ app.get('/api/blockchain/arc/balance/:address', async (req, res) => {
       token: 'USDC',
       decimals: 18,
       network: 'Arc',
-      isTestnet: true,
+      isTestnet: false,
     });
   } catch (error: any) {
     console.error(`Error fetching balance for ${address} via RPC, trying ArcScan fallback:`, error);
@@ -419,7 +419,7 @@ app.get('/api/blockchain/arc/balance/:address', async (req, res) => {
             token: 'USDC',
             decimals: 18,
             network: 'Arc',
-            isTestnet: true,
+            isTestnet: false,
           });
         }
       }
@@ -634,14 +634,14 @@ const VERIFIED_ARC_PROTOCOL_KNOWLEDGE = `
 VERIFIED PROTOCOL & PRODUCT KNOWLEDGE BASE:
 
 1. ARC PROTOCOL:
-- What is Arc: Arc is an institutional-grade, EVM-compatible Layer-1 blockchain engineered for high-throughput programmable finance, instant deterministic finality, and stablecoin-native settlement.
+- What is Arc: Arc is an institutional-grade, EVM-compatible Layer-1 blockchain engineered for high-throughput programmable finance, instant deterministic finality, and stablecoin-native settlement. Arc is officially LIVE on Mainnet.
 - Native USDC for Gas: Unlike traditional EVM networks (e.g., Ethereum, Arbitrum, Polygon) where users must purchase and hold volatile native assets (ETH, MATIC) to execute transactions, Arc natively uses USDC (with 18 decimals) as its base gas and transaction fee token. Every transfer, contract deployment, and dApp interaction on Arc computes and pays its gas fee directly in native USDC.
 - Arc Parameters:
-  - Network Name: Arc
-  - Chain ID: 5042002 (Hex: 0x4cef52)
+  - Network Name: Arc (Mainnet)
+  - Chain ID: 5042 (Hex: 0x13b2)
   - Native Currency: USDC (Symbol: USDC, Decimals: 18)
-  - Block Explorer: ArcScan (https://testnet.arcscan.app)
-  - Official RPC: https://rpc.testnet.arc.network or https://rpc.testnet.arcscan.app
+  - Block Explorer: ArcScan (https://arc.etherscan.io) & Arc Explorer (https://explorer.arc.io)
+  - Official RPC: https://rpc.mainnet.arc.io (Secondary: https://rpc.arc.io)
 
 2. GEN-0 FI PLATFORM & CORE CAPABILITIES:
 - What is GEN-0 FI: GEN-0 FI is the flagship onchain financial intelligence engine built specifically for the Arc ecosystem. It translates raw, cryptic EVM bytecode and transaction logs into clean, verified, human-readable financial insights.
@@ -798,7 +798,7 @@ function generateDeterministicChatAnswer(
   // 7. Arc Protocol: "what is arc"
   if (q.includes('what is arc') || q.includes('about arc') || q.includes('tell me about arc') || q.includes('what is the arc network')) {
     return {
-      answer: `Arc is an institutional-grade, EVM-compatible Layer 1 blockchain engineered specifically for programmable finance and high-speed financial settlement.\n\nKey architectural pillars:\n- Native USDC Gas: Arc uses native USDC (with 18 decimals) as its base network token, meaning all transaction and execution fees are paid directly in USDC.\n- Chain ID: 5042002 (Arc)\n- Deterministic Finality: High throughput and sub-second block times designed for regulated capital markets and decentralized finance.\n- Explorer: ArcScan (https://testnet.arcscan.app)`,
+      answer: `Arc is an institutional-grade, EVM-compatible Layer 1 blockchain engineered specifically for programmable finance and high-speed financial settlement. Arc is officially live on Mainnet.\n\nKey architectural pillars:\n- Native USDC Gas: Arc uses native USDC (with 18 decimals) as its base network token, meaning all transaction and execution fees are paid directly in USDC.\n- Chain ID: 5042 (Arc Mainnet)\n- Deterministic Finality: High throughput and sub-second block times designed for regulated capital markets and decentralized finance.\n- Explorer: ArcScan (https://arc.etherscan.io)`,
       referencedTxHashes,
     };
   }

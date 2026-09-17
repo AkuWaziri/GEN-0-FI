@@ -1,10 +1,17 @@
 import { useState, useCallback } from 'react';
 import { useChainId, useSwitchChain, useAccount } from 'wagmi';
-import { ARC_TESTNET_CHAIN_ID, ARC_TESTNET_RPC_URL, ARC_TESTNET_EXPLORER_URL } from '../config/arc';
+import {
+  ARC_MAINNET_CHAIN_ID,
+  ARC_MAINNET_RPC_URL,
+  ARC_MAINNET_EXPLORER_URL,
+  ARC_CHAIN_ID,
+} from '../config/arc';
 
 export interface WalletNetworkHook {
   chainId: number | undefined;
   isArcTestnet: boolean;
+  isArcMainnet: boolean;
+  isArc: boolean;
   detectedNetworkName: string;
   isSwitching: boolean;
   error: string | null;
@@ -13,6 +20,7 @@ export interface WalletNetworkHook {
 }
 
 const KNOWN_NETWORKS: Record<number, string> = {
+  5042: 'Arc',
   5042002: 'Arc Testnet',
   1: 'Ethereum Mainnet',
   8453: 'Base',
@@ -30,7 +38,10 @@ export function useWalletNetwork(): WalletNetworkHook {
   const [isSwitching, setIsSwitching] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isArcTestnet = currentChainId === ARC_TESTNET_CHAIN_ID;
+  const isArcMainnet = currentChainId === ARC_MAINNET_CHAIN_ID;
+  const isArc = currentChainId === ARC_CHAIN_ID;
+  // Retain isArcTestnet as true if connected to Arc Mainnet or legacy Testnet for compatibility
+  const isArcTestnet = isArcMainnet || currentChainId === 5042002;
   const detectedNetworkName =
     (currentChainId ? KNOWN_NETWORKS[currentChainId] : null) ||
     (currentChainId ? `Network (ID: ${currentChainId})` : 'Unknown Network');
@@ -43,7 +54,7 @@ export function useWalletNetwork(): WalletNetworkHook {
       return false;
     }
 
-    if (isArcTestnet) {
+    if (isArcMainnet) {
       return true;
     }
 
@@ -52,29 +63,29 @@ export function useWalletNetwork(): WalletNetworkHook {
 
     try {
       if (switchChainAsync) {
-        await switchChainAsync({ chainId: ARC_TESTNET_CHAIN_ID });
+        await switchChainAsync({ chainId: ARC_MAINNET_CHAIN_ID });
         setIsSwitching(false);
         return true;
       }
       throw new Error('No switch chain provider available.');
     } catch (err: unknown) {
       console.warn('Standard switchChainAsync failed, attempting direct wallet RPC addition:', err);
-      // Attempt standard EIP-3085 wallet_addEthereumChain if supported
+      // Attempt standard EIP-3085 wallet_addEthereumChain for Arc Mainnet
       if (typeof window !== 'undefined' && (window as any).ethereum?.request) {
         try {
           await (window as any).ethereum.request({
             method: 'wallet_addEthereumChain',
             params: [
               {
-                chainId: `0x${ARC_TESTNET_CHAIN_ID.toString(16)}`,
-                chainName: 'Arc Testnet',
+                chainId: `0x${ARC_MAINNET_CHAIN_ID.toString(16)}`,
+                chainName: 'Arc',
                 nativeCurrency: {
                   name: 'USD Coin',
                   symbol: 'USDC',
                   decimals: 18,
                 },
-                rpcUrls: [ARC_TESTNET_RPC_URL],
-                blockExplorerUrls: [ARC_TESTNET_EXPLORER_URL],
+                rpcUrls: [ARC_MAINNET_RPC_URL, 'https://rpc.arc.io'],
+                blockExplorerUrls: [ARC_MAINNET_EXPLORER_URL],
               },
             ],
           });
@@ -88,7 +99,7 @@ export function useWalletNetwork(): WalletNetworkHook {
       const errMsg =
         err instanceof Error ? err.message : 'Switch network request was rejected or unsupported.';
       if (errMsg.toLowerCase().includes('reject') || errMsg.toLowerCase().includes('user denied')) {
-        setError('Network switch request was rejected. Arc is required to use GEN-0 FI.');
+        setError('Network switch request was rejected. Arc Mainnet is required to use GEN-0 FI.');
       } else {
         setError(
           'Could not switch networks automatically. Please open your wallet and select Arc manually.'
@@ -97,11 +108,13 @@ export function useWalletNetwork(): WalletNetworkHook {
       setIsSwitching(false);
       return false;
     }
-  }, [isConnected, isArcTestnet, switchChainAsync]);
+  }, [isConnected, isArcMainnet, switchChainAsync]);
 
   return {
     chainId: currentChainId,
     isArcTestnet,
+    isArcMainnet,
+    isArc,
     detectedNetworkName,
     isSwitching,
     error,

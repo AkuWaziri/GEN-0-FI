@@ -3,7 +3,7 @@ import { WagmiProvider, useAccount, useBalance } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { isAddress, formatUnits } from 'viem';
 import { wagmiConfig } from '../config/wagmi';
-import { ARC_TESTNET_CHAIN_ID, formatShortAddress } from '../config/arc';
+import { ARC_CHAIN_ID, ARC_MAINNET_CHAIN_ID, formatShortAddress } from '../config/arc';
 import { useWalletConnection, ConnectionState } from '../hooks/useWalletConnection';
 import { useWalletNetwork } from '../hooks/useWalletNetwork';
 import { useArcBalance } from '../hooks/useArcBalance';
@@ -152,10 +152,10 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
   const isConnected = Boolean(isWagmiConnected && activeAddress);
   const isCorrectNetwork = Boolean(isConnected && network.isArcTestnet);
 
-  // Real Arc native USDC balance directly from Arc Testnet RPC
+  // Real Arc native USDC balance directly from Arc Mainnet RPC
   const arcBalance = useArcBalance(activeAddress || undefined);
 
-  // Wagmi native balance hook targeting Arc Testnet (chain id 5042002)
+  // Wagmi native balance hook targeting Arc Mainnet (chain id 5042)
   const {
     data: wagmiBalanceData,
     refetch: refetchWagmiBalance,
@@ -163,7 +163,7 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
     address: (activeAddress && activeAddress.startsWith('0x') && activeAddress.length >= 42)
       ? (activeAddress as `0x${string}`)
       : undefined,
-    chainId: ARC_TESTNET_CHAIN_ID,
+    chainId: ARC_CHAIN_ID,
   });
 
   const wagmiFormattedBalance = useMemo(() => {
@@ -199,7 +199,7 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
     if (arcBalance.formatted && arcBalance.formatted !== '0.00') {
       return arcBalance.formatted;
     }
-    // 2. Wagmi native useBalance on Arc Testnet (chain 5042002)
+    // 2. Wagmi native useBalance on Arc Mainnet (chain 5042)
     if (wagmiFormattedBalance && wagmiFormattedBalance !== '0.00') {
       return wagmiFormattedBalance;
     }

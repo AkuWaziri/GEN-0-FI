@@ -3,7 +3,14 @@ import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
 import { defineChain } from '@reown/appkit/networks';
 import { OptionsController, AlertController } from '@reown/appkit-controllers';
 import { mainnet, base, arbitrum, polygon, optimism } from 'viem/chains';
-import { ARC_TESTNET_CHAIN_ID, ARC_TESTNET_EXPLORER_URL, ARC_TESTNET_RPC_URL } from './arc';
+import {
+  ARC_MAINNET_CHAIN_ID,
+  ARC_MAINNET_EXPLORER_URL,
+  ARC_MAINNET_RPC_URL,
+  ARC_CHAIN_ID,
+  ARC_RPC_URL,
+  ARC_EXPLORER_URL,
+} from './arc';
 
 // Disable background third-party SDK analytics telemetry and origin allowlist checks for unused embedded wallets
 if (typeof OptionsController !== 'undefined') {
@@ -40,12 +47,12 @@ if (typeof AlertController !== 'undefined') {
   } catch (_) {}
 }
 
-// Arc Testnet as official AppKit / Wagmi network definition
-export const arcTestnet = defineChain({
-  id: ARC_TESTNET_CHAIN_ID,
-  caipNetworkId: `eip155:${ARC_TESTNET_CHAIN_ID}`,
+// Arc Mainnet as official AppKit / Wagmi network definition
+export const arcMainnet = defineChain({
+  id: ARC_MAINNET_CHAIN_ID,
+  caipNetworkId: `eip155:${ARC_MAINNET_CHAIN_ID}`,
   chainNamespace: 'eip155',
-  name: 'Arc Testnet',
+  name: 'Arc',
   nativeCurrency: {
     name: 'USD Coin',
     symbol: 'USDC',
@@ -53,25 +60,28 @@ export const arcTestnet = defineChain({
   },
   rpcUrls: {
     default: {
-      http: [ARC_TESTNET_RPC_URL],
+      http: [ARC_MAINNET_RPC_URL, 'https://rpc.arc.io'],
     },
     public: {
-      http: [ARC_TESTNET_RPC_URL],
+      http: [ARC_MAINNET_RPC_URL, 'https://rpc.arc.io'],
     },
   },
   blockExplorers: {
     default: {
       name: 'ArcScan',
-      url: ARC_TESTNET_EXPLORER_URL,
+      url: ARC_MAINNET_EXPLORER_URL,
     },
   },
-  testnet: true,
+  testnet: false,
 });
 
-// All supported networks in wagmi (Arc Testnet is primary; other chains are registered
+// Backward-compatible alias
+export const arcTestnet = arcMainnet;
+
+// All supported networks in wagmi (Arc Mainnet is primary; other chains are registered
 // so when user connects on Base/Ethereum/etc., the app cleanly detects wrong network
-// and facilitates one-click standard switching to Arc Testnet)
-export const supportedNetworks = [arcTestnet, base, mainnet, arbitrum, polygon, optimism];
+// and facilitates one-click standard switching to Arc Mainnet)
+export const supportedNetworks = [arcMainnet, base, mainnet, arbitrum, polygon, optimism];
 
 // Read Reown / WalletConnect Project ID with fallback for development and testing
 export const WALLETCONNECT_PROJECT_ID =
@@ -90,8 +100,8 @@ export const wagmiConfig = wagmiAdapter.wagmiConfig;
 // Initialize Reown AppKit modal once
 export const appKitModal = createAppKit({
   adapters: [wagmiAdapter],
-  networks: [arcTestnet, base, mainnet, arbitrum, polygon, optimism],
-  defaultNetwork: arcTestnet,
+  networks: [arcMainnet, base, mainnet, arbitrum, polygon, optimism],
+  defaultNetwork: arcMainnet,
   projectId: WALLETCONNECT_PROJECT_ID,
   enableCoinbase: false,
   debug: false,
@@ -99,7 +109,7 @@ export const appKitModal = createAppKit({
     name: 'GEN-0 FI',
     description: 'Onchain financial intelligence, made simple.',
     url: typeof window !== 'undefined' ? window.location.origin : 'https://gen0.fi',
-    icons: ['https://testnet.arcscan.app/favicon.ico'],
+    icons: ['https://arc.etherscan.io/favicon.ico'],
   },
   features: {
     email: false, // Strictly no email per specifications

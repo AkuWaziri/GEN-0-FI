@@ -54,7 +54,7 @@ export const WalletIdentityModal: React.FC<WalletIdentityModalProps> = ({ isOpen
           <div className="flex items-center gap-2 mb-1.5">
             <span className="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.8)]" />
             <span className="text-[11px] font-mono uppercase tracking-wider text-blue-300 font-semibold">
-              Arc (5042002)
+              Arc Mainnet (5042)
             </span>
           </div>
           <h2 className="text-xl font-bold text-white tracking-tight">Connected Wallet</h2>

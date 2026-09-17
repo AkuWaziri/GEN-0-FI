@@ -1,12 +1,12 @@
 import { createPublicClient, formatUnits, http, isAddress } from 'viem';
-import { arcTestnetChain, ARC_NETWORK_CONFIG, ARC_TESTNET_RPC_URL } from '../../config/arc';
+import { arcChain, ARC_NETWORK_CONFIG, ARC_RPC_URL, ARC_EXPLORER_URL } from '../../config/arc';
 import { normalizeTransaction, RawTxInput } from './normalizer';
 import { NormalizedTransaction, WalletSummary } from '../../types/blockchain';
 
-// Dedicated Viem client targeted strictly to Arc Testnet native USDC
+// Dedicated Viem client targeted strictly to Arc Mainnet native USDC
 export const arcClient = createPublicClient({
-  chain: arcTestnetChain,
-  transport: http(process.env.ARC_TESTNET_RPC_URL || ARC_TESTNET_RPC_URL, {
+  chain: arcChain,
+  transport: http(process.env.ARC_MAINNET_RPC_URL || process.env.ARC_RPC_URL || ARC_RPC_URL, {
     timeout: 15_000,
     retryCount: 3,
     retryDelay: 1000,
@@ -310,7 +310,7 @@ export function computeWalletSummary(
   const historyStatus = isScanIncomplete ? 'incomplete' : 'complete';
   const historyStatusNote = isScanIncomplete
     ? 'Onchain balance verified via live Arc RPC. Historical transaction receipts occurred outside recent scanned blocks.'
-    : 'All recent onchain activity verified against Arc Testnet blocks.';
+    : 'All recent onchain activity verified against Arc Mainnet blocks.';
 
   return {
     address,

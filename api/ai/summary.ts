@@ -58,8 +58,8 @@ export default async function handler(req: any, res: any) {
     // Deterministic baseline
     const fallbackSummary =
       txCount > 0
-        ? `Wallet holds ${balance} USDC with ${txCount} confirmed transaction(s) and ${contractCount} contract interaction(s) on Arc. Testnet.`
-        : `Wallet holds ${balance} USDC on Arc. Testnet with no recent transaction history.`;
+        ? `Wallet holds ${balance} USDC with ${txCount} confirmed transaction(s) and ${contractCount} contract interaction(s) on Arc Mainnet.`
+        : `Wallet holds ${balance} USDC on Arc Mainnet with no recent transaction history.`;
 
     const observations = [
       `Current verified balance: ${balance} USDC.`,
@@ -77,12 +77,12 @@ export default async function handler(req: any, res: any) {
       keyObservations: observations.map((o) => o.replace(/\*/g, '')),
       activityLevel: txCount > 5 ? 'active' : txCount > 0 ? 'moderate' : 'low',
       generatedAt: Date.now(),
-      disclaimer: 'Generated from real Arc. Testnet onchain state.',
+      disclaimer: 'Generated from real Arc Mainnet onchain state.',
     };
 
     // Try Gemini if available
     try {
-      const prompt = `Analyze this verified onchain wallet data on Arc. Testnet:
+      const prompt = `Analyze this verified onchain wallet data on Arc Mainnet:
 Address: ${address}
 Balance: ${balance} USDC
 Total Received: ${totalReceived} USDC
@@ -102,7 +102,7 @@ Provide a 2-sentence executive summary and 2 concise key observations strictly b
             keyObservations: (parsed.keyObservations || []).map((o: string) => String(o).replace(/\*/g, '')),
             activityLevel: parsed.activityLevel || deterministicResult.activityLevel,
             generatedAt: Date.now(),
-            disclaimer: 'Generated with Gemini AI and verified Arc. Testnet state.',
+            disclaimer: 'Generated with Gemini AI and verified Arc Mainnet state.',
           });
         }
       }

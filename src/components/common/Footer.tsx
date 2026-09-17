@@ -14,7 +14,7 @@ export const Footer: React.FC<{ className?: string }> = ({ className = '' }) => 
         <span className="text-zinc-600 hidden xs:inline">•</span>
         <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#111317] border border-zinc-800 text-[11px] text-zinc-300">
           <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.8)]" />
-          <span>Arc. Testnet</span>
+          <span>Arc Mainnet</span>
         </div>
       </div>
 

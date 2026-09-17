@@ -16,7 +16,7 @@ export const LandingView: React.FC<LandingViewProps> = ({ onOpenConnect }) => {
         <div className="flex items-center gap-2.5 sm:gap-3">
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#111317] border border-blue-500/25 text-xs font-mono text-zinc-300 shadow-[0_0_12px_rgba(59,130,246,0.15)]">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.8)]" />
-            <span>Arc. Testnet</span>
+            <span>Arc Mainnet</span>
           </div>
 
           <button
