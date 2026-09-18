@@ -8,7 +8,7 @@ import { useWalletConnection, ConnectionState } from '../hooks/useWalletConnecti
 import { useWalletNetwork } from '../hooks/useWalletNetwork';
 import { useArcBalance } from '../hooks/useArcBalance';
 import { defaultArcProvider } from '../services/blockchain/blockchainProvider';
-import { AiWalletAnalysis, BlockchainStatus, NormalizedTransaction, WalletSummary } from '../types/blockchain';
+import { AiWalletAnalysis, BlockchainStatus, NormalizedTransaction, WalletAssetSummary, WalletSummary } from '../types/blockchain';
 
 // Single shared QueryClient instance for TanStack Query
 const queryClient = new QueryClient({
@@ -33,6 +33,7 @@ export interface WalletContextType {
   walletName: string | null;
   balanceUSDC: string;
   walletSummary: WalletSummary | null;
+  walletAssets: WalletAssetSummary | null;
   transactions: NormalizedTransaction[];
   networkStatus: BlockchainStatus | null;
   isLoadingData: boolean;
@@ -131,6 +132,7 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
   }, [wagmiBalanceData]);
 
   const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
+  const [walletAssets, setWalletAssets] = useState<WalletAssetSummary | null>(null);
   const [transactions, setTransactions] = useState<NormalizedTransaction[]>([]);
   const [networkStatus, setNetworkStatus] = useState<BlockchainStatus | null>(null);
   const [isLoadingData, setIsLoadingData] = useState<boolean>(false);
@@ -299,9 +301,10 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
 
     try {
       // 1. Fetch real transaction count & activity
-      const [txs, summary] = await Promise.all([
+      const [txs, summary, assets] = await Promise.all([
         defaultArcProvider.getTransactions(targetAddr, 25).catch(() => []),
         defaultArcProvider.getWalletSummary(targetAddr).catch(() => null),
+        defaultArcProvider.getWalletAssets(targetAddr).catch(() => null),
       ]);
 
       // Guard against race condition if user switched accounts while request was pending
@@ -311,6 +314,7 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
 
       setTransactions(txs || []);
       setWalletSummary(summary);
+      setWalletAssets(assets);
 
       // Trigger AI summary with the fresh authoritative data
       if (summary || targetAddr) {
@@ -338,6 +342,7 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
       lastAiFetchedKeyRef.current = '';
       setTransactions([]);
       setWalletSummary(null);
+      setWalletAssets(null);
       setAiSummary(null);
       setIsLoadingData(false);
       setIsRefreshing(false);
@@ -358,6 +363,7 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
     connection.disconnect();
     setTransactions([]);
     setWalletSummary(null);
+    setWalletAssets(null);
     setAiSummary(null);
     setDataError(null);
     setShowWelcomeOverlay(false);
@@ -399,6 +405,7 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
         walletName: connection.connectorName || 'Connected Web3 Wallet',
         balanceUSDC: synchronizedBalanceUSDC,
         walletSummary,
+        walletAssets,
         transactions,
         networkStatus,
         isLoadingData: isLoadingData || (arcBalance.isLoading && synchronizedBalanceUSDC === '0.00'),
