@@ -441,11 +441,11 @@ export async function fetchCompleteWalletState(address: string): Promise<Complet
     };
   }
 
-  let transferTotals: { received: bigint; sent: bigint } | undefined;
+  let transferTotals: { received: bigint; sent: bigint } | null = null;
   try {
     transferTotals = await fetchActivityTotals(address);
   } catch (error) {
-    console.warn('[GEN-0FI] Arc activity totals unavailable, using transaction value totals:', error);
+    console.warn('[GEN-0FI] Arc activity totals unavailable:', error);
   }
 
   const summary = computeWalletSummary(
@@ -453,14 +453,14 @@ export async function fetchCompleteWalletState(address: string): Promise<Complet
     balance.formatted,
     history.lifetimeTransactions,
     false,
-    transferTotals
+    transferTotals ?? undefined
   );
 
   return {
     walletAddress: address,
     currentBalance: summary.balanceUSDC,
-    totalReceived: summary.totalReceivedUSDC,
-    totalSent: summary.totalSentUSDC,
+    totalReceived: transferTotals ? summary.totalReceivedUSDC : 'Unavailable',
+    totalSent: transferTotals ? summary.totalSentUSDC : 'Unavailable',
     totalGasSpent: summary.gasSpentUSDC,
     totalTransactions: summary.txCount,
     contractInteractions: summary.contractInteractionsCount,
