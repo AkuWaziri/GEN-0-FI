@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAccount, useDisconnect, useConnect } from 'wagmi';
 import { useAppKit, useAppKitState } from '@reown/appkit/react';
-import { ARC_TESTNET_CHAIN_ID } from '../config/arc';
+import { ARC_MAINNET_CHAIN_ID } from '../config/arc';
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'rejected' | 'failed';
 
@@ -72,7 +72,7 @@ export function useWalletConnection(): WalletConnectionHook {
       if (!injected) {
         throw new Error('No browser wallet extension detected.');
       }
-      await connectAsync({ connector: injected, chainId: ARC_TESTNET_CHAIN_ID });
+      await connectAsync({ connector: injected, chainId: ARC_MAINNET_CHAIN_ID });
       setConnectionState('connected');
     } catch (err: unknown) {
       console.warn('Direct injected connection attempt error:', err);
