@@ -169,6 +169,16 @@ function to18Decimals(raw: string | number | bigint, decimals = 18): bigint {
   return value / 10n ** BigInt(decimals - 18);
 }
 
+function addressOf(value: any): string | null {
+  if (!value) return null;
+  const candidate = typeof value === 'string'
+    ? value
+    : value.address ?? value.checksum ?? value.value ?? value.from ?? value.to;
+  if (typeof candidate !== 'string') return null;
+  const normalized = candidate.toLowerCase();
+  return /^0x[a-f0-9]{40}$/.test(normalized) ? normalized : null;
+}
+
 function parseArcAmount(value: any, fallbackDecimals = 18): { raw: bigint; decimals: number } | null {
   if (value === undefined || value === null) return null;
 
