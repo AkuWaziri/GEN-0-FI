@@ -16,13 +16,15 @@ export interface RawTxInput {
   timestamp?: number;
   status?: number | string | boolean;
   contractAddress?: string | null;
+  methodId?: string;
+  functionName?: string;
 }
 
 export function normalizeTransaction(raw: RawTxInput, userAddress: string): NormalizedTransaction {
   const normUser = userAddress.toLowerCase();
   const from = (raw.from || '').toLowerCase();
   const to = raw.to ? raw.to.toLowerCase() : null;
-  const hasCallData = Boolean(raw.input && raw.input !== '0x' && raw.input !== '0x0');
+  const hasCallData = Boolean((raw.input && raw.input !== '0x' && raw.input !== '0x0') || (raw.methodId && raw.methodId !== '0x00000000'));
   const isContractCreation = !raw.to && !!raw.contractAddress;
 
   let direction: TxDirection = 'unknown';
