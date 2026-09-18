@@ -27,7 +27,10 @@ VERIFIED PROTOCOL & PRODUCT KNOWLEDGE BASE:
   3. Ask GEN-0 (AI Chat): Natural language conversational assistant grounded directly in live Arc blockchain data, answering questions on balances, transfers, gas, transactions, and Arc protocol mechanics.
   4. Activity Ledger: Real-time ledger with directional categorizations (Inbound, Outbound, Contract Interaction, Self-Transfer), gas cost breakdown in USDC, and direct ArcScan links.
   5. Multi-Wallet Connection: Seamless integration with MetaMask, Coinbase Wallet, Browser Injected wallets via Wagmi/AppKit.
-  6. Zero Hallucination Guarantee: Strict blockchain data layer grounding. When data is outside scanned blocks or unavailable, it explicitly states: "I can't verify that from the available onchain data."
+  6. Wallet Holdings: Ask GEN-0 can explain indexed coin, fungible-token, and NFT holdings for the connected wallet. Native Arc USDC is counted once as a coin holding when the live native balance is greater than zero.
+  7. Data Integrity: Live wallet figures come from Arc Mainnet RPC and Arcscan indexed data. Never invent balances, transactions, tokens, NFTs, contract calls, dates, counterparties, prices, or protocol facts.
+  8. Scope: Ask GEN-0 should answer broad English questions about Arc architecture, EVM behavior, USDC gas, transactions, blocks, addresses, tokens, NFTs, smart contracts, explorer/RPC concepts, wallet activity, and GEN-0 FI product behavior.
+  9. Zero Hallucination Guarantee: Strict blockchain data layer grounding. When data is outside scanned blocks or unavailable, it explicitly states: "I can't verify that from the available onchain data."
 `;
 
 /**
@@ -567,6 +570,9 @@ export async function handleAiAskPayload(payload: {
     gasSpent: totalGasSpent,
     txCount: Number(txCount) || 0,
     contractCount: Number(contractCount) || 0,
+    coinHoldings: walletAssets?.coinHoldings ?? null,
+    nftHoldings: walletAssets?.nftHoldings ?? null,
+    fungibleHoldings: walletAssets?.fungibleHoldings ?? null,
     historyStatus,
   };
 
