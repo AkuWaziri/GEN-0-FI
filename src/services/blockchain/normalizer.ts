@@ -64,7 +64,7 @@ export function normalizeTransaction(raw: RawTxInput, userAddress: string): Norm
     formattedValue = '0.00';
   }
 
-  let gasCostUSDC = '0.000000';
+  let gasCostUSDC = 'Unavailable';
   let gasUsedStr = '0';
   let gasPriceStr = '0';
   try {
@@ -78,17 +78,17 @@ export function normalizeTransaction(raw: RawTxInput, userAddress: string): Norm
       gasCostUSDC = Number(formatUnits(gasUsed * gasPrice, 18)).toFixed(6);
     }
   } catch {
-    gasCostUSDC = '0.000000';
+    gasCostUSDC = 'Unavailable';
   }
 
-  let status: TxStatus = 'success';
+  let status: TxStatus = 'pending';
   if (raw.status !== undefined) {
     if (raw.status === 0 || raw.status === '0x0' || raw.status === false || raw.status === 'reverted' || raw.status === 'error') status = 'reverted';
     else if (raw.status === 1 || raw.status === '0x1' || raw.status === true || raw.status === 'success' || raw.status === 'ok') status = 'success';
     else status = 'pending';
   }
 
-  const timestamp = raw.timestamp || Date.now();
+  const timestamp = raw.timestamp || 0;
   let summary = 'Transaction on Arc';
   if (classification === 'received') summary = `Received ${formattedValue} USDC from ${formatShortAddress(raw.from)}`;
   else if (classification === 'sent') summary = `Sent ${formattedValue} USDC to ${raw.to ? formatShortAddress(raw.to) : 'contract'}`;
