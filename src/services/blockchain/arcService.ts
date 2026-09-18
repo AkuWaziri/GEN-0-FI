@@ -159,49 +159,11 @@ async function loadNormalizedHistory(address: string): Promise<NormalizedTransac
     .sort((a, b) => b.timestamp - a.timestamp);
 }
 
-function activityRows(payload: any): any[] {
-  if (Array.isArray(payload)) return payload;
-  for (const key of ['items', 'activity', 'events', 'transfers', 'rows', 'result']) {
-    if (Array.isArray(payload?.[key])) return payload[key];
-  }
-  return [];
-}
-
-function rawAmount(row: any): { value: bigint; decimals: number } | null {
-  const candidates = [
-    row?.value_raw, row?.amount_raw, row?.raw_amount,
-    row?.value, row?.amount, row?.quantity,
-    row?.asset_amount, row?.token_amount, row?.money, row?.value_18dec, row?.amount_18dec,
-  ];
-
-  for (const candidate of candidates) {
-    if (candidate === undefined || candidate === null || candidate === '') continue;
-    try {
-      if (typeof candidate === 'object') {
-        const raw = candidate.raw ?? candidate.value_raw ?? candidate.amount_raw ?? candidate.value;
-        if (raw !== undefined && /^-?\\d+$/.test(String(raw))) {
-          return { value: BigInt(String(raw)), decimals: Number(candidate.decimals ?? row?.decimals ?? 18) };
-        }
-      } else if (/^-?\\d+$/.test(String(candidate))) {
-        return { value: BigInt(String(candidate)), decimals: Number(row?.decimals ?? 18) };
-      } else if (/^-?\\d+(\\.\\d+)?$/.test(String(candidate))) {
-        const [whole, fraction = ''] = String(candidate).split('.');
-        const frac = (fraction + '0'.repeat(18)).slice(0, 18);
-        return { value: BigInt(whole) * 10n ** 18n + BigInt(frac || '0'), decimals: 18 };
-      }
-    } catch {}
-  }
-
-  return null;
-}
-
-function addressOf(value: any): string {
-  if (typeof value === 'string') return value.toLowerCase();
-  return String(value?.address || value?.hash || '').toLowerCase();
-}
-
-function rowTokenAddress(row: any): string {
-  return addressOf(row?.token || row?.asset || row?.token_address || row?.asset_address);
+function to18Decimals(raw: string | number | bigint, decimals = 18): bigint {
+  const value = BigInt(raw);
+  if (decimals === 18) return value;
+  if (decimals < 18) return value * 10n ** BigInt(18 - decimals);
+  return value / 10n ** BigInt(decimals - 18);
 }
 
 async function fetchActivityTotals(address: string): Promise<{ received: bigint; sent: bigint }> {
@@ -216,33 +178,36 @@ async function fetchActivityTotals(address: string): Promise<{ received: bigint;
     if (cursor) url.searchParams.set('cursor', cursor);
 
     const data = await fetchJson(url.toString());
-    const rows = activityRows(data);
-
+    const rows = Array.isArray(data?.items) ? data.items : Array.isArray(data?.activity) ? data.activity : Array.isArray(data?.result) ? data.result : [];
     for (const row of rows) {
-      const token = rowTokenAddress(row);
-      const symbol = String(row?.token?.symbol || row?.asset?.symbol || row?.symbol || '').toUpperCase();
-
-      // The native asset has no token contract. ERC-20 USDC uses the mirror address.
-      if (token && token !== ERC20_USDC && symbol !== 'USDC') continue;
-      if (!token && symbol && symbol !== 'USDC') continue;
-
-      const amount = rawAmount(row);
-      if (!amount) continue;
-
       const from = addressOf(row?.from);
       const to = addressOf(row?.to);
-      const direction = String(row?.direction || row?.flow || row?.kind || '').toLowerCase();
+      const direction = String(row?.direction || row?.flow || '').toLowerCase();
 
-      const incoming = direction.includes('in') || direction === 'received' || to === target;
-      const outgoing = direction.includes('out') || direction === 'sent' || from === target;
+      let raw: bigint | null = null;
+      let decimals = 18;
+
+      const raw18 = row?.value_18dec ?? row?.amount_18dec;
+      if (raw18 !== undefined && /^-?\\d+$/.test(String(raw18))) {
+        raw = BigInt(String(raw18));
+        decimals = 18;
+      } else {
+        const candidate = row?.value_raw ?? row?.amount_raw ?? row?.value ?? row?.amount ?? row?.quantity;
+        if (candidate !== undefined && candidate !== null && /^-?\\d+$/.test(String(candidate))) {
+          raw = BigInt(String(candidate));
+          decimals = Number(row?.decimals ?? row?.token?.decimals ?? row?.asset?.decimals ?? 18);
+        }
+      }
+
+      if (raw === null) continue;
+
+      const incoming = to === target || direction === 'in' || direction === 'incoming' || direction === 'received';
+      const outgoing = from === target || direction === 'out' || direction === 'outgoing' || direction === 'sent';
       if (incoming === outgoing) continue;
 
-      let normalized = amount.value;
-      if (amount.decimals < 18) normalized *= 10n ** BigInt(18 - amount.decimals);
-      if (amount.decimals > 18) normalized /= 10n ** BigInt(amount.decimals - 18);
-
+      const normalized = to18Decimals(raw, decimals);
       if (incoming) received += normalized;
-      if (outgoing) sent += normalized;
+      else if (outgoing) sent += normalized;
     }
 
     const next = data?.page?.next;
