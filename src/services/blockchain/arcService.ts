@@ -8,6 +8,20 @@ const ARCSCAN_API_KEY = process.env.ARCSCAN_API_KEY || 'YourApiKeyToken';
 const ARCSCAN_RPC_URL = 'https://rpc.arc-scan.org';
 const NATIVE_USDC_DECIMALS = 18;
 const ERC20_USDC_ADDRESS = '0x3600000000000000000000000000000000000000'.toLowerCase();
+const TX_CACHE_TTL_MS = 30_000;
+const txCache = new Map<string, {
+  transactions: NormalizedTransaction[];
+  isUnavailable: boolean;
+  historyStatus: 'complete' | 'incomplete' | 'unavailable';
+  timestamp: number;
+}>();
+
+function formatUSDC(value: bigint | string): string {
+  const formatted = formatUnits(typeof value === 'bigint' ? value : BigInt(value), NATIVE_USDC_DECIMALS);
+  const [whole, fraction = ''] = formatted.split('.');
+  return fraction ? `${whole}.${fraction.slice(0, 6).padEnd(6, '0')}` : `${whole}.000000`;
+}
+
 
 export const arcClient = createPublicClient({
   chain: arcChain,
