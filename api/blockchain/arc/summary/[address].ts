@@ -1,5 +1,5 @@
 import { isAddress } from 'viem';
-import { arcClient, fetchCompleteWalletState } from '../../../../src/services/blockchain/arcService';
+import { arcClient, fetchCompleteWalletState } from '../../../../src/services/blockchain/arcService.js';
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
