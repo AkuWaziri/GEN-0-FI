@@ -16,8 +16,8 @@ VERIFIED PROTOCOL & PRODUCT KNOWLEDGE BASE:
   - Network Name: Arc (Mainnet)
   - Chain ID: 5042 (Hex: 0x13b2)
   - Native Currency: USDC (Symbol: USDC, Decimals: 18)
-  - Block Explorer: ArcScan (https://arc.etherscan.io) & Arc Explorer (https://explorer.arc.io)
-  - Official RPC: https://rpc.mainnet.arc.io (Secondary: https://rpc.arc.io)
+  - Block Explorer: Arc Explorer (https://explorer.arc.io). Arcscan is an independent Arc explorer and indexed-data provider.
+  - Official RPC: https://rpc.mainnet.arc.io
 
 2. GEN-0 FI PLATFORM & CORE CAPABILITIES:
 - What is GEN-0 FI: An onchain financial intelligence engine built specifically for Arc. It transforms raw hexadecimal blocks, internal transactions, and gas logs into human-readable accounting and real-time portfolio intelligence.
@@ -274,7 +274,7 @@ export function generateDeterministicChatAnswer(
         })
         .join('\n');
       return {
-        answer: `Your wallet (${short}) has a verified inbound total of ${walletData.totalReceived} USDC on Arc. Testnet.\n\nRecent Inbound Transfers:\n${details}`,
+        answer: `Your wallet (${short}) has a verified inbound total of ${walletData.totalReceived} USDC on Arc Mainnet.\n\nRecent Inbound Transfers:\n${details}`,
         referencedTxHashes,
       };
     }
@@ -476,7 +476,7 @@ export function generateDeterministicChatAnswer(
 
   // Fallback for unverified or unknown queries
   return {
-    answer: `I can't verify that from the available onchain data. Your wallet currently has a verified balance of ${walletData.balance} USDC across ${walletData.txCount} transaction(s) on Arc. Testnet. If you have questions about your balance, recent transfers, gas spent, or the Arc protocol, feel free to ask!`,
+    answer: `I can't verify that from the available onchain data. Your wallet currently has a verified balance of ${walletData.balance} USDC across ${walletData.txCount} transaction(s) on Arc Mainnet. If you have questions about your balance, recent transfers, gas spent, or the Arc protocol, feel free to ask!`,
     referencedTxHashes,
   };
 }
@@ -518,95 +518,32 @@ export async function handleAiAskPayload(payload: {
     throw new Error('Message is required');
   }
 
-  let balance = String(
-    payload.currentBalance ||
-      walletDataRaw.currentBalance ||
-      walletDataRaw.balanceUSDC ||
-      walletDataRaw.balance ||
-      ''
-  );
-  let totalReceived = String(
-    payload.totalReceived ||
-      walletDataRaw.totalReceived ||
-      walletDataRaw.totalReceivedUSDC ||
-      walletDataRaw.receivedTotalUSDC ||
-      ''
-  );
-  let totalSent = String(
-    payload.totalSent ||
-      walletDataRaw.totalSent ||
-      walletDataRaw.totalSentUSDC ||
-      walletDataRaw.sentTotalUSDC ||
-      ''
-  );
-  let totalGasSpent = String(
-    payload.totalGasSpent ||
-      walletDataRaw.totalGasSpent ||
-      walletDataRaw.gasSpentUSDC ||
-      walletDataRaw.gasSpent ||
-      ''
-  );
-  let txCount =
-    payload.totalTransactions ??
-    walletDataRaw.totalTransactions ??
-    walletDataRaw.txCount ??
-    (payload.recentTransactions?.length || 0);
-  let contractCount =
-    payload.contractInteractions ??
-    walletDataRaw.contractInteractions ??
-    walletDataRaw.contractInteractionsCount ??
-    walletDataRaw.activeContractsCount ??
-    0;
-  let recentTransactions: any[] = payload.recentTransactions || walletDataRaw.recentTransactions || [];
+  // If a wallet address is present, the server is the sole source of truth.
+  // Client-provided totals are never allowed to override live Arc Mainnet data.
+  let balance = 'Unavailable';
+  let totalReceived = 'Unavailable';
+  let totalSent = 'Unavailable';
+  let totalGasSpent = 'Unavailable';
+  let txCount = 0;
+  let contractCount = 0;
+  let recentTransactions: any[] = [];
+  let historyStatus = 'unavailable';
 
-  // Live onchain verification fallback: If walletAddress provided and balance is missing/0 or txs are empty
   if (address && address.startsWith('0x')) {
-    const parsedBal = parseFloat(balance.replace(/,/g, '')) || 0;
-    if (parsedBal === 0 || recentTransactions.length === 0 || !balance || balance === 'Unavailable') {
-      try {
-        const liveOnchain = await fetchCompleteWalletState(address);
-        if (liveOnchain) {
-          if (!balance || parsedBal === 0 || balance === 'Unavailable') {
-            if (liveOnchain.currentBalance && liveOnchain.currentBalance !== 'Unavailable') {
-              balance = liveOnchain.currentBalance;
-            }
-          }
-          if (recentTransactions.length === 0 && liveOnchain.recentTransactions.length > 0) {
-            recentTransactions = liveOnchain.recentTransactions;
-          }
-          if (!totalReceived || totalReceived === '0.00') {
-            totalReceived = liveOnchain.totalReceived;
-          }
-          if (!totalSent || totalSent === '0.00') {
-            totalSent = liveOnchain.totalSent;
-          }
-          if (!totalGasSpent || totalGasSpent === '0.000000') {
-            totalGasSpent = liveOnchain.totalGasSpent;
-          }
-          if (!txCount || txCount === 0) {
-            txCount = liveOnchain.totalTransactions;
-          }
-          if (!contractCount || contractCount === 0) {
-            contractCount = liveOnchain.contractInteractions;
-          }
-        }
-      } catch (onchainErr) {
-        console.warn(`[Ask GEN-0] Live onchain fallback check failed for ${address}:`, onchainErr);
-      }
+    try {
+      const liveOnchain = await fetchCompleteWalletState(address);
+      balance = liveOnchain.currentBalance;
+      totalReceived = liveOnchain.totalReceived;
+      totalSent = liveOnchain.totalSent;
+      totalGasSpent = liveOnchain.totalGasSpent;
+      txCount = liveOnchain.totalTransactions;
+      contractCount = liveOnchain.contractInteractions;
+      recentTransactions = liveOnchain.recentTransactions;
+      historyStatus = liveOnchain.historyStatus;
+    } catch (onchainErr) {
+      console.warn('[Ask GEN-0] Authoritative Arc Mainnet read failed:', onchainErr);
     }
   }
-
-  balance = balance || (address ? 'Unavailable' : '0.00');
-  totalReceived = totalReceived || '0.00';
-  totalSent = totalSent || '0.00';
-  totalGasSpent = totalGasSpent || '0.000000';
-
-  const parsedBalFinal = parseFloat(balance.replace(/,/g, '')) || 0;
-  const historyStatus =
-    walletDataRaw.historyStatus ||
-    (recentTransactions.length === 0 && parsedBalFinal > 0
-      ? 'incomplete'
-      : 'complete');
 
   const normalizedWalletSnapshot = {
     address: address || '',
@@ -618,6 +555,7 @@ export async function handleAiAskPayload(payload: {
     contractCount: Number(contractCount) || 0,
     historyStatus,
   };
+
 
   // If no wallet is connected and user asks a personal wallet question, answer immediately with guidance
   const qLower = message.toLowerCase().trim();
@@ -643,7 +581,7 @@ export async function handleAiAskPayload(payload: {
   if (!address && isPersonalWalletQuery) {
     return {
       answer:
-        'No wallet is currently connected. Please connect your Web3 wallet (MetaMask, Coinbase Wallet, or injected) or provide an Arc address so I can query your verified live balance and transaction activity on Arc Testnet.',
+        'No wallet is currently connected. Please connect your Web3 wallet (MetaMask, Coinbase Wallet, or injected) or provide an Arc address so I can query your verified live balance and transaction activity on Arc Mainnet.',
       referencedTxHashes: [],
       model: 'deterministic-verifier',
     };
