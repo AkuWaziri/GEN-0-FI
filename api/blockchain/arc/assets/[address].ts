@@ -1,13 +1,9 @@
+import { applyApiSecurity } from '../../../_security.js';
 import { isAddress } from 'viem';
 import { fetchWalletAssetSummary } from '../../../../src/services/blockchain/arcService.js';
 
 export default async function handler(req: any, res: any) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!applyApiSecurity(req, res)) return;
 
   const address = req.query.address || (req.url && req.url.split('/').pop()?.split('?')[0]);
 
@@ -24,7 +20,7 @@ export default async function handler(req: any, res: any) {
       address,
       assets: null,
       error: 'Arc Mainnet token holdings are temporarily unavailable.',
-      message: error?.message || 'Indexed token holdings query failed',
+      message: 'Upstream query failed',
     });
   }
 }
