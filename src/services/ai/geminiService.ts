@@ -1,6 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { ARC_NETWORK_CONFIG } from '../../config/arc.js';
-import { fetchCompleteWalletState } from '../blockchain/arcService.js';
+import { fetchCompleteWalletState, fetchWalletAssetSummary } from '../blockchain/arcService.js';
 
 /**
  * Verified knowledge base on Arc protocol & GEN-0 FI platform.
@@ -527,11 +527,24 @@ export async function handleAiAskPayload(payload: {
   let txCount = 0;
   let contractCount = 0;
   let recentTransactions: any[] = [];
+  let walletAssets: {
+    tokenHoldings: number;
+    coinHoldings: number;
+    nftHoldings: number;
+    fungibleHoldings: number;
+    historyStatus: 'complete' | 'unavailable';
+  } | null = null;
   let historyStatus = 'unavailable';
 
   if (address && address.startsWith('0x')) {
     try {
-      const liveOnchain = await fetchCompleteWalletState(address);
+      const [liveOnchain, liveAssets] = await Promise.all([
+        fetchCompleteWalletState(address),
+        fetchWalletAssetSummary(address).catch((assetErr) => {
+          console.warn('[Ask GEN-0] Wallet asset read failed:', assetErr);
+          return null;
+        }),
+      ]);
       balance = liveOnchain.currentBalance;
       totalReceived = liveOnchain.totalReceived;
       totalSent = liveOnchain.totalSent;
@@ -539,6 +552,7 @@ export async function handleAiAskPayload(payload: {
       txCount = liveOnchain.totalTransactions;
       contractCount = liveOnchain.contractInteractions;
       recentTransactions = liveOnchain.recentTransactions;
+      walletAssets = liveAssets;
       historyStatus = liveOnchain.historyStatus;
     } catch (onchainErr) {
       console.warn('[Ask GEN-0] Authoritative Arc Mainnet read failed:', onchainErr);
@@ -608,6 +622,11 @@ export async function handleAiAskPayload(payload: {
     status: t.status,
     isContractInteraction: Boolean(t.isContractInteraction),
     summary: t.summary || undefined,
+    blockNumber: t.blockNumber,
+    contractAddress: t.contractAddress || undefined,
+    contractName: t.contractName || undefined,
+    methodName: t.methodName || undefined,
+    classification: t.classification,
   }));
 
   const systemInstruction = `You are GEN-0 FI, the official onchain financial intelligence assistant and Arc protocol expert.
@@ -615,8 +634,9 @@ export async function handleAiAskPayload(payload: {
 You operate in two primary modes:
 
 MODE 1: WALLET INTELLIGENCE
-- Answer user questions regarding their wallet activity, balances, incoming/outgoing funds, gas spending, contract interactions, and transaction dates.
-- Use ONLY the provided verified normalized wallet data and transaction list as the source of truth.
+- Answer user questions regarding wallet activity, balances, holdings, incoming/outgoing funds, gas spending, counterparties, transactions, blocks, contract interactions, token/NFT holdings, and transaction dates.
+- Use ONLY the provided verified normalized wallet data, holdings snapshot, transaction list, and verified protocol knowledge as sources of truth.
+- You may explain what a transaction means, why a gas fee exists, what a contract interaction is, how a transfer affects the wallet, and how GEN-0 FI derives a metric. Separate verified facts from general protocol explanations.
 - NEVER recalculate, invent, or contradict the normalized metrics:
   * Current USDC balance: ${balance} USDC
   * Total received: ${totalReceived} USDC
@@ -629,8 +649,10 @@ MODE 1: WALLET INTELLIGENCE
   "I can't verify that from the available onchain data."
 
 MODE 2: GEN-0 AI (CHAT) & PROTOCOL INTELLIGENCE
-- Answer user questions about Arc, native USDC for gas, GEN-0 FI platform features, and how wallet intelligence works using the verified knowledge base.
+- Answer broad English questions about Arc, its EVM model, native USDC gas, network parameters, transaction mechanics, smart contracts, tokens, NFTs, finality, RPC/explorer concepts, and GEN-0 FI's product architecture and features using the verified knowledge base.
+- If the user asks something that requires current external facts not present in the verified knowledge base, say what is known from the supplied context and clearly identify what cannot be verified.
 - Do not claim features exist if they are not part of GEN-0 FI or Arc.
+- Do not confuse general blockchain knowledge with facts about this specific wallet. For wallet-specific claims, rely on the live snapshot only.
 
 CRITICAL FORMATTING MANDATES:
 - NEVER use asterisks (*) or double asterisks (**) anywhere in the response. Do NOT use markdown bold or italic asterisks. Output clean plain text.
@@ -654,6 +676,9 @@ VERIFIED LIVE ONCHAIN WALLET DATA (AUTHORITATIVE SOURCE OF TRUTH):
 - Confirmed Transaction Count: ${txCount}
 - Smart Contract Interactions Count: ${contractCount}
 - Transaction History Status: ${historyStatus}
+- Indexed Coin Holdings: ${walletAssets?.coinHoldings ?? 'Unavailable'}
+- Indexed NFT Holdings: ${walletAssets?.nftHoldings ?? 'Unavailable'}
+- Indexed Fungible Token Holdings: ${walletAssets?.fungibleHoldings ?? 'Unavailable'}
 - Recent Scanned Transactions (${formattedTxList.length} items):
 ${JSON.stringify(formattedTxList, null, 2)}
 
@@ -662,7 +687,7 @@ ${formattedHistory}
 
 USER QUESTION: "${message}"
 
-Answer the user directly and concisely following the instructions. Remember: strictly no asterisks.`;
+Answer the user directly in clear English. For simple questions, answer simply. For technical questions, explain the mechanism step by step when useful. For wallet questions, use the live data above and name the exact metric or transaction that supports the answer. Never fabricate missing data. If the user asks about something outside the supplied verified wallet data or protocol knowledge, say that it cannot be verified from the available data rather than guessing. Remember: strictly no asterisks.`;
 
   try {
     const { text, modelUsed } = await callGeminiWithFallback(promptContent, {
