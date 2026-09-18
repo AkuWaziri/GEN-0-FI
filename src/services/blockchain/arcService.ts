@@ -16,57 +16,6 @@ const txCache = new Map<string, {
   timestamp: number;
 }>();
 
-async function fetchUsdcActivityTotals(address: string): Promise<{ received: bigint; sent: bigint } | null> {
-  const received = { value: 0n };
-  const sent = { value: 0n };
-  let cursor: string | undefined;
-  const maxPages = 500;
-
-  try {
-    for (let page = 0; page < maxPages; page++) {
-      const url = new URL(`${ARCSCAN_API_BASE}/v1/address/${address}/activity`);
-      url.searchParams.set('limit', '100');
-      if (cursor) url.searchParams.set('cursor', cursor);
-
-      const response = await fetch(url.toString(), {
-        headers: { Accept: 'application/json', 'User-Agent': 'GEN-0FI/1.0' },
-        signal: AbortSignal.timeout(15_000),
-      });
-      if (!response.ok) throw new Error(`Arcscan activity request failed: ${response.status}`);
-
-      const data = await response.json();
-      const rows = Array.isArray(data?.items) ? data.items : Array.isArray(data?.activity) ? data.activity : Array.isArray(data?.result) ? data.result : [];
-      for (const row of rows) {
-        const tokenAddress = String(row?.token?.address || row?.token_address || row?.asset?.address || '').toLowerCase();
-        const symbol = String(row?.token?.symbol || row?.asset?.symbol || row?.symbol || '').toUpperCase();
-        if (tokenAddress && tokenAddress !== ERC20_USDC_ADDRESS && symbol !== 'USDC') continue;
-
-        const money = row?.amount || row?.value || row?.asset_amount || row?.quantity;
-        const raw = money?.raw ?? money?.value ?? (typeof money === 'string' ? money : undefined);
-        if (raw === undefined || raw === null || raw === '') continue;
-
-        let amount = BigInt(String(raw));
-        const decimals = Number(money?.decimals ?? row?.decimals ?? 18);
-        if (decimals < NATIVE_USDC_DECIMALS) amount *= 10n ** BigInt(NATIVE_USDC_DECIMALS - decimals);
-        else if (decimals > NATIVE_USDC_DECIMALS) amount /= 10n ** BigInt(decimals - NATIVE_USDC_DECIMALS);
-
-        const direction = String(row?.direction || row?.kind || row?.flow || '').toLowerCase();
-        if (direction.includes('in') || direction === 'received') received.value += amount;
-        else if (direction.includes('out') || direction === 'sent') sent.value += amount;
-      }
-
-      const next = data?.page?.next || data?.next_cursor || data?.next;
-      if (!next || rows.length === 0) break;
-      cursor = String(next);
-    }
-
-    return { received: received.value, sent: sent.value };
-  } catch (error) {
-    console.warn('[ArcService] Arcscan activity totals unavailable:', error);
-    return null;
-  }
-}
-
 async function markContractTargets(transactions: NormalizedTransaction[]): Promise<void> {
   const cache = new Map<string, boolean>();
   for (const tx of transactions) {
