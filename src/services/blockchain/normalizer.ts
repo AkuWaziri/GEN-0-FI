@@ -18,29 +18,38 @@ export interface RawTxInput {
   contractAddress?: string | null;
   methodId?: string;
   functionName?: string;
+  isContractTarget?: boolean;
+}
+
+function rawBigInt(value: bigint | string | number | undefined): bigint {
+  if (value === undefined || value === '') return 0n;
+  if (typeof value === 'bigint') return value;
+  if (typeof value === 'number') return BigInt(Math.trunc(value));
+  return value.startsWith('0x') ? BigInt(value) : BigInt(value);
 }
 
 export function normalizeTransaction(raw: RawTxInput, userAddress: string): NormalizedTransaction {
   const normUser = userAddress.toLowerCase();
   const from = (raw.from || '').toLowerCase();
   const to = raw.to ? raw.to.toLowerCase() : null;
-  const hasCallData = Boolean((raw.input && raw.input !== '0x' && raw.input !== '0x0') || (raw.methodId && raw.methodId !== '0x00000000'));
   const isContractCreation = !raw.to && !!raw.contractAddress;
+  const isContractTarget = Boolean(raw.isContractTarget || isContractCreation);
 
   let direction: TxDirection = 'unknown';
   if (from === normUser && to === normUser) direction = 'self';
-  else if (from === normUser) direction = hasCallData || isContractCreation ? 'contract_interaction' : 'sent';
+  else if (from === normUser) direction = isContractTarget ? 'contract_interaction' : 'sent';
   else if (to === normUser) direction = 'received';
 
   let classification: TxClassification = 'unknown';
   let classificationLabel = 'Unknown activity';
+
   if (direction === 'received') {
     classification = 'received';
     classificationLabel = 'Received';
   } else if (direction === 'sent') {
     classification = 'sent';
     classificationLabel = 'Sent';
-  } else if (direction === 'contract_interaction' || isContractCreation || hasCallData) {
+  } else if (direction === 'contract_interaction' || isContractCreation) {
     classification = 'contract_interaction';
     classificationLabel = isContractCreation ? 'Contract creation' : 'Contract interaction';
   } else if (direction === 'self') {
@@ -48,55 +57,51 @@ export function normalizeTransaction(raw: RawTxInput, userAddress: string): Norm
     classificationLabel = 'Self-transfer';
   }
 
-  let rawValueStr = '0';
-  let formattedValue = '0.00';
+  const rawValueStr = rawBigInt(raw.value).toString();
+  let formattedValue = '0';
   try {
-    rawValueStr = typeof raw.value === 'bigint'
-      ? raw.value.toString()
-      : raw.value.startsWith('0x') ? BigInt(raw.value).toString() : raw.value;
-    formattedValue = formatUnits(BigInt(rawValueStr), 18);
-
-    const numVal = parseFloat(formattedValue);
-    formattedValue = !Number.isFinite(numVal) || numVal === 0
-      ? '0'
-      : numVal < 0.0001
-        ? numVal.toFixed(6)
-        : numVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
-  } catch {
-    formattedValue = '0.00';
-  }
+    const num = Number(formatUnits(BigInt(rawValueStr), 18));
+    if (Number.isFinite(num)) {
+      formattedValue = num === 0
+        ? '0'
+        : num < 0.0001
+          ? num.toFixed(6)
+          : num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+    }
+  } catch {}
 
   let gasCostUSDC = 'Unavailable';
   let gasUsedStr = '0';
   let gasPriceStr = '0';
   try {
-    if (raw.fee !== undefined) {
-      gasCostUSDC = Number(formatUnits(typeof raw.fee === 'bigint' ? raw.fee : BigInt(raw.fee), 18)).toFixed(6);
-    } else if (raw.gasUsed !== undefined && raw.gasPrice !== undefined) {
-      const gasUsed = typeof raw.gasUsed === 'bigint' ? raw.gasUsed : BigInt(raw.gasUsed);
-      const gasPrice = typeof raw.gasPrice === 'bigint' ? raw.gasPrice : BigInt(raw.gasPrice);
-      gasUsedStr = gasUsed.toString();
-      gasPriceStr = gasPrice.toString();
-      gasCostUSDC = Number(formatUnits(gasUsed * gasPrice, 18)).toFixed(6);
-    }
-  } catch {
-    gasCostUSDC = 'Unavailable';
-  }
+    const gasUsed = raw.gasUsed !== undefined ? rawBigInt(raw.gasUsed) : 0n;
+    const gasPrice = raw.gasPrice !== undefined ? rawBigInt(raw.gasPrice) : 0n;
+    const fee = raw.fee !== undefined ? rawBigInt(raw.fee) : gasUsed * gasPrice;
+    gasUsedStr = gasUsed.toString();
+    gasPriceStr = gasPrice.toString();
+    gasCostUSDC = Number(formatUnits(fee, 18)).toFixed(6);
+  } catch {}
 
   let status: TxStatus = 'pending';
   if (raw.status !== undefined) {
-    if (raw.status === 0 || raw.status === '0x0' || raw.status === false || raw.status === 'reverted' || raw.status === 'error') status = 'reverted';
-    else if (raw.status === 1 || raw.status === '0x1' || raw.status === true || raw.status === 'success' || raw.status === 'ok') status = 'success';
-    else status = 'pending';
+    if (raw.status === 0 || raw.status === '0x0' || raw.status === false || raw.status === 'reverted' || raw.status === 'error') {
+      status = 'reverted';
+    } else if (raw.status === 1 || raw.status === '0x1' || raw.status === true || raw.status === 'success' || raw.status === 'ok') {
+      status = 'success';
+    }
   }
 
   const timestamp = raw.timestamp || 0;
   let summary = 'Transaction on Arc';
-  if (classification === 'received') summary = `Received ${formattedValue} USDC from ${formatShortAddress(raw.from)}`;
-  else if (classification === 'sent') summary = `Sent ${formattedValue} USDC to ${raw.to ? formatShortAddress(raw.to) : 'contract'}`;
-  else if (classification === 'contract_interaction') summary = isContractCreation
-    ? 'Deployed new smart contract'
-    : `Interacted with contract ${raw.to ? formatShortAddress(raw.to) : 'contract'}`;
+  if (classification === 'received') {
+    summary = `Received ${formattedValue} USDC from ${formatShortAddress(raw.from)}`;
+  } else if (classification === 'sent') {
+    summary = `Sent ${formattedValue} USDC to ${raw.to ? formatShortAddress(raw.to) : 'address'}`;
+  } else if (classification === 'contract_interaction') {
+    summary = isContractCreation
+      ? 'Deployed new smart contract'
+      : `Interacted with contract ${raw.to ? formatShortAddress(raw.to) : 'contract'}`;
+  }
 
   return {
     id: raw.hash,
@@ -113,8 +118,9 @@ export function normalizeTransaction(raw: RawTxInput, userAddress: string): Norm
     gasUsed: gasUsedStr,
     gasPrice: gasPriceStr,
     gasCostUSDC,
-    isContractInteraction: direction === 'contract_interaction' || hasCallData,
-    contractAddress: raw.contractAddress || (direction === 'contract_interaction' && raw.to ? raw.to : undefined),
+    isContractInteraction: isContractTarget,
+    contractAddress: raw.contractAddress || (isContractTarget && raw.to ? raw.to : undefined),
+    methodName: raw.functionName || undefined,
     classification,
     classificationLabel,
     summary,
