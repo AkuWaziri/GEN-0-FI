@@ -465,11 +465,20 @@ export async function fetchWalletAssetSummary(address: string): Promise<{
     }
   }
 
+  // Arc's native USDC is the wallet's primary coin holding. It is not
+  // returned by the token-holdings endpoint because the native balance and
+  // ERC-20 USDC face are the same underlying asset. Count it exactly once.
+  let nativeCoinCount = 0;
+  try {
+    const { raw } = await fetchBalanceFromArcRpc(address);
+    if (BigInt(raw) > 0n) nativeCoinCount = 1;
+  } catch {}
+
   return {
-    tokenHoldings: coinHoldings + nftHoldings,
-    coinHoldings,
+    tokenHoldings: coinHoldings + nftHoldings + nativeCoinCount,
+    coinHoldings: coinHoldings + nativeCoinCount,
     nftHoldings,
-    fungibleHoldings: coinHoldings,
+    fungibleHoldings: coinHoldings + nativeCoinCount,
     historyStatus: 'complete',
   };
 }
