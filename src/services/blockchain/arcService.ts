@@ -36,9 +36,13 @@ const arcScanClient = createPublicClient({
 });
 
 function formatUSDC(raw: bigint): string {
-  const value = Number(formatUnits(raw, NATIVE_DECIMALS));
-  if (!Number.isFinite(value)) return 'Unavailable';
-  return value.toFixed(6);
+  try {
+    const exact = formatUnits(raw, NATIVE_DECIMALS);
+    const [whole, fraction = ''] = exact.split('.');
+    return `${whole}.${(fraction + '000000').slice(0, 6)}`;
+  } catch {
+    return 'Unavailable';
+  }
 }
 
 function requestHeaders(): HeadersInit {
@@ -218,6 +222,65 @@ function parseArcAmount(value: any, fallbackDecimals = 18): { raw: bigint; decim
   return null;
 }
 
+function activityTokenAddress(row: any): string | null {
+  const candidates = [
+    row?.token_address,
+    row?.tokenAddress,
+    row?.token?.address,
+    row?.token?.contract_address,
+    row?.asset?.address,
+    row?.asset?.contract_address,
+    row?.contract_address,
+    row?.contractAddress,
+  ];
+  for (const value of candidates) {
+    const address = addressOf(value);
+    if (address) return address;
+  }
+  return null;
+}
+
+function activitySymbol(row: any): string | null {
+  const candidates = [
+    row?.symbol,
+    row?.token?.symbol,
+    row?.asset?.symbol,
+    row?.token_symbol,
+    row?.asset_symbol,
+  ];
+  for (const value of candidates) {
+    if (typeof value === 'string' && value.trim()) return value.trim().toUpperCase();
+  }
+  return null;
+}
+
+function isSuccessfulActivityRow(row: any): boolean {
+  const status = String(
+    row?.status ??
+    row?.tx_status ??
+    row?.transaction_status ??
+    row?.execution_status ??
+    ''
+  ).toLowerCase();
+
+  if (!status) return true;
+  return !['0', '0x0', 'false', 'failed', 'fail', 'reverted', 'error'].includes(status);
+}
+
+function isTransferLikeActivityRow(row: any): boolean {
+  const kind = String(
+    row?.kind ??
+    row?.type ??
+    row?.category ??
+    row?.activity_type ??
+    row?.event_type ??
+    ''
+  ).toLowerCase();
+
+  if (!kind) return true;
+  return /transfer|movement|value|internal|received|sent|native|usdc/.test(kind);
+}
+
 async function fetchActivityTotals(address: string): Promise<{ received: bigint; sent: bigint }> {
   const target = address.toLowerCase();
   let received = 0n;
@@ -243,13 +306,27 @@ async function fetchActivityTotals(address: string): Promise<{ received: bigint;
     activityRows += rows.length;
 
     for (const row of rows) {
+      if (!isSuccessfulActivityRow(row) || !isTransferLikeActivityRow(row)) continue;
+
+      // GEN-0FI is a USDC financial monitor. Never interpret another token's
+      // amount as USDC. Arc has a native USDC face plus a 6-decimal ERC-20 face.
+      const tokenAddress = activityTokenAddress(row);
+      const symbol = activitySymbol(row);
+      if (tokenAddress && tokenAddress !== ERC20_USDC) continue;
+      if (symbol && symbol !== 'USDC') continue;
+
       const from = addressOf(row?.from);
       const to = addressOf(row?.to);
       const direction = String(row?.direction || row?.flow || '').toLowerCase();
 
-      const amount =
+      const explicitNativeAmount =
         parseArcAmount(row?.value_18dec, 18) ||
-        parseArcAmount(row?.amount_18dec, 18) ||
+        parseArcAmount(row?.amount_18dec, 18);
+
+      // Generic value/amount fields are accepted only for an explicitly
+      // transfer-like row. This prevents transaction metadata or unrelated
+      // activity values from becoming wallet cash-flow totals.
+      const amount = explicitNativeAmount ||
         parseArcAmount(row?.value, Number(row?.decimals ?? row?.token?.decimals ?? row?.asset?.decimals ?? 18)) ||
         parseArcAmount(row?.amount, Number(row?.decimals ?? row?.token?.decimals ?? row?.asset?.decimals ?? 18)) ||
         parseArcAmount(row?.quantity, Number(row?.decimals ?? row?.token?.decimals ?? row?.asset?.decimals ?? 18)) ||
@@ -273,12 +350,20 @@ async function fetchActivityTotals(address: string): Promise<{ received: bigint;
       if (incoming === outgoing) continue;
 
       const normalized = to18Decimals(amount.raw, amount.decimals);
+      if (normalized <= 0n) continue;
 
-      // The activity feed is a merged timeline. The same value movement can
-      // appear through multiple indexed representations, so count each exact
-      // movement once per transaction/hash + direction + endpoints + amount.
+      // Arc publishes native USDC and its ERC-20 face. Arcscan de-duplicates
+      // the same underlying movement in its transfer feed; do the same here.
+      const txHash = String(
+        row?.tx_hash ||
+        row?.txHash ||
+        row?.hash ||
+        row?.transaction_hash ||
+        ''
+      ).toLowerCase();
+
       const movementId = [
-        String(row?.tx_hash || row?.txHash || row?.hash || row?.transaction_hash || ''),
+        txHash,
         from || '',
         to || '',
         incoming ? 'in' : 'out',
@@ -452,7 +537,7 @@ export function computeWalletSummary(
     historyStatus,
     historyStatusNote: isHistoryUnavailable
       ? 'Arc Mainnet indexed history is unavailable. No lifetime activity values are inferred.'
-      : 'Lifetime Arc Mainnet transaction history was retrieved from Arcscan.',
+      : 'Lifetime Arc Mainnet indexed transaction history was retrieved from Arcscan; received/sent totals are calculated from USDC value-flow records only.',
     incomingTransfersCount: incomingCount,
     outgoingTransfersCount: outgoingCount,
   };
