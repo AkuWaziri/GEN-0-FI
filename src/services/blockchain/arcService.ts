@@ -117,77 +117,51 @@ function toRawTransaction(tx: any): RawTxInput {
 }
 
 async function resolveContractTargets(rawTransactions: RawTxInput[], userAddress: string): Promise<RawTxInput[]> {
-  // Only a transaction sent by the wallet can be a wallet contract interaction.
-  // Received transfers must never be counted just because their sender is a contract.
+  // A contract interaction must be a transaction sent by this wallet to
+  // contract bytecode that existed at that exact transaction block.
   const user = userAddress.toLowerCase();
-  const targets = [...new Set(
-    rawTransactions
-      .filter(tx => Boolean(tx.to) && tx.from.toLowerCase() === user)
-      .map(tx => tx.to?.toLowerCase())
-      .filter((x): x is string => Boolean(x))
-  )];
+  const candidates = rawTransactions.filter(
+    tx => Boolean(tx.to) && tx.from.toLowerCase() === user
+  );
+
+  // Resolve each transaction independently. A destination can change from an
+  // EOA to a contract later, so a single address-level result is not enough.
+  // If historical code cannot be verified, leave the result unknown rather
+  // than falling back to latest state and risking a false positive.
   const contractMap = new Map<string, boolean>();
+  const unknown = new Set<string>();
 
-  // Keep RPC pressure predictable while resolving only destinations.
-  for (let i = 0; i < targets.length; i += 20) {
-    const batch = targets.slice(i, i + 20);
-    const results = await Promise.all(batch.map(async target => {
-      // Contract status must be resolved against the transaction's block when
-      // possible. Checking only the latest state can misclassify an address
-      // that changed code after the transaction.
-      const targetTransactions = rawTransactions.filter(
-        tx => tx.to?.toLowerCase() === target && tx.from.toLowerCase() === user
-      );
-      let isContract = false;
+  for (let i = 0; i < candidates.length; i += 20) {
+    const batch = candidates.slice(i, i + 20);
+    const results = await Promise.all(batch.map(async tx => {
+      const txHash = tx.hash.toLowerCase();
 
-      for (const tx of targetTransactions) {
+      for (const client of [arcClient, arcScanClient]) {
         try {
-          const code = await arcClient.getCode({
-            address: target as `0x${string}`,
+          const code = await client.getCode({
+            address: tx.to as `0x${string}`,
             blockNumber: tx.blockNumber as bigint,
           });
-          if (code && code !== '0x') {
-            isContract = true;
-            break;
-          }
-        } catch {
-          try {
-            const code = await arcScanClient.getCode({
-              address: target as `0x${string}`,
-              blockNumber: tx.blockNumber as bigint,
-            });
-            if (code && code !== '0x') {
-              isContract = true;
-              break;
-            }
-          } catch {}
-        }
+          return [txHash, Boolean(code && code !== '0x')] as const;
+        } catch {}
       }
 
-      // If historical code lookup is unavailable, use latest code as a
-      // conservative secondary check. Never classify received transfers.
-      if (!isContract) {
-        try {
-          const code = await arcClient.getCode({ address: target as `0x${string}` });
-          isContract = Boolean(code && code !== '0x');
-        } catch {
-          try {
-            const code = await arcScanClient.getCode({ address: target as `0x${string}` });
-            isContract = Boolean(code && code !== '0x');
-          } catch {}
-        }
-      }
-
-      return [target, isContract] as const;
+      return [txHash, null] as const;
     }));
-    for (const [target, isContract] of results) contractMap.set(target, isContract);
+
+    for (const [txHash, isContract] of results) {
+      if (isContract === null) unknown.add(txHash);
+      else contractMap.set(txHash, isContract);
+    }
   }
 
   return rawTransactions.map(tx => ({
     ...tx,
     isContractTarget: Boolean(
       (!tx.to && tx.contractAddress) ||
-      (tx.to && tx.from.toLowerCase() === user && contractMap.get(tx.to.toLowerCase()))
+      (tx.to &&
+        tx.from.toLowerCase() === user &&
+        contractMap.get(tx.hash.toLowerCase()) === true)
     ),
   }));
 }
