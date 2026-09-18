@@ -132,17 +132,53 @@ async function resolveContractTargets(rawTransactions: RawTxInput[], userAddress
   for (let i = 0; i < targets.length; i += 20) {
     const batch = targets.slice(i, i + 20);
     const results = await Promise.all(batch.map(async target => {
-      try {
-        const code = await arcClient.getCode({ address: target as `0x${string}` });
-        return [target, Boolean(code && code !== '0x')] as const;
-      } catch {
+      // Contract status must be resolved against the transaction's block when
+      // possible. Checking only the latest state can misclassify an address
+      // that changed code after the transaction.
+      const targetTransactions = rawTransactions.filter(
+        tx => tx.to?.toLowerCase() === target && tx.from.toLowerCase() === user
+      );
+      let isContract = false;
+
+      for (const tx of targetTransactions) {
         try {
-          const code = await arcScanClient.getCode({ address: target as `0x${string}` });
-          return [target, Boolean(code && code !== '0x')] as const;
+          const code = await arcClient.getCode({
+            address: target as `0x${string}`,
+            blockNumber: tx.blockNumber as bigint,
+          });
+          if (code && code !== '0x') {
+            isContract = true;
+            break;
+          }
         } catch {
-          return [target, false] as const;
+          try {
+            const code = await arcScanClient.getCode({
+              address: target as `0x${string}`,
+              blockNumber: tx.blockNumber as bigint,
+            });
+            if (code && code !== '0x') {
+              isContract = true;
+              break;
+            }
+          } catch {}
         }
       }
+
+      // If historical code lookup is unavailable, use latest code as a
+      // conservative secondary check. Never classify received transfers.
+      if (!isContract) {
+        try {
+          const code = await arcClient.getCode({ address: target as `0x${string}` });
+          isContract = Boolean(code && code !== '0x');
+        } catch {
+          try {
+            const code = await arcScanClient.getCode({ address: target as `0x${string}` });
+            isContract = Boolean(code && code !== '0x');
+          } catch {}
+        }
+      }
+
+      return [target, isContract] as const;
     }));
     for (const [target, isContract] of results) contractMap.set(target, isContract);
   }
@@ -512,7 +548,11 @@ export function computeWalletSummary(
     try {
       if (tx.gasCostUSDC !== 'Unavailable') gas += BigInt(Math.round(Number(tx.gasCostUSDC) * 1e18));
     } catch {}
-    if (tx.isContractInteraction) contracts++;
+    // A contract interaction is a successful top-level transaction initiated by
+    // this wallet whose destination was contract bytecode at that block.
+    // Contract creation is tracked as a transaction, but is not an interaction
+    // with an existing contract.
+    if (tx.isContractInteraction && tx.status === 'success') contracts++;
     if (tx.from) counterparties.add(tx.from.toLowerCase());
     if (tx.to) counterparties.add(tx.to.toLowerCase());
   }
