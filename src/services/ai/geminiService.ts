@@ -96,6 +96,7 @@ export async function callGeminiWithFallback(
   config?: {
     systemInstruction?: string;
     temperature?: number;
+    useGoogleSearch?: boolean;
   },
   timeoutMs = 15_000
 ): Promise<{ text: string; modelUsed: string }> {
@@ -115,6 +116,7 @@ export async function callGeminiWithFallback(
           ? {
               ...(config.systemInstruction ? { systemInstruction: config.systemInstruction } : {}),
               ...(config.temperature !== undefined ? { temperature: config.temperature } : {}),
+              ...(config.useGoogleSearch ? { tools: [{ googleSearch: {} }] } : {}),
             }
           : undefined,
       });
@@ -698,7 +700,8 @@ Answer the user directly in clear English. For simple questions, answer simply. 
   try {
     const { text, modelUsed } = await callGeminiWithFallback(promptContent, {
       systemInstruction,
-      temperature: 0.2, // low temperature for maximum factual adherence
+      temperature: 0.2,
+      useGoogleSearch: true,
     });
 
     if (text) {
