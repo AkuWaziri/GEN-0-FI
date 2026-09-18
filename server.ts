@@ -12,7 +12,7 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: '64kb' }));
 
 // Normalize incoming request path for Vercel serverless functions (where /api might be stripped)
 app.use((req, res, next) => {
@@ -26,18 +26,16 @@ app.use((req, res, next) => {
   next();
 });
 
-// Enforce CORS and disable caching across all /api endpoints for live blockchain accuracy
+// Same-origin API hardening. The production browser does not require wildcard CORS.
 app.use('/api', (req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cache-Control, Pragma');
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
-  res.setHeader('Surrogate-Control', 'no-store');
-  if (req.method === 'OPTIONS') {
-    return res.status(204).end();
-  }
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  if (req.method === 'OPTIONS') return res.status(204).end();
   next();
 });
 
@@ -429,7 +427,7 @@ app.get('/api/blockchain/arc/balance/:address', async (req, res) => {
 
     res.status(500).json({
       error: 'Failed to retrieve balance from Arc RPC',
-      message: error?.message || 'RPC query failed',
+      message: 'Upstream query failed',
     });
   }
 });
@@ -461,7 +459,7 @@ app.get('/api/blockchain/arc/activity/:address', async (req, res) => {
     console.error(`Error querying activity for ${address}:`, error);
     res.status(500).json({
       error: 'Failed to retrieve transaction activity from Arc RPC',
-      message: error?.message || 'RPC query failed',
+      message: 'Upstream query failed',
     });
   }
 });
@@ -622,7 +620,7 @@ app.get('/api/blockchain/arc/summary/:address', async (req, res) => {
     console.error(`Error querying summary for ${address}:`, error);
     res.status(500).json({
       error: 'Failed to retrieve wallet summary from Arc RPC',
-      message: error?.message || 'RPC query failed',
+      message: 'Upstream query failed',
     });
   }
 });
