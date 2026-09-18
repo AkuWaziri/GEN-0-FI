@@ -18,37 +18,20 @@ export interface RawTxInput {
   contractAddress?: string | null;
 }
 
-/**
- * Normalizes raw EVM / Arc transaction into structured, human-readable format.
- */
 export function normalizeTransaction(raw: RawTxInput, userAddress: string): NormalizedTransaction {
   const normUser = userAddress.toLowerCase();
   const from = (raw.from || '').toLowerCase();
   const to = raw.to ? raw.to.toLowerCase() : null;
-
-  // Determine direction
-  let direction: TxDirection = 'unknown';
-  const hasCallData = raw.input && raw.input !== '0x' && raw.input !== '0x0';
+  const hasCallData = Boolean(raw.input && raw.input !== '0x' && raw.input !== '0x0');
   const isContractCreation = !raw.to && !!raw.contractAddress;
 
-  if (from === normUser && to === normUser) {
-    direction = 'self';
-  } else if (from === normUser) {
-    if (hasCallData || isContractCreation) {
-      direction = 'contract_interaction';
-    } else {
-      direction = 'sent';
-    }
-  } else if (to === normUser) {
-    direction = 'received';
-  } else {
-    direction = 'unknown';
-  }
+  let direction: TxDirection = 'unknown';
+  if (from === normUser && to === normUser) direction = 'self';
+  else if (from === normUser) direction = hasCallData || isContractCreation ? 'contract_interaction' : 'sent';
+  else if (to === normUser) direction = 'received';
 
-  // Classification
   let classification: TxClassification = 'unknown';
   let classificationLabel = 'Unknown activity';
-
   if (direction === 'received') {
     classification = 'received';
     classificationLabel = 'Received';
@@ -63,83 +46,55 @@ export function normalizeTransaction(raw: RawTxInput, userAddress: string): Norm
     classificationLabel = 'Self-transfer';
   }
 
-  // Value formatting (Native USDC has 18 decimals on Arc)
   let rawValueStr = '0';
   let formattedValue = '0.00';
   try {
-    if (typeof raw.value === 'bigint') {
-      rawValueStr = raw.value.toString();
-      formattedValue = formatUnits(raw.value, 18);
-    } else if (typeof raw.value === 'string') {
-      rawValueStr = raw.value.startsWith('0x') ? BigInt(raw.value).toString() : raw.value;
-      formattedValue = formatUnits(BigInt(rawValueStr), 18);
-    }
-    // Clean precision up to 4 decimals, or 6 if very small
+    rawValueStr = typeof raw.value === 'bigint'
+      ? raw.value.toString()
+      : raw.value.startsWith('0x') ? BigInt(raw.value).toString() : raw.value;
+    formattedValue = formatUnits(BigInt(rawValueStr), 18);
+
     const numVal = parseFloat(formattedValue);
-    if (numVal === 0) {
-      formattedValue = '0';
-    } else if (numVal < 0.0001) {
-      formattedValue = numVal.toFixed(6);
-    } else {
-      formattedValue = numVal.toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 4,
-      });
-    }
+    formattedValue = !Number.isFinite(numVal) || numVal === 0
+      ? '0'
+      : numVal < 0.0001
+        ? numVal.toFixed(6)
+        : numVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
   } catch {
     formattedValue = '0.00';
   }
 
-  // Gas calculation in USDC (18 decimals native USDC on Arc)
-  let gasCostUSDC = '0.00';
+  let gasCostUSDC = '0.000000';
   let gasUsedStr = '0';
   let gasPriceStr = '0';
   try {
-    if (raw.fee !== undefined && raw.fee !== null) {
-      const feeWei = typeof raw.fee === 'bigint' ? raw.fee : BigInt(raw.fee);
-      const feeUnits = formatUnits(feeWei, 18);
-      gasCostUSDC = parseFloat(feeUnits).toFixed(6);
-    } else {
-      const gasUsed = raw.gasUsed ? (typeof raw.gasUsed === 'bigint' ? raw.gasUsed : BigInt(raw.gasUsed)) : 21000n;
-      const gasPrice = raw.gasPrice ? (typeof raw.gasPrice === 'bigint' ? raw.gasPrice : BigInt(raw.gasPrice)) : 1000000000n;
+    if (raw.fee !== undefined) {
+      gasCostUSDC = Number(formatUnits(typeof raw.fee === 'bigint' ? raw.fee : BigInt(raw.fee), 18)).toFixed(6);
+    } else if (raw.gasUsed !== undefined && raw.gasPrice !== undefined) {
+      const gasUsed = typeof raw.gasUsed === 'bigint' ? raw.gasUsed : BigInt(raw.gasUsed);
+      const gasPrice = typeof raw.gasPrice === 'bigint' ? raw.gasPrice : BigInt(raw.gasPrice);
       gasUsedStr = gasUsed.toString();
       gasPriceStr = gasPrice.toString();
-      const totalGasCostWei = gasUsed * gasPrice;
-      const gasUnits = formatUnits(totalGasCostWei, 18);
-      gasCostUSDC = parseFloat(gasUnits).toFixed(6);
+      gasCostUSDC = Number(formatUnits(gasUsed * gasPrice, 18)).toFixed(6);
     }
   } catch {
     gasCostUSDC = '0.000000';
   }
 
-  // Status check
   let status: TxStatus = 'success';
   if (raw.status !== undefined) {
-    if (raw.status === 0 || raw.status === '0x0' || raw.status === false || raw.status === 'reverted') {
-      status = 'reverted';
-    } else if (raw.status === 1 || raw.status === '0x1' || raw.status === true || raw.status === 'success') {
-      status = 'success';
-    } else {
-      status = 'pending';
-    }
+    if (raw.status === 0 || raw.status === '0x0' || raw.status === false || raw.status === 'reverted' || raw.status === 'error') status = 'reverted';
+    else if (raw.status === 1 || raw.status === '0x1' || raw.status === true || raw.status === 'success' || raw.status === 'ok') status = 'success';
+    else status = 'pending';
   }
 
-  // Block timestamp
   const timestamp = raw.timestamp || Date.now();
-
-  // Construct clear human-readable summary
-  let summary = '';
-  if (classification === 'received') {
-    summary = `Received ${formattedValue} USDC from ${formatShortAddress(raw.from)}`;
-  } else if (classification === 'sent') {
-    summary = `Sent ${formattedValue} USDC to ${raw.to ? formatShortAddress(raw.to) : 'contract'}`;
-  } else if (classification === 'contract_interaction') {
-    summary = isContractCreation
-      ? 'Deployed new smart contract'
-      : `Interacted with contract ${raw.to ? formatShortAddress(raw.to) : 'contract'}`;
-  } else {
-    summary = `Transaction on Arc`;
-  }
+  let summary = 'Transaction on Arc';
+  if (classification === 'received') summary = `Received ${formattedValue} USDC from ${formatShortAddress(raw.from)}`;
+  else if (classification === 'sent') summary = `Sent ${formattedValue} USDC to ${raw.to ? formatShortAddress(raw.to) : 'contract'}`;
+  else if (classification === 'contract_interaction') summary = isContractCreation
+    ? 'Deployed new smart contract'
+    : `Interacted with contract ${raw.to ? formatShortAddress(raw.to) : 'contract'}`;
 
   return {
     id: raw.hash,
@@ -171,7 +126,6 @@ export function formatTimeAgo(timestampMs: number): string {
   const diffMins = Math.floor(diffSecs / 60);
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
-
   if (diffSecs < 60) return 'Just now';
   if (diffMins === 1) return '1 min ago';
   if (diffMins < 60) return `${diffMins} mins ago`;
@@ -179,10 +133,5 @@ export function formatTimeAgo(timestampMs: number): string {
   if (diffHours < 24) return `${diffHours} hours ago`;
   if (diffDays === 1) return 'Yesterday';
   if (diffDays < 30) return `${diffDays} days ago`;
-
-  return new Date(timestampMs).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  return new Date(timestampMs).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
