@@ -1,7 +1,7 @@
 import { createPublicClient, formatUnits, http, isAddress } from 'viem';
-import { arcChain, ARC_MAINNET_RPC_URL } from '../../config/arc';
-import { normalizeTransaction, RawTxInput } from './normalizer';
-import { NormalizedTransaction, WalletSummary } from '../../types/blockchain';
+import { arcChain, ARC_MAINNET_RPC_URL } from '../../config/arc.js';
+import { normalizeTransaction, RawTxInput } from './normalizer.js';
+import { NormalizedTransaction, WalletSummary } from '../../types/blockchain.js';
 
 const BLOCKSCOUT_API_BASE = 'https://explorer.arc.io/api/v2';
 const BLOCKSCOUT_API_KEY = process.env.BLOCKSCOUT_API_KEY?.trim() || '';
