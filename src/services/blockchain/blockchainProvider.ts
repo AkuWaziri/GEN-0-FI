@@ -1,5 +1,5 @@
 import { ARC_MAINNET_CHAIN_ID, ARC_MAINNET_EXPLORER_URL, ARC_MAINNET_RPC_URL } from '../../config/arc';
-import { BlockchainStatus, NormalizedTransaction, WalletSummary } from '../../types/blockchain';
+import { BlockchainStatus, NormalizedTransaction, WalletAssetSummary, WalletSummary } from '../../types/blockchain';
 
 export interface BlockchainProvider {
   getNetworkStatus(): Promise<BlockchainStatus>;
@@ -7,6 +7,7 @@ export interface BlockchainProvider {
   getTransactionCount(address: string): Promise<number>;
   getTransactions(address: string, limit?: number): Promise<NormalizedTransaction[]>;
   getWalletSummary(address: string): Promise<WalletSummary>;
+  getWalletAssets(address: string): Promise<WalletAssetSummary>;
 }
 
 export class ArcBlockchainProvider implements BlockchainProvider {
@@ -97,6 +98,19 @@ export class ArcBlockchainProvider implements BlockchainProvider {
     const data = await response.json();
     if (!Array.isArray(data.transactions)) throw new Error('Arc Mainnet activity unavailable');
     return data.transactions;
+  }
+
+  async getWalletAssets(address: string): Promise<WalletAssetSummary> {
+    const response = await fetch(`/api/blockchain/arc/assets/${address}`, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache' },
+    });
+    if (!response.ok) throw new Error('Arc Mainnet token holdings unavailable');
+    const data = await response.json();
+    if (!data?.assets || data.assets.historyStatus !== 'complete') {
+      throw new Error('Arc Mainnet token holdings unavailable');
+    }
+    return data.assets;
   }
 
   async getWalletSummary(address: string): Promise<WalletSummary> {
