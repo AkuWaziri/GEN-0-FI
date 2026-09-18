@@ -155,7 +155,7 @@ async function resolveContractTargets(rawTransactions: RawTxInput[], userAddress
 async function loadNormalizedHistory(address: string): Promise<NormalizedTransaction[]> {
   const raw = await fetchAddressTransactions(address);
   const usable = raw.filter(tx => tx?.hash).map(toRawTransaction);
-  const resolved = await resolveContractTargets(usable);
+  const resolved = await resolveContractTargets(usable, address);
 
   return resolved
     .map(tx => normalizeTransaction(tx, address))
