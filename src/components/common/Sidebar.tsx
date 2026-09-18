@@ -18,8 +18,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
 
   const navItems = [
     { id: 'overview' as TabType, label: 'Overview', icon: LayoutDashboard },
-    { id: 'activity' as TabType, label: 'Activity', icon: History },
     { id: 'ask' as TabType, label: 'Ask GEN-0', icon: Sparkles, badge: 'AI' },
+    { id: 'activity' as TabType, label: 'Activity', icon: History },
     { id: 'settings' as TabType, label: 'Settings', icon: Settings },
   ];
 
