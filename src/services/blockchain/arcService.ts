@@ -455,30 +455,26 @@ export async function fetchCompleteWalletState(address: string): Promise<Complet
     };
   }
 
-  let transferTotals: { received: bigint; sent: bigint } | null = null;
-  try {
-    transferTotals = await fetchActivityTotals(address);
-  } catch (error) {
-    console.warn('[GEN-0FI] Arc activity totals unavailable, using indexed transaction values:', error);
+  // Use the address transaction index for lifetime received/sent totals.
+  // Do NOT sum the merged /activity feed here: that feed contains multiple
+  // event types touching the address and can represent the same transaction's
+  // value flow more than once. The txlist-derived normalized history has exactly
+  // one row per indexed transaction, so each native value transfer is counted once.
+  let received = 0n;
+  let sent = 0n;
+
+  for (const tx of history.lifetimeTransactions) {
+    try {
+      const value = BigInt(tx.rawValue || '0');
+      if (tx.direction === 'received') {
+        received += value;
+      } else if (tx.direction === 'sent' || tx.direction === 'contract_interaction') {
+        sent += value;
+      }
+    } catch {}
   }
 
-  // Arcscan's typed activity endpoint is the preferred source because it includes
-  // merged native value flow. If that endpoint is temporarily unavailable, use
-  // the already-indexed txlist values rather than returning "Unavailable".
-  // This remains real Arcscan data; it only cannot include value movements that
-  // exist solely inside internal/log-derived activity records.
-  if (!transferTotals) {
-    let received = 0n;
-    let sent = 0n;
-    for (const tx of history.lifetimeTransactions) {
-      try {
-        const value = BigInt(tx.rawValue || '0');
-        if (tx.direction === 'received') received += value;
-        else if (tx.direction === 'sent' || tx.direction === 'contract_interaction') sent += value;
-      } catch {}
-    }
-    transferTotals = { received, sent };
-  }
+  const transferTotals = { received, sent };
 
   const summary = computeWalletSummary(
     address,
