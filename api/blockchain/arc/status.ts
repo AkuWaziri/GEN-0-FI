@@ -1,6 +1,17 @@
-import { arcClient } from '../../../src/services/blockchain/arcService.js';
-import { ARC_NETWORK_CONFIG } from '../../../src/config/arc.js';
-import { formatUnits } from 'viem';
+import { createPublicClient, formatUnits, http } from 'viem';
+
+const ARC_MAINNET_CHAIN_ID = 5042;
+const ARC_MAINNET_RPC_URL = process.env.ARC_MAINNET_RPC_URL || 'https://rpc.mainnet.arc.io';
+const ARC_MAINNET_EXPLORER_URL = 'https://explorer.arc.io';
+const arcClient = createPublicClient({
+  chain: {
+    id: ARC_MAINNET_CHAIN_ID,
+    name: 'Arc',
+    nativeCurrency: { name: 'USD Coin', symbol: 'USDC', decimals: 18 },
+    rpcUrls: { default: { http: [ARC_MAINNET_RPC_URL] } },
+  },
+  transport: http(ARC_MAINNET_RPC_URL, { timeout: 15_000, retryCount: 2 }),
+});
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -33,13 +44,13 @@ export default async function handler(req: any, res: any) {
 
     return res.status(200).json({
       connected: true,
-      chainId: ARC_NETWORK_CONFIG.chainId,
+      chainId: ARC_MAINNET_CHAIN_ID,
       blockNumber: Number(blockNumber),
       latencyMs: latency,
       gasPriceGwei,
-      rpcUrl: ARC_NETWORK_CONFIG.rpcUrl,
-      nativeCurrency: ARC_NETWORK_CONFIG.nativeCurrency.symbol,
-      explorerUrl: ARC_NETWORK_CONFIG.explorerUrl,
+      rpcUrl: ARC_MAINNET_RPC_URL,
+      nativeCurrency: 'USDC',
+      explorerUrl: ARC_MAINNET_EXPLORER_URL,
     });
   } catch (error: any) {
     return res.status(503).json({
