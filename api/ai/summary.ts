@@ -37,7 +37,8 @@ export default async function handler(req: any, res: any) {
     let txCount = walletData.txCount ?? (recentTransactions.length || 0);
     let contractCount = walletData.contractInteractionsCount ?? walletData.activeContractsCount ?? 0;
 
-    if (parseFloat(balance.replace(/,/g, '')) === 0 || recentTransactions.length === 0) {
+    const historyUnavailable = walletData.historyStatus === 'unavailable' || !walletData.historyStatus;
+    if (historyUnavailable && recentTransactions.length === 0) {
       try {
         const liveState = await fetchCompleteWalletState(address);
         if (liveState) {
@@ -45,7 +46,7 @@ export default async function handler(req: any, res: any) {
           totalReceived = liveState.totalReceived || totalReceived;
           totalSent = liveState.totalSent || totalSent;
           gasSpent = liveState.totalGasSpent || gasSpent;
-          txCount = liveState.totalTransactions || txCount;
+          txCount = liveState.totalTransactions ?? txCount;
           contractCount = liveState.contractInteractions || contractCount;
         }
       } catch (onchainErr) {
@@ -53,7 +54,7 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    const historyStatus = walletData.historyStatus || (recentTransactions.length === 0 && parseFloat(balance.replace(/,/g, '')) > 0 ? 'incomplete' : 'complete');
+    const historyStatus = walletData.historyStatus || 'unavailable';
 
     // Deterministic baseline
     const fallbackSummary =
