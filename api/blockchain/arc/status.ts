@@ -19,7 +19,16 @@ export default async function handler(req: any, res: any) {
   const start = performance.now();
   try {
     const blockNumber = await arcClient.getBlockNumber();
-    const gasPrice = await arcClient.getGasPrice().catch(() => 1000000000n);
+
+    let gasPriceGwei: string | null = null;
+    try {
+      const gasPrice = await arcClient.getGasPrice();
+      gasPriceGwei = formatUnits(gasPrice, 9);
+    } catch {
+      // RPC connectivity is already verified by getBlockNumber().
+      // Never substitute a fabricated gas price.
+    }
+
     const latency = Math.round(performance.now() - start);
 
     return res.status(200).json({
@@ -27,7 +36,7 @@ export default async function handler(req: any, res: any) {
       chainId: ARC_NETWORK_CONFIG.chainId,
       blockNumber: Number(blockNumber),
       latencyMs: latency,
-      gasPriceGwei: formatUnits(gasPrice, 9),
+      gasPriceGwei,
       rpcUrl: ARC_NETWORK_CONFIG.rpcUrl,
       nativeCurrency: ARC_NETWORK_CONFIG.nativeCurrency.symbol,
       explorerUrl: ARC_NETWORK_CONFIG.explorerUrl,
