@@ -171,7 +171,7 @@ function rawAmount(row: any): { value: bigint; decimals: number } | null {
   const candidates = [
     row?.value_raw, row?.amount_raw, row?.raw_amount,
     row?.value, row?.amount, row?.quantity,
-    row?.asset_amount, row?.token_amount, row?.money,
+    row?.asset_amount, row?.token_amount, row?.money, row?.value_18dec, row?.amount_18dec,
   ];
 
   for (const candidate of candidates) {
@@ -184,6 +184,10 @@ function rawAmount(row: any): { value: bigint; decimals: number } | null {
         }
       } else if (/^-?\\d+$/.test(String(candidate))) {
         return { value: BigInt(String(candidate)), decimals: Number(row?.decimals ?? 18) };
+      } else if (/^-?\\d+(\\.\\d+)?$/.test(String(candidate))) {
+        const [whole, fraction = ''] = String(candidate).split('.');
+        const frac = (fraction + '0'.repeat(18)).slice(0, 18);
+        return { value: BigInt(whole) * 10n ** 18n + BigInt(frac || '0'), decimals: 18 };
       }
     } catch {}
   }
