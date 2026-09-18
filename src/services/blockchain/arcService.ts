@@ -459,7 +459,25 @@ export async function fetchCompleteWalletState(address: string): Promise<Complet
   try {
     transferTotals = await fetchActivityTotals(address);
   } catch (error) {
-    console.warn('[GEN-0FI] Arc activity totals unavailable:', error);
+    console.warn('[GEN-0FI] Arc activity totals unavailable, using indexed transaction values:', error);
+  }
+
+  // Arcscan's typed activity endpoint is the preferred source because it includes
+  // merged native value flow. If that endpoint is temporarily unavailable, use
+  // the already-indexed txlist values rather than returning "Unavailable".
+  // This remains real Arcscan data; it only cannot include value movements that
+  // exist solely inside internal/log-derived activity records.
+  if (!transferTotals) {
+    let received = 0n;
+    let sent = 0n;
+    for (const tx of history.lifetimeTransactions) {
+      try {
+        const value = BigInt(tx.rawValue || '0');
+        if (tx.direction === 'received') received += value;
+        else if (tx.direction === 'sent' || tx.direction === 'contract_interaction') sent += value;
+      } catch {}
+    }
+    transferTotals = { received, sent };
   }
 
   const summary = computeWalletSummary(
@@ -467,7 +485,7 @@ export async function fetchCompleteWalletState(address: string): Promise<Complet
     balance.formatted,
     history.lifetimeTransactions,
     false,
-    transferTotals ?? undefined
+    transferTotals
   );
 
   return {
