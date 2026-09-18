@@ -61,7 +61,7 @@ const AppContent: React.FC = () => {
     return <WrongNetworkView />;
   }
 
-  // Connected SaaS Application Dashboard on Arc Testnet
+  // Connected SaaS Application Dashboard on Arc Mainnet
   return (
     <div className="min-h-screen bg-[#090a0c] text-zinc-100 flex flex-col md:flex-row antialiased selection:bg-white selection:text-black">
       {/* First-time onboarding welcome state */}
