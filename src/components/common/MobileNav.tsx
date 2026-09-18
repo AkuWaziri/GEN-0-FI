@@ -10,8 +10,8 @@ interface MobileNavProps {
 export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, onSelectTab }) => {
   const navItems = [
     { id: 'overview' as TabType, label: 'Overview', icon: LayoutDashboard },
-    { id: 'activity' as TabType, label: 'Activity', icon: History },
     { id: 'ask' as TabType, label: 'Ask', icon: Sparkles },
+    { id: 'activity' as TabType, label: 'Activity', icon: History },
     { id: 'settings' as TabType, label: 'Settings', icon: Settings },
   ];
 
