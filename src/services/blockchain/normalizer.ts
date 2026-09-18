@@ -33,7 +33,10 @@ export function normalizeTransaction(raw: RawTxInput, userAddress: string): Norm
   const from = (raw.from || '').toLowerCase();
   const to = raw.to ? raw.to.toLowerCase() : null;
   const isContractCreation = !raw.to && !!raw.contractAddress;
-  const isContractTarget = Boolean(raw.isContractTarget || isContractCreation);
+  // A contract interaction requires an existing contract destination.
+  // Contract creation is a transaction, but it is not an interaction with an
+  // existing contract and is therefore excluded from the interaction metric.
+  const isContractTarget = Boolean(raw.isContractTarget);
 
   let direction: TxDirection = 'unknown';
   if (from === normUser && to === normUser) direction = 'self';
@@ -118,7 +121,7 @@ export function normalizeTransaction(raw: RawTxInput, userAddress: string): Norm
     gasUsed: gasUsedStr,
     gasPrice: gasPriceStr,
     gasCostUSDC,
-    isContractInteraction: isContractTarget,
+    isContractInteraction: isContractTarget && !isContractCreation,
     contractAddress: raw.contractAddress || (isContractTarget && raw.to ? raw.to : undefined),
     methodName: raw.functionName || undefined,
     classification,
