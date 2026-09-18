@@ -1,6 +1,6 @@
 import { isAddress } from 'viem';
-import { callGeminiWithFallback } from '../../src/services/ai/geminiService';
-import { fetchCompleteWalletState } from '../../src/services/blockchain/arcService';
+import { callGeminiWithFallback } from '../../src/services/ai/geminiService.js';
+import { fetchCompleteWalletState } from '../../src/services/blockchain/arcService.js';
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
