@@ -4,131 +4,25 @@ import { normalizeTransaction, RawTxInput } from './normalizer.js';
 import { NormalizedTransaction, WalletSummary } from '../../types/blockchain.js';
 
 const ARCSCAN_API_BASE = 'https://api.arc-scan.org/api';
+const ARCSCAN_V1_BASE = 'https://api.arc-scan.org/v1';
 const ARCSCAN_API_KEY = process.env.ARCSCAN_API_KEY || 'YourApiKeyToken';
 const ARCSCAN_RPC_URL = 'https://rpc.arc-scan.org';
-const NATIVE_USDC_DECIMALS = 18;
-const ERC20_USDC_ADDRESS = '0x3600000000000000000000000000000000000000'.toLowerCase();
-const TX_CACHE_TTL_MS = 30_000;
+const NATIVE_DECIMALS = 18;
+const ERC20_USDC = '0x3600000000000000000000000000000000000000'.toLowerCase();
+const CACHE_TTL = 30_000;
+
 const txCache = new Map<string, {
   transactions: NormalizedTransaction[];
-  isUnavailable: boolean;
-  historyStatus: 'complete' | 'incomplete' | 'unavailable';
+  historyStatus: 'complete' | 'unavailable';
   timestamp: number;
 }>();
-
-async function markContractTargets(transactions: NormalizedTransaction[]): Promise<void> {
-  const cache = new Map<string, boolean>();
-  for (const tx of transactions) {
-    if (!tx.to || tx.to.toLowerCase() === tx.from?.toLowerCase()) continue;
-    const target = tx.to.toLowerCase();
-    if (!cache.has(target)) {
-      try {
-        const code = await arcClient.getCode({ address: target as `0x${string}` });
-        cache.set(target, !!code && code !== '0x');
-      } catch {
-        cache.set(target, false);
-      }
-    }
-    const isContract = cache.get(target) === true;
-    tx.isContractInteraction = isContract;
-    if (isContract) tx.contractAddress = tx.to;
-  }
-}
-
-function extractActivityRows(payload: any): any[] {
-  if (Array.isArray(payload)) return payload;
-  for (const key of ['items', 'activity', 'events', 'transfers', 'rows', 'result']) {
-    if (Array.isArray(payload?.[key])) return payload[key];
-  }
-  return [];
-}
-
-function extractAmountRaw(row: any): { raw: bigint; decimals: number } | null {
-  const candidates = [
-    row?.amount, row?.value, row?.quantity, row?.asset_amount,
-    row?.token_amount, row?.money, row?.value_raw, row?.amount_raw
-  ];
-  for (const candidate of candidates) {
-    if (candidate === undefined || candidate === null || candidate === '') continue;
-    try {
-      if (typeof candidate === 'object') {
-        const raw = candidate.raw ?? candidate.value_raw ?? candidate.value;
-        if (raw !== undefined && raw !== null && /^-?\\d+$/.test(String(raw))) {
-          return { raw: BigInt(String(raw)), decimals: Number(candidate.decimals ?? row?.decimals ?? 18) };
-        }
-      } else if (/^-?\\d+$/.test(String(candidate))) {
-        return { raw: BigInt(String(candidate)), decimals: Number(row?.decimals ?? 18) };
-      }
-    } catch {}
-  }
-  return null;
-}
-
-async function fetchUsdcActivityTotals(address: string): Promise<{ received: bigint; sent: bigint } | null> {
-  let received = 0n;
-  let sent = 0n;
-  let cursor: string | undefined;
-
-  try {
-    for (let page = 0; page < 500; page++) {
-      const url = new URL(`${ARCSCAN_API_BASE}/v1/address/${address}/activity`);
-      url.searchParams.set('limit', '100');
-      if (cursor) url.searchParams.set('cursor', cursor);
-
-      const response = await fetch(url.toString(), {
-        headers: { Accept: 'application/json', 'User-Agent': 'GEN-0FI/1.0' },
-        signal: AbortSignal.timeout(15_000),
-      });
-      if (!response.ok) throw new Error(`Arcscan activity request failed: ${response.status}`);
-      const data = await response.json();
-      const rows = extractActivityRows(data);
-
-      for (const row of rows) {
-        const tokenAddress = String(row?.token?.address || row?.token_address || row?.asset?.address || '').toLowerCase();
-        const symbol = String(row?.token?.symbol || row?.asset?.symbol || row?.symbol || '').toUpperCase();
-        if (tokenAddress && tokenAddress !== ERC20_USDC_ADDRESS && symbol && symbol !== 'USDC') continue;
-        const amount = extractAmountRaw(row);
-        if (!amount) continue;
-
-        const from = String(row?.from?.address || row?.from || '').toLowerCase();
-        const to = String(row?.to?.address || row?.to || '').toLowerCase();
-        const direction = String(row?.direction || row?.kind || row?.flow || '').toLowerCase();
-        const isIncoming = direction.includes('in') || direction === 'received' || to === address.toLowerCase();
-        const isOutgoing = direction.includes('out') || direction === 'sent' || from === address.toLowerCase();
-
-        let value = amount.raw;
-        const decimals = Number.isFinite(amount.decimals) ? amount.decimals : 18;
-        if (decimals < 18) value *= 10n ** BigInt(18 - decimals);
-        else if (decimals > 18) value /= 10n ** BigInt(decimals - 18);
-
-        if (isIncoming && !isOutgoing) received += value;
-        else if (isOutgoing && !isIncoming) sent += value;
-      }
-
-      const next = data?.page?.next;
-      if (!next || rows.length === 0) return { received, sent };
-      cursor = String(next);
-    }
-    throw new Error('Arcscan activity pagination limit reached');
-  } catch (error) {
-    console.warn('[ArcService] Arcscan activity totals unavailable:', error);
-    return null;
-  }
-}
-
-function formatUSDC(value: bigint | string): string {
-  const formatted = formatUnits(typeof value === 'bigint' ? value : BigInt(value), NATIVE_USDC_DECIMALS);
-  const [whole, fraction = ''] = formatted.split('.');
-  return fraction ? `${whole}.${fraction.slice(0, 6).padEnd(6, '0')}` : `${whole}.000000`;
-}
-
 
 export const arcClient = createPublicClient({
   chain: arcChain,
   transport: http(process.env.ARC_MAINNET_RPC_URL || ARC_MAINNET_RPC_URL, {
     timeout: 15_000,
-    retryCount: 3,
-    retryDelay: 1000,
+    retryCount: 2,
+    retryDelay: 500,
   }),
 });
 
@@ -136,17 +30,38 @@ const arcScanClient = createPublicClient({
   chain: arcChain,
   transport: http(ARCSCAN_RPC_URL, {
     timeout: 15_000,
-    retryCount: 2,
-    retryDelay: 750,
+    retryCount: 1,
+    retryDelay: 500,
   }),
 });
 
-async function fetchAddressTransactions(address: string): Promise<any[]> {
-  const items: any[] = [];
-  const offset = 100;
-  const maxPages = 500;
+function formatUSDC(raw: bigint): string {
+  const value = Number(formatUnits(raw, NATIVE_DECIMALS));
+  if (!Number.isFinite(value)) return 'Unavailable';
+  return value.toFixed(6);
+}
 
-  for (let page = 1; page <= maxPages; page++) {
+function requestHeaders(): HeadersInit {
+  return {
+    Accept: 'application/json',
+    'User-Agent': 'GEN-0FI/1.0',
+  };
+}
+
+async function fetchJson(url: string, timeoutMs = 15_000): Promise<any> {
+  const response = await fetch(url, {
+    headers: requestHeaders(),
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!response.ok) throw new Error(`Arcscan HTTP ${response.status}`);
+  return response.json();
+}
+
+async function fetchAddressTransactions(address: string): Promise<any[]> {
+  const all: any[] = [];
+  const offset = 100;
+
+  for (let page = 1; page <= 500; page++) {
     const url = new URL(ARCSCAN_API_BASE);
     url.searchParams.set('module', 'account');
     url.searchParams.set('action', 'txlist');
@@ -158,24 +73,19 @@ async function fetchAddressTransactions(address: string): Promise<any[]> {
     url.searchParams.set('sort', 'desc');
     url.searchParams.set('apikey', ARCSCAN_API_KEY);
 
-    const response = await fetch(url.toString(), {
-      headers: { Accept: 'application/json', 'User-Agent': 'GEN-0FI/1.0' },
-      signal: AbortSignal.timeout(15_000),
-    });
-    if (!response.ok) throw new Error(`Arcscan request failed: ${response.status}`);
-
-    const data = await response.json();
-    if (data.status !== '1') {
-      const result = typeof data?.result === 'string' ? data.result : '';
-      throw new Error(data?.message || result || 'Arcscan transaction query failed');
+    const data = await fetchJson(url.toString());
+    if (data?.status !== '1') {
+      const message = typeof data?.result === 'string' ? data.result : data?.message;
+      if (page === 1 && /no transactions/i.test(String(message || ''))) return [];
+      throw new Error(String(message || 'Arcscan transaction query failed'));
     }
 
-    const pageItems = Array.isArray(data.result) ? data.result : [];
-    items.push(...pageItems);
-    if (pageItems.length < offset) return items;
+    const rows = Array.isArray(data.result) ? data.result : [];
+    all.push(...rows);
+    if (rows.length < offset) break;
   }
 
-  throw new Error('Arcscan transaction history exceeded the pagination safety limit');
+  return all;
 }
 
 function toRawTransaction(tx: any): RawTxInput {
@@ -184,57 +94,190 @@ function toRawTransaction(tx: any): RawTxInput {
   const fee = gasUsed !== undefined && gasPrice !== undefined ? gasUsed * gasPrice : undefined;
 
   return {
-    hash: tx.hash,
+    hash: String(tx.hash || ''),
     blockNumber: BigInt(tx.blockNumber || '0'),
-    from: tx.from || '',
-    to: tx.to || null,
+    from: String(tx.from || ''),
+    to: tx.to ? String(tx.to) : null,
     value: BigInt(tx.value || '0'),
     fee,
-    gas: tx.gas !== undefined && tx.gas !== '' ? BigInt(tx.gas) : undefined,
+    gas: tx.gas ? BigInt(tx.gas) : undefined,
     gasPrice,
     gasUsed,
-    input: tx.input || (tx.methodId && tx.methodId !== '0x00000000' ? tx.methodId : '0x'),
+    input: tx.input || '0x',
     methodId: tx.methodId || '',
     functionName: tx.functionName || '',
-    timestamp: tx.timeStamp ? Number(tx.timeStamp) * 1000 : undefined,
-    status: tx.isError === '0' || tx.txreceipt_status === '1' ? 1 : tx.isError === '1' || tx.txreceipt_status === '0' ? 0 : undefined,
+    timestamp: tx.timeStamp ? Number(tx.timeStamp) * 1000 : 0,
+    status: tx.isError === '1' || tx.txreceipt_status === '0' ? 0 : tx.isError === '0' || tx.txreceipt_status === '1' ? 1 : undefined,
     contractAddress: tx.contractAddress || null,
   };
 }
 
-/**
- * Live Arc Mainnet native USDC balance.
- * Primary source is the configured Arc Mainnet RPC. Arcscan's public RPC is the
- * independent read-only fallback so a single RPC outage does not turn a verified
- * onchain balance into "Unavailable".
- */
-export async function fetchBalanceFromArcRpc(
-  address: string
-): Promise<{ formatted: string; raw: string; isVerified: boolean }> {
+async function resolveContractTargets(rawTransactions: RawTxInput[]): Promise<RawTxInput[]> {
+  const uniqueTargets = [...new Set(
+    rawTransactions
+      .map(tx => tx.to?.toLowerCase())
+      .filter((x): x is string => Boolean(x))
+  )];
+
+  const contractMap = new Map<string, boolean>();
+
+  // Keep RPC pressure predictable while still resolving targets quickly.
+  for (let i = 0; i < uniqueTargets.length; i += 20) {
+    const batch = uniqueTargets.slice(i, i + 20);
+    const results = await Promise.all(batch.map(async target => {
+      try {
+        const code = await arcClient.getCode({ address: target as `0x${string}` });
+        return [target, Boolean(code && code !== '0x')] as const;
+      } catch {
+        try {
+          const code = await arcScanClient.getCode({ address: target as `0x${string}` });
+          return [target, Boolean(code && code !== '0x')] as const;
+        } catch {
+          return [target, false] as const;
+        }
+      }
+    }));
+    for (const [target, isContract] of results) contractMap.set(target, isContract);
+  }
+
+  return rawTransactions.map(tx => ({
+    ...tx,
+    isContractTarget: Boolean(
+      (!tx.to && tx.contractAddress) ||
+      (tx.to && contractMap.get(tx.to.toLowerCase()))
+    ),
+  }));
+}
+
+async function loadNormalizedHistory(address: string): Promise<NormalizedTransaction[]> {
+  const raw = await fetchAddressTransactions(address);
+  const usable = raw.filter(tx => tx?.hash).map(toRawTransaction);
+  const resolved = await resolveContractTargets(usable);
+
+  return resolved
+    .map(tx => normalizeTransaction(tx, address))
+    .sort((a, b) => b.timestamp - a.timestamp);
+}
+
+function activityRows(payload: any): any[] {
+  if (Array.isArray(payload)) return payload;
+  for (const key of ['items', 'activity', 'events', 'transfers', 'rows', 'result']) {
+    if (Array.isArray(payload?.[key])) return payload[key];
+  }
+  return [];
+}
+
+function rawAmount(row: any): { value: bigint; decimals: number } | null {
+  const candidates = [
+    row?.value_raw, row?.amount_raw, row?.raw_amount,
+    row?.value, row?.amount, row?.quantity,
+    row?.asset_amount, row?.token_amount, row?.money,
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate === undefined || candidate === null || candidate === '') continue;
+    try {
+      if (typeof candidate === 'object') {
+        const raw = candidate.raw ?? candidate.value_raw ?? candidate.amount_raw ?? candidate.value;
+        if (raw !== undefined && /^-?\\d+$/.test(String(raw))) {
+          return { value: BigInt(String(raw)), decimals: Number(candidate.decimals ?? row?.decimals ?? 18) };
+        }
+      } else if (/^-?\\d+$/.test(String(candidate))) {
+        return { value: BigInt(String(candidate)), decimals: Number(row?.decimals ?? 18) };
+      }
+    } catch {}
+  }
+
+  return null;
+}
+
+function addressOf(value: any): string {
+  if (typeof value === 'string') return value.toLowerCase();
+  return String(value?.address || value?.hash || '').toLowerCase();
+}
+
+function rowTokenAddress(row: any): string {
+  return addressOf(row?.token || row?.asset || row?.token_address || row?.asset_address);
+}
+
+async function fetchActivityTotals(address: string): Promise<{ received: bigint; sent: bigint }> {
+  const target = address.toLowerCase();
+  let received = 0n;
+  let sent = 0n;
+  let cursor = '';
+
+  for (let page = 0; page < 500; page++) {
+    const url = new URL(`${ARCSCAN_V1_BASE}/address/${address}/activity`);
+    url.searchParams.set('limit', '100');
+    if (cursor) url.searchParams.set('cursor', cursor);
+
+    const data = await fetchJson(url.toString());
+    const rows = activityRows(data);
+
+    for (const row of rows) {
+      const token = rowTokenAddress(row);
+      const symbol = String(row?.token?.symbol || row?.asset?.symbol || row?.symbol || '').toUpperCase();
+
+      // The native asset has no token contract. ERC-20 USDC uses the mirror address.
+      if (token && token !== ERC20_USDC && symbol !== 'USDC') continue;
+      if (!token && symbol && symbol !== 'USDC') continue;
+
+      const amount = rawAmount(row);
+      if (!amount) continue;
+
+      const from = addressOf(row?.from);
+      const to = addressOf(row?.to);
+      const direction = String(row?.direction || row?.flow || row?.kind || '').toLowerCase();
+
+      const incoming = direction.includes('in') || direction === 'received' || to === target;
+      const outgoing = direction.includes('out') || direction === 'sent' || from === target;
+      if (incoming === outgoing) continue;
+
+      let normalized = amount.value;
+      if (amount.decimals < 18) normalized *= 10n ** BigInt(18 - amount.decimals);
+      if (amount.decimals > 18) normalized /= 10n ** BigInt(amount.decimals - 18);
+
+      if (incoming) received += normalized;
+      if (outgoing) sent += normalized;
+    }
+
+    const next = data?.page?.next;
+    if (!next || rows.length === 0) break;
+    cursor = String(next);
+  }
+
+  return { received, sent };
+}
+
+async function fetchGasAndValueFallback(address: string, transactions: NormalizedTransaction[]): Promise<{ received: bigint; sent: bigint; gas: bigint }> {
+  let received = 0n;
+  let sent = 0n;
+  let gas = 0n;
+
+  for (const tx of transactions) {
+    try {
+      gas += BigInt(Math.round(Number(tx.gasCostUSDC || '0') * 1e18));
+      const value = BigInt(tx.rawValue || '0');
+      if (tx.direction === 'received') received += value;
+      if (tx.direction === 'sent') sent += value;
+    } catch {}
+  }
+
+  return { received, sent, gas };
+}
+
+export async function fetchBalanceFromArcRpc(address: string): Promise<{ formatted: string; raw: string; isVerified: boolean }> {
   if (!address || !isAddress(address, { strict: false })) {
     return { formatted: 'Unavailable', raw: '0', isVerified: false };
   }
 
-  try {
-    const balanceWei = await arcClient.getBalance({ address: address as `0x${string}` });
-    return {
-      formatted: formatUSDC(balanceWei),
-      raw: balanceWei.toString(),
-      isVerified: true,
-    };
-  } catch (error) {
-    console.warn('[ArcService] Primary Arc Mainnet RPC balance failed:', error);
-  }
-
-  try {
-    const balanceWei = await arcScanClient.getBalance({ address: address as `0x${string}` });
-    return {
-      formatted: formatUSDC(balanceWei),
-      raw: balanceWei.toString(),
-      isVerified: true,
-    };
-  } catch (error) {
-    console.warn('[ArcService] Arcscan RPC balance fallback failed:', error);
+  for (const client of [arcClient, arcScanClient]) {
+    try {
+      const raw = await client.getBalance({ address: address as `0x${string}` });
+      return { formatted: formatUSDC(raw), raw: raw.toString(), isVerified: true };
+    } catch (error) {
+      console.warn('[GEN-0FI] balance source failed:', error);
+    }
   }
 
   try {
@@ -243,67 +286,45 @@ export async function fetchBalanceFromArcRpc(
     url.searchParams.set('action', 'balance');
     url.searchParams.set('address', address);
     url.searchParams.set('apikey', ARCSCAN_API_KEY);
-
-    const response = await fetch(url.toString(), {
-      headers: { Accept: 'application/json', 'User-Agent': 'GEN-0FI/1.0' },
-      signal: AbortSignal.timeout(10_000),
-    });
-    const data = await response.json();
-    if (response.ok && data?.status === '1' && typeof data.result === 'string') {
+    const data = await fetchJson(url.toString(), 10_000);
+    if (data?.status === '1' && typeof data.result === 'string') {
       const raw = BigInt(data.result);
-      return {
-        formatted: formatUSDC(raw),
-        raw: raw.toString(),
-        isVerified: true,
-      };
+      return { formatted: formatUSDC(raw), raw: raw.toString(), isVerified: true };
     }
-    throw new Error(typeof data?.result === 'string' ? data.result : 'Arcscan balance query failed');
   } catch (error) {
-    console.warn('[ArcService] Arcscan indexed balance fallback failed:', error);
-    return { formatted: 'Unavailable', raw: '0', isVerified: false };
+    console.warn('[GEN-0FI] indexed balance source failed:', error);
   }
+
+  return { formatted: 'Unavailable', raw: '0', isVerified: false };
 }
 
-/**
- * Complete indexed Arc Mainnet history. Arcscan indexes mainnet from block 0.
- * Recent activity is returned to the UI, while lifetime totals are computed
- * from all indexed address transactions.
- */
 export async function fetchTransactionsForAddress(
   address: string,
   limit = 50
-): Promise<{ transactions: NormalizedTransaction[]; lifetimeTransactions: NormalizedTransaction[]; isUnavailable: boolean; historyStatus: 'complete' | 'incomplete' | 'unavailable' }> {
+): Promise<{
+  transactions: NormalizedTransaction[];
+  lifetimeTransactions: NormalizedTransaction[];
+  isUnavailable: boolean;
+  historyStatus: 'complete' | 'unavailable';
+}> {
   if (!address || !isAddress(address, { strict: false })) {
     return { transactions: [], lifetimeTransactions: [], isUnavailable: true, historyStatus: 'unavailable' };
   }
 
-  const normalizedAddress = address.toLowerCase();
-  const cached = txCache.get(normalizedAddress);
-  if (cached && Date.now() - cached.timestamp < TX_CACHE_TTL_MS) {
+  const key = address.toLowerCase();
+  const cached = txCache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return {
       transactions: cached.transactions.slice(0, limit),
       lifetimeTransactions: cached.transactions,
-      isUnavailable: cached.isUnavailable,
+      isUnavailable: cached.historyStatus === 'unavailable',
       historyStatus: cached.historyStatus,
     };
   }
 
   try {
-    const rawTransactions = await fetchAddressTransactions(address);
-    const transactions = rawTransactions
-      .filter((tx: any) => tx?.hash)
-      .map((tx: any) => normalizeTransaction(toRawTransaction(tx), address))
-      .sort((a, b) => b.timestamp - a.timestamp);
-
-    await markContractTargets(transactions);
-    const result = {
-      transactions,
-      isUnavailable: false,
-      historyStatus: 'complete' as const,
-      timestamp: Date.now(),
-    };
-
-    txCache.set(normalizedAddress, result);
+    const transactions = await loadNormalizedHistory(address);
+    txCache.set(key, { transactions, historyStatus: 'complete', timestamp: Date.now() });
     return {
       transactions: transactions.slice(0, limit),
       lifetimeTransactions: transactions,
@@ -311,85 +332,74 @@ export async function fetchTransactionsForAddress(
       historyStatus: 'complete',
     };
   } catch (error) {
-    console.error('[ArcService] Complete Arc Mainnet history fetch failed:', error);
-    const result = {
-      transactions: [],
-      isUnavailable: true,
-      historyStatus: 'unavailable' as const,
-      timestamp: Date.now(),
-    };
-    txCache.set(normalizedAddress, result);
-    return {
-      transactions: [],
-      lifetimeTransactions: [],
-      isUnavailable: true,
-      historyStatus: 'unavailable',
-    };
+    console.error('[GEN-0FI] Arc history failed:', error);
+    txCache.set(key, { transactions: [], historyStatus: 'unavailable', timestamp: Date.now() });
+    return { transactions: [], lifetimeTransactions: [], isUnavailable: true, historyStatus: 'unavailable' };
   }
 }
 
-/**
- * Computes metrics from verified indexed history. No fabricated fallback values.
- */
 export function computeWalletSummary(
   address: string,
   balanceFormatted: string,
   transactions: NormalizedTransaction[],
-  isHistoryUnavailable: boolean
+  isHistoryUnavailable: boolean,
+  transferTotals?: { received: bigint; sent: bigint }
 ): WalletSummary {
-  let totalReceivedWei = 0n;
-  let totalSentWei = 0n;
-  let totalGasSpentUSDCNum = 0;
-  let contractInteractionsCount = 0;
-  let incomingTransfersCount = 0;
-  let outgoingTransfersCount = 0;
+  let received = transferTotals?.received ?? 0n;
+  let sent = transferTotals?.sent ?? 0n;
+  let gas = 0n;
+  let contracts = 0;
   const counterparties = new Set<string>();
+  let incomingCount = 0;
+  let outgoingCount = 0;
 
-  for (const tx of transactions) {
-    totalGasSpentUSDCNum += Number(tx.gasCostUSDC || 0) || 0;
-
-    if (tx.isContractInteraction) contractInteractionsCount++;
-    if (tx.from) counterparties.add(tx.from.toLowerCase());
-    if (tx.to) counterparties.add(tx.to.toLowerCase());
-
-    try {
-      const value = BigInt(tx.rawValue || '0');
-      if (tx.direction === 'received') {
-        totalReceivedWei += value;
-        incomingTransfersCount++;
-      } else if (tx.direction === 'sent') {
-        totalSentWei += value;
-        outgoingTransfersCount++;
-      }
-    } catch {
-      // Invalid indexed value is ignored rather than fabricated.
+  if (!transferTotals) {
+    for (const tx of transactions) {
+      try {
+        const value = BigInt(tx.rawValue || '0');
+        if (tx.direction === 'received') {
+          received += value;
+          incomingCount++;
+        } else if (tx.direction === 'sent') {
+          sent += value;
+          outgoingCount++;
+        }
+      } catch {}
     }
   }
 
+  for (const tx of transactions) {
+    try {
+      if (tx.gasCostUSDC !== 'Unavailable') gas += BigInt(Math.round(Number(tx.gasCostUSDC) * 1e18));
+    } catch {}
+    if (tx.isContractInteraction) contracts++;
+    if (tx.from) counterparties.add(tx.from.toLowerCase());
+    if (tx.to) counterparties.add(tx.to.toLowerCase());
+  }
+
   const historyStatus = isHistoryUnavailable ? 'unavailable' : 'complete';
-  const historyStatusNote = isHistoryUnavailable
-    ? 'Arc Mainnet indexed history could not be retrieved. Live balance is still independently verified by RPC.'
-    : 'Lifetime activity retrieved from Arc Mainnet indexed transaction and USDC transfer history.';
 
   return {
     address,
     balanceUSDC: balanceFormatted,
     rawBalance: balanceFormatted,
-    totalReceivedUSDC: isHistoryUnavailable ? 'Unavailable' : formatUSDC(totalReceivedWei),
-    receivedTotalUSDC: isHistoryUnavailable ? 'Unavailable' : formatUSDC(totalReceivedWei),
-    totalSentUSDC: isHistoryUnavailable ? 'Unavailable' : formatUSDC(totalSentWei),
-    sentTotalUSDC: isHistoryUnavailable ? 'Unavailable' : formatUSDC(totalSentWei),
-    gasSpentUSDC: isHistoryUnavailable ? 'Unavailable' : totalGasSpentUSDCNum.toFixed(6),
+    totalReceivedUSDC: isHistoryUnavailable ? 'Unavailable' : formatUSDC(received),
+    receivedTotalUSDC: isHistoryUnavailable ? 'Unavailable' : formatUSDC(received),
+    totalSentUSDC: isHistoryUnavailable ? 'Unavailable' : formatUSDC(sent),
+    sentTotalUSDC: isHistoryUnavailable ? 'Unavailable' : formatUSDC(sent),
     txCount: transactions.length,
     scannedTxCount: transactions.length,
-    contractInteractionsCount,
-    activeContractsCount: contractInteractionsCount,
+    gasSpentUSDC: isHistoryUnavailable ? 'Unavailable' : formatUSDC(gas),
+    contractInteractionsCount: contracts,
+    activeContractsCount: contracts,
     uniqueCounterpartiesCount: counterparties.size,
     isDataAvailable: !isHistoryUnavailable,
     historyStatus,
-    historyStatusNote,
-    incomingTransfersCount,
-    outgoingTransfersCount,
+    historyStatusNote: isHistoryUnavailable
+      ? 'Arc Mainnet indexed history is unavailable. No lifetime activity values are inferred.'
+      : 'Lifetime Arc Mainnet transaction history was retrieved from Arcscan.',
+    incomingTransfersCount: incomingCount,
+    outgoingTransfersCount: outgoingCount,
   };
 }
 
@@ -402,34 +412,56 @@ export interface CompleteWalletState {
   totalTransactions: number;
   contractInteractions: number;
   recentTransactions: NormalizedTransaction[];
-  historyStatus: 'complete' | 'incomplete' | 'unavailable';
+  historyStatus: 'complete' | 'unavailable';
   historyStatusNote: string;
 }
 
 export async function fetchCompleteWalletState(address: string): Promise<CompleteWalletState> {
-  const [balanceResult, txResult] = await Promise.all([
+  const [balance, history] = await Promise.all([
     fetchBalanceFromArcRpc(address),
     fetchTransactionsForAddress(address, 50),
   ]);
 
-  const activityTotals = txResult.isUnavailable ? null : await fetchUsdcActivityTotals(address);
+  if (history.isUnavailable) {
+    return {
+      walletAddress: address,
+      currentBalance: balance.formatted,
+      totalReceived: 'Unavailable',
+      totalSent: 'Unavailable',
+      totalGasSpent: 'Unavailable',
+      totalTransactions: 0,
+      contractInteractions: 0,
+      recentTransactions: [],
+      historyStatus: 'unavailable',
+      historyStatusNote: 'Arc Mainnet indexed history is unavailable. Live balance remains independently verified when available.',
+    };
+  }
+
+  let transferTotals: { received: bigint; sent: bigint } | undefined;
+  try {
+    transferTotals = await fetchActivityTotals(address);
+  } catch (error) {
+    console.warn('[GEN-0FI] Arc activity totals unavailable, using transaction value totals:', error);
+  }
+
   const summary = computeWalletSummary(
     address,
-    balanceResult.formatted,
-    txResult.lifetimeTransactions,
-    txResult.isUnavailable
+    balance.formatted,
+    history.lifetimeTransactions,
+    false,
+    transferTotals
   );
 
   return {
     walletAddress: address,
     currentBalance: summary.balanceUSDC,
-    totalReceived: txResult.isUnavailable ? 'Unavailable' : activityTotals ? formatUSDC(activityTotals.received) : summary.totalReceivedUSDC,
-    totalSent: txResult.isUnavailable ? 'Unavailable' : activityTotals ? formatUSDC(activityTotals.sent) : summary.totalSentUSDC,
+    totalReceived: summary.totalReceivedUSDC,
+    totalSent: summary.totalSentUSDC,
     totalGasSpent: summary.gasSpentUSDC,
     totalTransactions: summary.txCount,
     contractInteractions: summary.contractInteractionsCount,
-    recentTransactions: txResult.transactions,
-    historyStatus: txResult.historyStatus,
-    historyStatusNote: txResult.historyStatusNote,
+    recentTransactions: history.transactions,
+    historyStatus: 'complete',
+    historyStatusNote: summary.historyStatusNote || '',
   };
 }
