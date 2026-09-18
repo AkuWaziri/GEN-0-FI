@@ -1,4 +1,5 @@
-import { handleAiAskPayload, getGeminiApiKey } from '../../src/services/ai/geminiService.js';
+import { applyApiSecurity } from '../_security.js';
+import { handleAiAskPayload } from '../../src/services/ai/geminiService.js';
 
 async function extractRequestBody(req: any): Promise<any> {
   // 1. If Web standard Request object (Edge or modern runtime)
@@ -57,34 +58,13 @@ async function extractRequestBody(req: any): Promise<any> {
 
 export default async function handler(req: any, res: any) {
   // 1. Enforce CORS
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
-  );
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  if (!applyApiSecurity(req, res)) return;
 
-  // Handle preflight OPTIONS
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  // Handle GET diagnostics
-  if (req.method === 'GET') {
-    const hasKey = Boolean(getGeminiApiKey());
-    return res.status(200).json({
-      status: 'ok',
-      service: 'Ask GEN-0 AI Assistant',
-      hasGeminiApiKey: hasKey,
-      engine: hasKey ? 'Gemini 3.8 Flash / 3.1 Flash-Lite' : 'Arc Deterministic Onchain Engine',
-    });
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed. Use POST.' });
-  }
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
+  const contentType = String(req.headers?.['content-type'] || '').toLowerCase();
+  const contentLength = Number(req.headers?.['content-length'] || 0);
+  if (contentType && !contentType.includes('application/json')) return res.status(415).json({ error: 'Content-Type must be application/json' });
+  if (Number.isFinite(contentLength) && contentLength > 64 * 1024) return res.status(413).json({ error: 'Request body too large' });
 
   try {
     const body = await extractRequestBody(req);
