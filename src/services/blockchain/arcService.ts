@@ -166,6 +166,31 @@ function to18Decimals(raw: string | number | bigint, decimals = 18): bigint {
   return value / 10n ** BigInt(decimals - 18);
 }
 
+function parseArcAmount(value: any, fallbackDecimals = 18): { raw: bigint; decimals: number } | null {
+  if (value === undefined || value === null) return null;
+
+  // Arcscan typed REST returns amounts as objects:
+  // { raw: "…", decimals: 18, formatted: "…" }.
+  if (typeof value === 'object') {
+    const rawValue = value.raw ?? value.value_raw ?? value.amount_raw;
+    if (rawValue !== undefined && /^-?\d+$/.test(String(rawValue))) {
+      const decimals = Number(value.decimals ?? fallbackDecimals);
+      return { raw: BigInt(String(rawValue)), decimals: Number.isFinite(decimals) ? decimals : fallbackDecimals };
+    }
+    const nested = value.amount ?? value.value ?? value.quantity;
+    if (nested !== undefined && nested !== value) {
+      return parseArcAmount(nested, Number(value.decimals ?? fallbackDecimals));
+    }
+    return null;
+  }
+
+  if (/^-?\d+$/.test(String(value))) {
+    return { raw: BigInt(String(value)), decimals: fallbackDecimals };
+  }
+
+  return null;
+}
+
 async function fetchActivityTotals(address: string): Promise<{ received: bigint; sent: bigint }> {
   const target = address.toLowerCase();
   let received = 0n;
@@ -178,39 +203,50 @@ async function fetchActivityTotals(address: string): Promise<{ received: bigint;
     if (cursor) url.searchParams.set('cursor', cursor);
 
     const data = await fetchJson(url.toString());
-    const rows = Array.isArray(data?.items) ? data.items : Array.isArray(data?.activity) ? data.activity : Array.isArray(data?.result) ? data.result : [];
+    const rows = Array.isArray(data?.items)
+      ? data.items
+      : Array.isArray(data?.activity)
+        ? data.activity
+        : Array.isArray(data?.result)
+          ? data.result
+          : [];
+
     for (const row of rows) {
       const from = addressOf(row?.from);
       const to = addressOf(row?.to);
       const direction = String(row?.direction || row?.flow || '').toLowerCase();
 
-      let raw: bigint | null = null;
-      let decimals = 18;
+      const amount =
+        parseArcAmount(row?.value_18dec, 18) ||
+        parseArcAmount(row?.amount_18dec, 18) ||
+        parseArcAmount(row?.value, Number(row?.decimals ?? row?.token?.decimals ?? row?.asset?.decimals ?? 18)) ||
+        parseArcAmount(row?.amount, Number(row?.decimals ?? row?.token?.decimals ?? row?.asset?.decimals ?? 18)) ||
+        parseArcAmount(row?.quantity, Number(row?.decimals ?? row?.token?.decimals ?? row?.asset?.decimals ?? 18)) ||
+        parseArcAmount(row?.value_raw, 18) ||
+        parseArcAmount(row?.amount_raw, 18);
 
-      const raw18 = row?.value_18dec ?? row?.amount_18dec;
-      if (raw18 !== undefined && /^-?\\d+$/.test(String(raw18))) {
-        raw = BigInt(String(raw18));
-        decimals = 18;
-      } else {
-        const candidate = row?.value_raw ?? row?.amount_raw ?? row?.value ?? row?.amount ?? row?.quantity;
-        if (candidate !== undefined && candidate !== null && /^-?\\d+$/.test(String(candidate))) {
-          raw = BigInt(String(candidate));
-          decimals = Number(row?.decimals ?? row?.token?.decimals ?? row?.asset?.decimals ?? 18);
-        }
-      }
+      if (!amount) continue;
 
-      if (raw === null) continue;
+      const incoming =
+        to === target ||
+        direction === 'in' ||
+        direction === 'incoming' ||
+        direction === 'received';
 
-      const incoming = to === target || direction === 'in' || direction === 'incoming' || direction === 'received';
-      const outgoing = from === target || direction === 'out' || direction === 'outgoing' || direction === 'sent';
+      const outgoing =
+        from === target ||
+        direction === 'out' ||
+        direction === 'outgoing' ||
+        direction === 'sent';
+
       if (incoming === outgoing) continue;
 
-      const normalized = to18Decimals(raw, decimals);
+      const normalized = to18Decimals(amount.raw, amount.decimals);
       if (incoming) received += normalized;
-      else if (outgoing) sent += normalized;
+      else sent += normalized;
     }
 
-    const next = data?.page?.next;
+    const next = data?.page?.next ?? data?.next_cursor ?? data?.nextCursor;
     if (!next || rows.length === 0) break;
     cursor = String(next);
   }
