@@ -26,6 +26,14 @@ export interface NormalizedTransaction {
   summary: string;
 }
 
+export interface WalletAssetSummary {
+  tokenHoldings: number;
+  coinHoldings: number;
+  nftHoldings: number;
+  fungibleHoldings: number;
+  historyStatus: 'complete' | 'unavailable';
+}
+
 export interface WalletSummary {
   address: string;
   balanceUSDC: string;
