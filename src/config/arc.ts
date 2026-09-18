@@ -1,5 +1,5 @@
 import { defineChain } from 'viem';
-import { NetworkConfig } from '../types/blockchain';
+import { NetworkConfig } from '../types/blockchain.js';
 
 export const ARC_MAINNET_CHAIN_ID = 5042;
 export const ARC_CHAIN_ID = ARC_MAINNET_CHAIN_ID;
