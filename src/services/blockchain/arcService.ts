@@ -3,8 +3,7 @@ import { arcChain, ARC_MAINNET_RPC_URL } from '../../config/arc.js';
 import { normalizeTransaction, RawTxInput } from './normalizer.js';
 import { NormalizedTransaction, WalletSummary } from '../../types/blockchain.js';
 
-const BLOCKSCOUT_API_BASE = 'https://explorer.arc.io/api/v2';
-const BLOCKSCOUT_API_KEY = process.env.BLOCKSCOUT_API_KEY?.trim() || '';
+const ARCSCAN_API_BASE = 'https://api.arc-scan.org/api';
 const NATIVE_USDC_DECIMALS = 18;
 const ERC20_USDC_ADDRESS = '0x3600000000000000000000000000000000000000'.toLowerCase();
 
@@ -17,113 +16,58 @@ export const arcClient = createPublicClient({
   }),
 });
 
-const API_HEADERS: Record<string, string> = {
-  Accept: 'application/json',
-  ...(BLOCKSCOUT_API_KEY ? { Authorization: `Bearer ${BLOCKSCOUT_API_KEY}` } : {}),
-};
-
-interface CachedTxResult {
-  transactions: NormalizedTransaction[];
-  isUnavailable: boolean;
-  historyStatus: 'complete' | 'incomplete' | 'unavailable';
-  timestamp: number;
-}
-
-const txCache = new Map<string, CachedTxResult>();
-const TX_CACHE_TTL_MS = 20_000;
-
-function formatUSDC(raw: bigint): string {
-  const value = Number(formatUnits(raw, NATIVE_USDC_DECIMALS));
-  if (!Number.isFinite(value)) return 'Unavailable';
-  return value === 0
-    ? '0.00'
-    : value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
-}
-
-function blockscoutUrl(path: string): string {
-  const url = new URL(`${BLOCKSCOUT_API_BASE}${path}`);
-  if (BLOCKSCOUT_API_KEY) url.searchParams.set('apikey', BLOCKSCOUT_API_KEY);
-  return url.toString();
-}
-
-async function fetchJson(path: string): Promise<any> {
-  const response = await fetch(blockscoutUrl(path), {
-    headers: API_HEADERS,
-    signal: AbortSignal.timeout(8_000),
-  });
-  if (!response.ok) {
-    throw new Error(`Blockscout request failed: ${response.status}`);
-  }
-  return response.json();
-}
-
-async function fetchAllPages(path: string, maxPages = 100): Promise<any[]> {
+async function fetchAddressTransactions(address: string): Promise<any[]> {
   const items: any[] = [];
-  let nextUrl: string | null = blockscoutUrl(path);
+  const offset = 100;
+  const maxPages = 500;
+  for (let page = 1; page <= maxPages; page++) {
+    const url = new URL(ARCSCAN_API_BASE);
+    url.searchParams.set('module', 'account');
+    url.searchParams.set('action', 'txlist');
+    url.searchParams.set('address', address);
+    url.searchParams.set('startblock', '0');
+    url.searchParams.set('endblock', '999999999');
+    url.searchParams.set('page', String(page));
+    url.searchParams.set('offset', String(offset));
+    url.searchParams.set('sort', 'desc');
 
-  for (let page = 0; page < maxPages && nextUrl; page++) {
-    const response = await fetch(nextUrl, {
-      headers: API_HEADERS,
-      signal: AbortSignal.timeout(8_000),
+    const response = await fetch(url.toString(), {
+      headers: { Accept: 'application/json', 'User-Agent': 'GEN-0FI/1.0' },
+      signal: AbortSignal.timeout(10_000),
     });
-    if (!response.ok) throw new Error(`Blockscout pagination failed: ${response.status}`);
+    if (!response.ok) throw new Error(`Arcscan request failed: ${response.status}`);
 
     const data = await response.json();
-    if (Array.isArray(data.items)) items.push(...data.items);
-
-    const params = data.next_page_params;
-    if (!params || Object.keys(params).length === 0) {
-      nextUrl = null;
-    } else {
-      const url = new URL(blockscoutUrl(path));
-      Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, String(value)));
-      nextUrl = url.toString();
+    if (data.status !== '1') {
+      throw new Error(data?.message || 'Arcscan transaction query failed');
     }
-  }
 
+    const pageItems = Array.isArray(data.result) ? data.result : [];
+    items.push(...pageItems);
+    if (pageItems.length < offset) break;
+  }
   return items;
 }
 
 function toRawTransaction(tx: any): RawTxInput {
+  const gasUsed = tx.gasUsed !== undefined && tx.gasUsed !== '' ? BigInt(tx.gasUsed) : undefined;
+  const gasPrice = tx.gasPrice !== undefined && tx.gasPrice !== '' ? BigInt(tx.gasPrice) : undefined;
+  const fee = gasUsed !== undefined && gasPrice !== undefined ? gasUsed * gasPrice : undefined;
+
   return {
     hash: tx.hash,
-    blockNumber: BigInt(tx.block_number || '0'),
-    from: tx.from?.hash || '',
-    to: tx.to?.hash || tx.created_contract?.hash || null,
+    blockNumber: BigInt(tx.blockNumber || '0'),
+    from: tx.from || '',
+    to: tx.to || null,
     value: BigInt(tx.value || '0'),
-    fee: tx.fee?.value !== undefined ? BigInt(tx.fee.value) : undefined,
-    gas: tx.gas_limit !== undefined ? BigInt(tx.gas_limit) : undefined,
-    gasPrice: tx.gas_price !== undefined ? BigInt(tx.gas_price) : undefined,
-    gasUsed: tx.gas_used !== undefined ? BigInt(tx.gas_used) : undefined,
-    input: tx.raw_input || '0x',
-    timestamp: tx.timestamp ? new Date(tx.timestamp).getTime() : undefined,
-    status: tx.status === 'ok' || tx.result === 'success' ? 1 : tx.status === 'error' || tx.result === 'failed' ? 0 : undefined,
-    contractAddress: tx.created_contract?.hash || null,
-  };
-}
-
-function tokenTransferToRaw(item: any): RawTxInput | null {
-  const tokenAddress = item.token?.address?.toLowerCase();
-  if (tokenAddress !== ERC20_USDC_ADDRESS) return null;
-
-  const decimals = Number(item.total?.decimals ?? item.token?.decimals ?? 6);
-  const rawValue = BigInt(item.total?.value || '0');
-  const valueInNativeDecimals =
-    decimals === NATIVE_USDC_DECIMALS
-      ? rawValue
-      : decimals < NATIVE_USDC_DECIMALS
-        ? rawValue * 10n ** BigInt(NATIVE_USDC_DECIMALS - decimals)
-        : rawValue / 10n ** BigInt(decimals - NATIVE_USDC_DECIMALS);
-
-  return {
-    hash: item.transaction_hash,
-    blockNumber: BigInt(item.block_number || '0'),
-    from: item.from?.hash || '',
-    to: item.to?.hash || null,
-    value: valueInNativeDecimals,
-    input: '0x',
-    timestamp: item.timestamp ? new Date(item.timestamp).getTime() : undefined,
-    status: 1,
+    fee,
+    gas: tx.gas !== undefined && tx.gas !== '' ? BigInt(tx.gas) : undefined,
+    gasPrice,
+    gasUsed,
+    input: tx.input || '0x',
+    timestamp: tx.timeStamp ? Number(tx.timeStamp) * 1000 : undefined,
+    status: tx.isError === '0' || tx.txreceipt_status === '1' ? 1 : tx.isError === '1' || tx.txreceipt_status === '0' ? 0 : undefined,
+    contractAddress: tx.contractAddress || null,
   };
 }
 
@@ -174,34 +118,12 @@ export async function fetchTransactionsForAddress(
   }
 
   try {
-    const [rawTransactions, rawTransfers] = await Promise.all([
-      fetchAllPages(`/addresses/${address}/transactions`),
-      fetchAllPages(`/addresses/${address}/token-transfers`),
-    ]);
+    const rawTransactions = await fetchAddressTransactions(address);
+    const transactions = rawTransactions
+      .filter((tx: any) => tx?.hash)
+      .map((tx: any) => normalizeTransaction(toRawTransaction(tx), address))
+      .sort((a, b) => b.timestamp - a.timestamp);
 
-    const byHash = new Map<string, NormalizedTransaction>();
-
-    for (const tx of rawTransactions) {
-      if (!tx?.hash) continue;
-      byHash.set(tx.hash.toLowerCase(), normalizeTransaction(toRawTransaction(tx), address));
-    }
-
-    for (const transfer of rawTransfers) {
-      const raw = tokenTransferToRaw(transfer);
-      if (!raw?.hash) continue;
-
-      const normalized = normalizeTransaction(raw, address);
-      const existing = byHash.get(raw.hash.toLowerCase());
-
-      // Keep the full transaction record for gas/contract classification.
-      // Add the token transfer as an activity record only when the transaction itself
-      // does not already represent the user's USDC movement.
-      if (!existing || existing.value === '0') {
-        byHash.set(raw.hash.toLowerCase(), normalized);
-      }
-    }
-
-    const transactions = Array.from(byHash.values()).sort((a, b) => b.timestamp - a.timestamp);
     const result = {
       transactions,
       isUnavailable: false,
