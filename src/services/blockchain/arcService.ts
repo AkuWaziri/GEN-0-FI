@@ -112,18 +112,21 @@ function toRawTransaction(tx: any): RawTxInput {
   };
 }
 
-async function resolveContractTargets(rawTransactions: RawTxInput[]): Promise<RawTxInput[]> {
-  const uniqueTargets = [...new Set(
+async function resolveContractTargets(rawTransactions: RawTxInput[], userAddress: string): Promise<RawTxInput[]> {
+  // Only a transaction sent by the wallet can be a wallet contract interaction.
+  // Received transfers must never be counted just because their sender is a contract.
+  const user = userAddress.toLowerCase();
+  const targets = [...new Set(
     rawTransactions
+      .filter(tx => Boolean(tx.to) && tx.from.toLowerCase() === user)
       .map(tx => tx.to?.toLowerCase())
       .filter((x): x is string => Boolean(x))
   )];
-
   const contractMap = new Map<string, boolean>();
 
-  // Keep RPC pressure predictable while still resolving targets quickly.
-  for (let i = 0; i < uniqueTargets.length; i += 20) {
-    const batch = uniqueTargets.slice(i, i + 20);
+  // Keep RPC pressure predictable while resolving only destinations.
+  for (let i = 0; i < targets.length; i += 20) {
+    const batch = targets.slice(i, i + 20);
     const results = await Promise.all(batch.map(async target => {
       try {
         const code = await arcClient.getCode({ address: target as `0x${string}` });
@@ -144,7 +147,7 @@ async function resolveContractTargets(rawTransactions: RawTxInput[]): Promise<Ra
     ...tx,
     isContractTarget: Boolean(
       (!tx.to && tx.contractAddress) ||
-      (tx.to && contractMap.get(tx.to.toLowerCase()))
+      (tx.to && tx.from.toLowerCase() === user && contractMap.get(tx.to.toLowerCase()))
     ),
   }));
 }
