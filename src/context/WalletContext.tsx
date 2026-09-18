@@ -142,20 +142,10 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
 
   // Single synchronized balance source of truth: whichever has the verified non-zero live balance
   const synchronizedBalanceUSDC = useMemo(() => {
-    // 1. Direct verified onchain balance from Arc RPC hook
-    if (arcBalance.formatted && arcBalance.formatted !== '0.00') {
-      return arcBalance.formatted;
-    }
-    // 2. Wagmi native useBalance on Arc Mainnet (chain 5042)
-    if (wagmiFormattedBalance && wagmiFormattedBalance !== '0.00') {
-      return wagmiFormattedBalance;
-    }
-    // 3. Wallet summary balance from provider
-    if (walletSummary?.balanceUSDC && walletSummary.balanceUSDC !== '0.00') {
-      return walletSummary.balanceUSDC;
-    }
-    // 4. Default to valid 0.00 if connected and verified zero
-    return arcBalance.formatted || wagmiFormattedBalance || walletSummary?.balanceUSDC || '0.00';
+    if (arcBalance.formatted && arcBalance.formatted !== 'Unavailable') return arcBalance.formatted;
+    if (wagmiFormattedBalance && wagmiFormattedBalance !== '0.00') return wagmiFormattedBalance;
+    if (walletSummary?.balanceUSDC && walletSummary.balanceUSDC !== 'Unavailable') return walletSummary.balanceUSDC;
+    return arcBalance.formatted || walletSummary?.balanceUSDC || 'Unavailable';
   }, [arcBalance.formatted, wagmiFormattedBalance, walletSummary?.balanceUSDC]);
 
   // References to prevent infinite re-render loops and rapid duplicate requests
@@ -292,7 +282,7 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
       }
     } catch (err) {
       console.warn('AI Summary fetch error, serving verified onchain summary fallback:', err);
-      setAiSummary(buildFallbackAiAnalysis(targetAddr, activeSummary, balance, activeTxs));
+      setAiSummary(buildFallbackAiAnalysis(targetAddr, activeSummary, balance));
     } finally {
       isAiFetchingRef.current = false;
       setIsAiLoading(false);
