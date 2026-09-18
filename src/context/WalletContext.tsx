@@ -289,7 +289,7 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
     }
   }, []);
 
-  // Fetch real onchain activity and summary for the connected address on Arc Testnet
+  // Fetch real onchain activity and summary for the connected address on Arc Mainnet
   const loadRealBlockchainData = useCallback(async (targetAddr: string, isInitial = false) => {
     if (!targetAddr || !isAddress(targetAddr)) return;
 
@@ -330,7 +330,7 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
     }
   }, [fetchAiSummary]);
 
-  // When active account changes, refresh real Arc Testnet data or reset
+  // When active account changes, refresh real Arc Mainnet data or reset
   useEffect(() => {
     if (activeAddress) {
       loadRealBlockchainData(activeAddress, true);
