@@ -116,8 +116,8 @@ function extractAmountRaw(row: any): { raw: bigint; decimals: number } | null {
 }
 
 async function fetchUsdcActivityTotals(address: string): Promise<{ received: bigint; sent: bigint } | null> {
-  const received = 0n;
-  const sent = 0n;
+  let received = 0n;
+  let sent = 0n;
   let cursor: string | undefined;
 
   try {
