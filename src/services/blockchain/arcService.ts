@@ -67,6 +67,106 @@ async function fetchUsdcActivityTotals(address: string): Promise<{ received: big
   }
 }
 
+async function markContractTargets(transactions: NormalizedTransaction[]): Promise<void> {
+  const cache = new Map<string, boolean>();
+  for (const tx of transactions) {
+    if (!tx.to || tx.to.toLowerCase() === tx.from?.toLowerCase()) continue;
+    const target = tx.to.toLowerCase();
+    if (!cache.has(target)) {
+      try {
+        const code = await arcClient.getCode({ address: target as `0x${string}` });
+        cache.set(target, !!code && code !== '0x');
+      } catch {
+        cache.set(target, false);
+      }
+    }
+    const isContract = cache.get(target) === true;
+    tx.isContractInteraction = isContract;
+    if (isContract) tx.contractAddress = tx.to;
+  }
+}
+
+function extractActivityRows(payload: any): any[] {
+  if (Array.isArray(payload)) return payload;
+  for (const key of ['items', 'activity', 'events', 'transfers', 'rows', 'result']) {
+    if (Array.isArray(payload?.[key])) return payload[key];
+  }
+  return [];
+}
+
+function extractAmountRaw(row: any): { raw: bigint; decimals: number } | null {
+  const candidates = [
+    row?.amount, row?.value, row?.quantity, row?.asset_amount,
+    row?.token_amount, row?.money, row?.value_raw, row?.amount_raw
+  ];
+  for (const candidate of candidates) {
+    if (candidate === undefined || candidate === null || candidate === '') continue;
+    try {
+      if (typeof candidate === 'object') {
+        const raw = candidate.raw ?? candidate.value_raw ?? candidate.value;
+        if (raw !== undefined && raw !== null && /^-?\\d+$/.test(String(raw))) {
+          return { raw: BigInt(String(raw)), decimals: Number(candidate.decimals ?? row?.decimals ?? 18) };
+        }
+      } else if (/^-?\\d+$/.test(String(candidate))) {
+        return { raw: BigInt(String(candidate)), decimals: Number(row?.decimals ?? 18) };
+      }
+    } catch {}
+  }
+  return null;
+}
+
+async function fetchUsdcActivityTotals(address: string): Promise<{ received: bigint; sent: bigint } | null> {
+  const received = 0n;
+  const sent = 0n;
+  let cursor: string | undefined;
+
+  try {
+    for (let page = 0; page < 500; page++) {
+      const url = new URL(`${ARCSCAN_API_BASE}/v1/address/${address}/activity`);
+      url.searchParams.set('limit', '100');
+      if (cursor) url.searchParams.set('cursor', cursor);
+
+      const response = await fetch(url.toString(), {
+        headers: { Accept: 'application/json', 'User-Agent': 'GEN-0FI/1.0' },
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!response.ok) throw new Error(`Arcscan activity request failed: ${response.status}`);
+      const data = await response.json();
+      const rows = extractActivityRows(data);
+
+      for (const row of rows) {
+        const tokenAddress = String(row?.token?.address || row?.token_address || row?.asset?.address || '').toLowerCase();
+        const symbol = String(row?.token?.symbol || row?.asset?.symbol || row?.symbol || '').toUpperCase();
+        if (tokenAddress && tokenAddress !== ERC20_USDC_ADDRESS && symbol && symbol !== 'USDC') continue;
+        const amount = extractAmountRaw(row);
+        if (!amount) continue;
+
+        const from = String(row?.from?.address || row?.from || '').toLowerCase();
+        const to = String(row?.to?.address || row?.to || '').toLowerCase();
+        const direction = String(row?.direction || row?.kind || row?.flow || '').toLowerCase();
+        const isIncoming = direction.includes('in') || direction === 'received' || to === address.toLowerCase();
+        const isOutgoing = direction.includes('out') || direction === 'sent' || from === address.toLowerCase();
+
+        let value = amount.raw;
+        const decimals = Number.isFinite(amount.decimals) ? amount.decimals : 18;
+        if (decimals < 18) value *= 10n ** BigInt(18 - decimals);
+        else if (decimals > 18) value /= 10n ** BigInt(decimals - 18);
+
+        if (isIncoming && !isOutgoing) received += value;
+        else if (isOutgoing && !isIncoming) sent += value;
+      }
+
+      const next = data?.page?.next;
+      if (!next || rows.length === 0) return { received, sent };
+      cursor = String(next);
+    }
+    throw new Error('Arcscan activity pagination limit reached');
+  } catch (error) {
+    console.warn('[ArcService] Arcscan activity totals unavailable:', error);
+    return null;
+  }
+}
+
 function formatUSDC(value: bigint | string): string {
   const formatted = formatUnits(typeof value === 'bigint' ? value : BigInt(value), NATIVE_USDC_DECIMALS);
   const [whole, fraction = ''] = formatted.split('.');
@@ -246,6 +346,7 @@ export async function fetchTransactionsForAddress(
       .map((tx: any) => normalizeTransaction(toRawTransaction(tx), address))
       .sort((a, b) => b.timestamp - a.timestamp);
 
+    await markContractTargets(transactions);
     const result = {
       transactions,
       isUnavailable: false,
