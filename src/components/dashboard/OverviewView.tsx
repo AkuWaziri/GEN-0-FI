@@ -10,6 +10,7 @@ import {
   AlertCircle,
   RefreshCw,
   Coins,
+  Gem,
   ChevronRight,
   ArrowDownLeft,
   ArrowUpRight,
@@ -28,6 +29,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
     isCorrectNetwork,
     balanceUSDC,
     walletSummary,
+    walletAssets,
     transactions,
     isLoadingData,
     isRefreshing,
@@ -381,6 +383,53 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
               </div>
             )}
             <div className="text-[11px] text-zinc-500 font-mono mt-1">Smart contracts</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Wallet Holdings */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+        {/* Fungible token holdings */}
+        <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 glow-blue-card-hover flex flex-col justify-between shadow-sm group">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-medium group-hover:text-zinc-300 transition-colors">
+              Coins
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 group-hover:border-blue-500/40 group-hover:text-blue-300 flex items-center justify-center text-zinc-400 transition-colors">
+              <Coins className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            {isLoadingData ? (
+              <Skeleton className="h-7 w-16" />
+            ) : (
+              <div className="text-lg sm:text-xl font-bold text-white font-mono">
+                {walletAssets?.coinHoldings ?? '—'}
+              </div>
+            )}
+            <div className="text-[11px] text-zinc-500 font-mono mt-1">Fungible token holdings</div>
+          </div>
+        </div>
+
+        {/* NFT holdings */}
+        <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 glow-blue-card-hover flex flex-col justify-between shadow-sm group">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-medium group-hover:text-zinc-300 transition-colors">
+              NFTs
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 group-hover:border-blue-500/40 group-hover:text-blue-300 flex items-center justify-center text-zinc-400 transition-colors">
+              <Gem className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            {isLoadingData ? (
+              <Skeleton className="h-7 w-16" />
+            ) : (
+              <div className="text-lg sm:text-xl font-bold text-white font-mono">
+                {walletAssets?.nftHoldings ?? '—'}
+              </div>
+            )}
+            <div className="text-[11px] text-zinc-500 font-mono mt-1">Indexed NFT holdings</div>
           </div>
         </div>
       </div>
