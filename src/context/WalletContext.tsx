@@ -56,87 +56,34 @@ export interface WalletContextType {
   fetchAiSummary: () => Promise<void>;
 }
 
-function buildFallbackAiAnalysis(
-  targetAddr: string,
-  summary: WalletSummary | null,
-  balance: string,
-  txs?: NormalizedTransaction[]
-): AiWalletAnalysis {
+function buildFallbackAiAnalysis(targetAddr: string, summary: WalletSummary | null, balance: string): AiWalletAnalysis {
   const short = `${targetAddr.slice(0, 6)}...${targetAddr.slice(-4)}`;
-  const norm = targetAddr.toLowerCase();
-  
-  let derivedRec = 0;
-  let derivedSent = 0;
-  let derivedGas = 0;
-  if (txs && txs.length > 0) {
-    for (const t of txs) {
-      const val = parseFloat(t.value.replace(/,/g, '')) || 0;
-      const from = (t.from || '').toLowerCase();
-      const to = (t.to || '').toLowerCase();
-      if (to === norm && from !== norm) {
-        derivedRec += val;
-      } else if (from === norm) {
-        derivedSent += val;
-        derivedGas += parseFloat(t.gasCostUSDC) || 0;
-      }
-    }
+  const txCount = summary?.txCount ?? 0;
+  if (summary?.historyStatus === 'unavailable' || !summary) {
+    return {
+      summary: `Wallet ${short} has a live Arc Mainnet balance of ${balance} USDC, but lifetime activity data is currently unavailable.`,
+      keyObservations: [`Live balance: ${balance} USDC.`, 'Lifetime transaction history is unavailable.'],
+      activityLevel: 'low',
+      generatedAt: Date.now(),
+      disclaimer: 'Generated from verified Arc Mainnet state. Missing data is not inferred.',
+    };
   }
-
-  const txCount = Math.max(summary?.txCount ?? 0, txs?.length ?? 0);
-  const numBal = parseFloat(balance.replace(/,/g, '')) || 0;
-  const historyStatus = summary?.historyStatus || (numBal > 0 && txCount === 0 ? 'incomplete' : 'complete');
-  const observations: string[] = [];
-
-  const recDisplay =
-    summary?.totalReceivedUSDC && summary.totalReceivedUSDC !== '0.00' && summary.totalReceivedUSDC !== 'Incomplete scan'
-      ? summary.totalReceivedUSDC
-      : derivedRec > 0
-      ? derivedRec.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
-      : summary?.totalReceivedUSDC || '0.00';
-
-  const sentDisplay =
-    summary?.totalSentUSDC && summary.totalSentUSDC !== '0.00' && summary.totalSentUSDC !== 'Incomplete scan'
-      ? summary.totalSentUSDC
-      : derivedSent > 0
-      ? derivedSent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
-      : summary?.totalSentUSDC || '0.00';
-
-  const gasDisplay =
-    summary?.gasSpentUSDC && summary.gasSpentUSDC !== '0.000000'
-      ? summary.gasSpentUSDC
-      : derivedGas > 0
-      ? derivedGas.toFixed(6)
-      : summary?.gasSpentUSDC || '0.000000';
-
-  let summaryText = '';
-  if (historyStatus === 'incomplete' && recDisplay === 'Incomplete scan') {
-    summaryText = `Wallet ${short} verifiably holds ${balance} USDC on Arc across ${txCount} transaction(s). Historical inbound funding occurred outside the scanned explorer dataset, so lifetime received volume cannot be fully determined from recent logs.`;
-    observations.push(`Current authoritative balance: ${balance} USDC on Arc.`);
-    observations.push(`Confirmed transactions: ${txCount} on Arc.`);
-    observations.push(`Inbound funding happened outside scanned blocks; current balance is authoritative.`);
-  } else if (txCount === 0 && numBal === 0) {
-    summaryText = `Wallet ${short} holds 0.00 USDC with zero recorded transactions on Arc.`;
-    observations.push(`Current verified balance: 0.00 USDC.`);
-    observations.push(`No incoming or outgoing transfers on Arc.`);
-  } else {
-    summaryText = `Wallet ${short} holds ${balance} USDC on Arc across ${txCount} confirmed transaction(s). Total verified incoming transfers: ${recDisplay} USDC; outgoing transfers: ${sentDisplay} USDC; gas spent: ${gasDisplay} USDC.`;
-    observations.push(`Current verified balance: ${balance} USDC.`);
-    observations.push(`Verified inbound: ${recDisplay} USDC | Outbound: ${sentDisplay} USDC.`);
-    if (parseFloat(gasDisplay) > 0) {
-      observations.push(`Gas execution fees paid on Arc: ${gasDisplay} USDC.`);
-    }
-    const contracts = summary?.contractInteractionsCount || txs?.filter(t => t.isContractInteraction).length || 0;
-    if (contracts > 0) {
-      observations.push(`${contracts} smart contract interaction(s) verified.`);
-    }
-  }
-
+  const received = summary.totalReceivedUSDC || 'Unavailable';
+  const sent = summary.totalSentUSDC || 'Unavailable';
+  const gas = summary.gasSpentUSDC || 'Unavailable';
+  const contracts = summary.contractInteractionsCount ?? 0;
+  const observations = [
+    `Current verified balance: ${balance} USDC.`,
+    `Verified inbound: ${received} USDC | Outbound: ${sent} USDC.`,
+  ];
+  if (gas !== 'Unavailable') observations.push(`Execution fees paid on Arc: ${gas} USDC.`);
+  if (contracts > 0) observations.push(`${contracts} smart contract interaction(s) verified.`);
   return {
-    summary: summaryText.replace(/\*/g, ''),
-    keyObservations: observations.map(o => o.replace(/\*/g, '')),
+    summary: `Wallet ${short} holds ${balance} USDC on Arc across ${txCount} indexed transaction(s). Verified lifetime inbound: ${received} USDC; outbound: ${sent} USDC.`,
+    keyObservations: observations,
     activityLevel: txCount > 5 ? 'active' : txCount > 0 ? 'moderate' : 'low',
     generatedAt: Date.now(),
-    disclaimer: 'Generated from real Arc onchain state.',
+    disclaimer: 'Generated from verified Arc Mainnet state. Missing data is not inferred.',
   };
 }
 
@@ -150,7 +97,7 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
   // Active address is lowercase string
   const activeAddress = wagmiAddress || null;
   const isConnected = Boolean(isWagmiConnected && activeAddress);
-  const isCorrectNetwork = Boolean(isConnected && network.isArcTestnet);
+  const isCorrectNetwork = Boolean(isConnected && network.isArcMainnet);
 
   // Real Arc native USDC balance directly from Arc Mainnet RPC
   const arcBalance = useArcBalance(activeAddress || undefined);
@@ -244,7 +191,7 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
       return;
     }
 
-    // If user wasn't connected and just successfully connected on Arc Testnet, show brief welcome state
+    // If user wasn't connected and just successfully connected on Arc Mainnet, show brief welcome state
     if (isConnected && isCorrectNetwork && !hasEverConnectedRef.current) {
       hasEverConnectedRef.current = true;
       setShowWelcomeOverlay(true);
@@ -306,46 +253,11 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
     isAiFetchingRef.current = true;
     setIsAiLoading(true);
 
-    // Compute consistent verified figures to pass to AI summary so it can never contradict overview
-    const norm = targetAddr.toLowerCase();
-    let derivedRec = 0;
-    let derivedSent = 0;
-    let derivedGas = 0;
-    if (activeTxs && activeTxs.length > 0) {
-      for (const t of activeTxs) {
-        const val = parseFloat(t.value.replace(/,/g, '')) || 0;
-        const from = (t.from || '').toLowerCase();
-        const to = (t.to || '').toLowerCase();
-        if (to === norm && from !== norm) {
-          derivedRec += val;
-        } else if (from === norm) {
-          derivedSent += val;
-          derivedGas += parseFloat(t.gasCostUSDC) || 0;
-        }
-      }
-    }
-
-    const txCount = Math.max(activeSummary?.txCount ?? 0, activeTxs?.length ?? 0);
-    const recDisplay =
-      activeSummary?.totalReceivedUSDC && activeSummary.totalReceivedUSDC !== '0.00' && activeSummary.totalReceivedUSDC !== 'Incomplete scan'
-        ? activeSummary.totalReceivedUSDC
-        : derivedRec > 0
-        ? derivedRec.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
-        : activeSummary?.totalReceivedUSDC || '0.00';
-
-    const sentDisplay =
-      activeSummary?.totalSentUSDC && activeSummary.totalSentUSDC !== '0.00' && activeSummary.totalSentUSDC !== 'Incomplete scan'
-        ? activeSummary.totalSentUSDC
-        : derivedSent > 0
-        ? derivedSent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
-        : activeSummary?.totalSentUSDC || '0.00';
-
-    const gasDisplay =
-      activeSummary?.gasSpentUSDC && activeSummary.gasSpentUSDC !== '0.000000'
-        ? activeSummary.gasSpentUSDC
-        : derivedGas > 0
-        ? derivedGas.toFixed(6)
-        : activeSummary?.gasSpentUSDC || '0.000000';
+    // Use the authoritative lifetime summary. Never derive lifetime totals from recent UI rows.
+    const txCount = activeSummary?.txCount ?? activeTxs.length;
+    const recDisplay = activeSummary?.totalReceivedUSDC || 'Unavailable';
+    const sentDisplay = activeSummary?.totalSentUSDC || 'Unavailable';
+    const gasDisplay = activeSummary?.gasSpentUSDC || 'Unavailable';
 
     try {
       const res = await fetch('/api/ai/summary', {
@@ -376,7 +288,7 @@ const WalletContextCore: React.FC<{ children: React.ReactNode }> = ({ children }
         const data = await res.json();
         setAiSummary(data);
       } else {
-        setAiSummary(buildFallbackAiAnalysis(targetAddr, activeSummary, balance, activeTxs));
+        setAiSummary(buildFallbackAiAnalysis(targetAddr, activeSummary, balance));
       }
     } catch (err) {
       console.warn('AI Summary fetch error, serving verified onchain summary fallback:', err);
