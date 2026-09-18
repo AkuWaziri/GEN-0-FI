@@ -1,6 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
-import { ARC_NETWORK_CONFIG } from '../../config/arc';
-import { fetchCompleteWalletState } from '../blockchain/arcService';
+import { ARC_NETWORK_CONFIG } from '../../config/arc.js';
+import { fetchCompleteWalletState } from '../blockchain/arcService.js';
 
 /**
  * Verified knowledge base on Arc protocol & GEN-0 FI platform.

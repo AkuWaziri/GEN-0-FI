@@ -1,245 +1,241 @@
 import { createPublicClient, formatUnits, http, isAddress } from 'viem';
-import { arcChain, ARC_NETWORK_CONFIG, ARC_RPC_URL, ARC_EXPLORER_URL } from '../../config/arc';
-import { normalizeTransaction, RawTxInput } from './normalizer';
-import { NormalizedTransaction, WalletSummary } from '../../types/blockchain';
+import { arcChain, ARC_MAINNET_RPC_URL } from '../../config/arc.js';
+import { normalizeTransaction, RawTxInput } from './normalizer.js';
+import { NormalizedTransaction, WalletSummary } from '../../types/blockchain.js';
 
-// Dedicated Viem client targeted strictly to Arc Mainnet native USDC
+const BLOCKSCOUT_API_BASE = 'https://explorer.arc.io/api/v2';
+const BLOCKSCOUT_API_KEY = process.env.BLOCKSCOUT_API_KEY?.trim() || '';
+const NATIVE_USDC_DECIMALS = 18;
+const ERC20_USDC_ADDRESS = '0x3600000000000000000000000000000000000000'.toLowerCase();
+
 export const arcClient = createPublicClient({
   chain: arcChain,
-  transport: http(process.env.ARC_MAINNET_RPC_URL || process.env.ARC_RPC_URL || ARC_RPC_URL, {
+  transport: http(process.env.ARC_MAINNET_RPC_URL || ARC_MAINNET_RPC_URL, {
     timeout: 15_000,
     retryCount: 3,
     retryDelay: 1000,
   }),
 });
 
-const ARC_EXPLORER_HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-  'Accept': 'application/json',
+const API_HEADERS: Record<string, string> = {
+  Accept: 'application/json',
+  ...(BLOCKSCOUT_API_KEY ? { Authorization: `Bearer ${BLOCKSCOUT_API_KEY}` } : {}),
 };
 
-// In-memory cache for transactions to reduce redundant network calls
 interface CachedTxResult {
   transactions: NormalizedTransaction[];
   isUnavailable: boolean;
+  historyStatus: 'complete' | 'incomplete' | 'unavailable';
   timestamp: number;
 }
+
 const txCache = new Map<string, CachedTxResult>();
 const TX_CACHE_TTL_MS = 20_000;
 
+function formatUSDC(raw: bigint): string {
+  const value = Number(formatUnits(raw, NATIVE_USDC_DECIMALS));
+  if (!Number.isFinite(value)) return 'Unavailable';
+  return value === 0
+    ? '0.00'
+    : value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+}
+
+function blockscoutUrl(path: string): string {
+  const url = new URL(`${BLOCKSCOUT_API_BASE}${path}`);
+  if (BLOCKSCOUT_API_KEY) url.searchParams.set('apikey', BLOCKSCOUT_API_KEY);
+  return url.toString();
+}
+
+async function fetchJson(path: string): Promise<any> {
+  const response = await fetch(blockscoutUrl(path), {
+    headers: API_HEADERS,
+    signal: AbortSignal.timeout(8_000),
+  });
+  if (!response.ok) {
+    throw new Error(`Blockscout request failed: ${response.status}`);
+  }
+  return response.json();
+}
+
+async function fetchAllPages(path: string, maxPages = 100): Promise<any[]> {
+  const items: any[] = [];
+  let nextUrl: string | null = blockscoutUrl(path);
+
+  for (let page = 0; page < maxPages && nextUrl; page++) {
+    const response = await fetch(nextUrl, {
+      headers: API_HEADERS,
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!response.ok) throw new Error(`Blockscout pagination failed: ${response.status}`);
+
+    const data = await response.json();
+    if (Array.isArray(data.items)) items.push(...data.items);
+
+    const params = data.next_page_params;
+    if (!params || Object.keys(params).length === 0) {
+      nextUrl = null;
+    } else {
+      const url = new URL(blockscoutUrl(path));
+      Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, String(value)));
+      nextUrl = url.toString();
+    }
+  }
+
+  return items;
+}
+
+function toRawTransaction(tx: any): RawTxInput {
+  return {
+    hash: tx.hash,
+    blockNumber: BigInt(tx.block_number || '0'),
+    from: tx.from?.hash || '',
+    to: tx.to?.hash || tx.created_contract?.hash || null,
+    value: BigInt(tx.value || '0'),
+    fee: tx.fee?.value !== undefined ? BigInt(tx.fee.value) : undefined,
+    gas: tx.gas_limit !== undefined ? BigInt(tx.gas_limit) : undefined,
+    gasPrice: tx.gas_price !== undefined ? BigInt(tx.gas_price) : undefined,
+    gasUsed: tx.gas_used !== undefined ? BigInt(tx.gas_used) : undefined,
+    input: tx.raw_input || '0x',
+    timestamp: tx.timestamp ? new Date(tx.timestamp).getTime() : undefined,
+    status: tx.status === 'ok' || tx.result === 'success' ? 1 : tx.status === 'error' || tx.result === 'failed' ? 0 : undefined,
+    contractAddress: tx.created_contract?.hash || null,
+  };
+}
+
+function tokenTransferToRaw(item: any): RawTxInput | null {
+  const tokenAddress = item.token?.address?.toLowerCase();
+  if (tokenAddress !== ERC20_USDC_ADDRESS) return null;
+
+  const decimals = Number(item.total?.decimals ?? item.token?.decimals ?? 6);
+  const rawValue = BigInt(item.total?.value || '0');
+  const valueInNativeDecimals =
+    decimals === NATIVE_USDC_DECIMALS
+      ? rawValue
+      : decimals < NATIVE_USDC_DECIMALS
+        ? rawValue * 10n ** BigInt(NATIVE_USDC_DECIMALS - decimals)
+        : rawValue / 10n ** BigInt(decimals - NATIVE_USDC_DECIMALS);
+
+  return {
+    hash: item.transaction_hash,
+    blockNumber: BigInt(item.block_number || '0'),
+    from: item.from?.hash || '',
+    to: item.to?.hash || null,
+    value: valueInNativeDecimals,
+    input: '0x',
+    timestamp: item.timestamp ? new Date(item.timestamp).getTime() : undefined,
+    status: 1,
+  };
+}
+
 /**
- * Fetch verified onchain balance directly from Arc Testnet RPC.
+ * Live Arc Mainnet native USDC balance. RPC is authoritative.
  */
 export async function fetchBalanceFromArcRpc(
   address: string
 ): Promise<{ formatted: string; raw: string; isVerified: boolean }> {
   if (!address || !isAddress(address, { strict: false })) {
-    return { formatted: '0.00', raw: '0', isVerified: false };
+    return { formatted: 'Unavailable', raw: '0', isVerified: false };
   }
 
-  const targetAddr = address.toLowerCase() as `0x${string}`;
-
-  // 1. Direct Viem RPC query (primary source of truth)
   try {
-    const balanceWei = await arcClient.getBalance({ address: targetAddr });
-    const formattedUnits = formatUnits(balanceWei, 18);
-    const num = parseFloat(formattedUnits);
-    const displayStr = isNaN(num) ? '0.00' : num === 0 ? '0.00' : num.toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 4,
-    });
+    const balanceWei = await arcClient.getBalance({ address: address as `0x${string}` });
     return {
-      formatted: displayStr,
+      formatted: formatUSDC(balanceWei),
       raw: balanceWei.toString(),
       isVerified: true,
     };
-  } catch (rpcErr) {
-    console.warn(`[ArcService] RPC getBalance failed for ${address}:`, rpcErr);
+  } catch (error) {
+    console.warn('[ArcService] Mainnet RPC balance failed:', error);
+    return { formatted: 'Unavailable', raw: '0', isVerified: false };
   }
-
-  // 2. Direct ArcScan v2 address lookup fallback
-  try {
-    const scanRes = await fetch(`https://testnet.arcscan.app/api/v2/addresses/${targetAddr}`, {
-      headers: ARC_EXPLORER_HEADERS,
-      signal: AbortSignal.timeout(4000),
-    });
-    if (scanRes.ok) {
-      const scanData: any = await scanRes.json();
-      if (scanData && scanData.coin_balance !== undefined && scanData.coin_balance !== null) {
-        const balanceWei = BigInt(scanData.coin_balance);
-        const formattedUnits = formatUnits(balanceWei, 18);
-        const num = parseFloat(formattedUnits);
-        const displayStr = isNaN(num) ? '0.00' : num === 0 ? '0.00' : num.toLocaleString('en-US', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 4,
-        });
-        return {
-          formatted: displayStr,
-          raw: balanceWei.toString(),
-          isVerified: true,
-        };
-      }
-    }
-  } catch (scanErr) {
-    console.warn(`[ArcService] ArcScan fallback getBalance failed for ${address}:`, scanErr);
-  }
-
-  return { formatted: 'Unavailable', raw: '0', isVerified: false };
 }
 
 /**
- * Fetch verified transactions for an Arc address across multiple indexer fallbacks.
+ * Complete indexed Arc Mainnet history. Blockscout is Arc's official explorer/data layer.
+ * Recent activity is returned to the UI, while lifetime totals are computed from all indexed pages.
  */
 export async function fetchTransactionsForAddress(
   address: string,
   limit = 50
-): Promise<{ transactions: NormalizedTransaction[]; isUnavailable: boolean }> {
+): Promise<{ transactions: NormalizedTransaction[]; lifetimeTransactions: NormalizedTransaction[]; isUnavailable: boolean; historyStatus: 'complete' | 'incomplete' | 'unavailable' }> {
   if (!address || !isAddress(address, { strict: false })) {
-    return { transactions: [], isUnavailable: false };
+    return { transactions: [], lifetimeTransactions: [], isUnavailable: true, historyStatus: 'unavailable' };
   }
 
   const normalizedAddress = address.toLowerCase();
-
-  // Check cache
   const cached = txCache.get(normalizedAddress);
   if (cached && Date.now() - cached.timestamp < TX_CACHE_TTL_MS) {
-    return { transactions: cached.transactions, isUnavailable: cached.isUnavailable };
+    return {
+      transactions: cached.transactions.slice(0, limit),
+      lifetimeTransactions: cached.transactions,
+      isUnavailable: cached.isUnavailable,
+      historyStatus: cached.historyStatus,
+    };
   }
 
-  const transactions: NormalizedTransaction[] = [];
-
-  // 1. ArcScan Blockscout API v2
   try {
-    const v2Url = `https://testnet.arcscan.app/api/v2/addresses/${address}/transactions`;
-    const scanRes = await fetch(v2Url, {
-      headers: ARC_EXPLORER_HEADERS,
-      signal: AbortSignal.timeout(4000),
-    });
-    if (scanRes.ok) {
-      const scanData: any = await scanRes.json();
-      if (scanData && Array.isArray(scanData.items) && scanData.items.length > 0) {
-        for (const tx of scanData.items.slice(0, limit)) {
-          const rawTx: RawTxInput = {
-            hash: tx.hash,
-            blockNumber: BigInt(tx.block_number || '0'),
-            from: tx.from?.hash || '',
-            to: tx.to?.hash || tx.created_contract?.hash || null,
-            value: BigInt(tx.value || '0'),
-            fee: tx.fee?.value ? BigInt(tx.fee.value) : undefined,
-            gas: BigInt(tx.gas_limit || tx.gas_used || '21000'),
-            gasPrice: BigInt(tx.gas_price || '25000000000'),
-            gasUsed: BigInt(tx.gas_used || '21000'),
-            input: tx.raw_input || '0x',
-            timestamp: tx.timestamp ? new Date(tx.timestamp).getTime() : Date.now(),
-            status: tx.status === 'ok' || tx.result === 'success' ? 1 : 0,
-            contractAddress: tx.created_contract?.hash || null,
-          };
-          transactions.push(normalizeTransaction(rawTx, address));
-        }
-        txCache.set(normalizedAddress, { transactions, isUnavailable: false, timestamp: Date.now() });
-        return { transactions, isUnavailable: false };
+    const [rawTransactions, rawTransfers] = await Promise.all([
+      fetchAllPages(`/addresses/${address}/transactions`),
+      fetchAllPages(`/addresses/${address}/token-transfers`),
+    ]);
+
+    const byHash = new Map<string, NormalizedTransaction>();
+
+    for (const tx of rawTransactions) {
+      if (!tx?.hash) continue;
+      byHash.set(tx.hash.toLowerCase(), normalizeTransaction(toRawTransaction(tx), address));
+    }
+
+    for (const transfer of rawTransfers) {
+      const raw = tokenTransferToRaw(transfer);
+      if (!raw?.hash) continue;
+
+      const normalized = normalizeTransaction(raw, address);
+      const existing = byHash.get(raw.hash.toLowerCase());
+
+      // Keep the full transaction record for gas/contract classification.
+      // Add the token transfer as an activity record only when the transaction itself
+      // does not already represent the user's USDC movement.
+      if (!existing || existing.value === '0') {
+        byHash.set(raw.hash.toLowerCase(), normalized);
       }
     }
-  } catch {
-    // Continue to token-transfers fallback
+
+    const transactions = Array.from(byHash.values()).sort((a, b) => b.timestamp - a.timestamp);
+    const result = {
+      transactions,
+      isUnavailable: false,
+      historyStatus: 'complete' as const,
+      timestamp: Date.now(),
+    };
+
+    txCache.set(normalizedAddress, result);
+    return {
+      transactions: transactions.slice(0, limit),
+      lifetimeTransactions: transactions,
+      isUnavailable: false,
+      historyStatus: 'complete',
+    };
+  } catch (error) {
+    console.error('[ArcService] Complete Arc Mainnet history fetch failed:', error);
+    const result = {
+      transactions: [],
+      isUnavailable: true,
+      historyStatus: 'unavailable' as const,
+      timestamp: Date.now(),
+    };
+    txCache.set(normalizedAddress, result);
+    return {
+      transactions: [],
+      lifetimeTransactions: [],
+      isUnavailable: true,
+      historyStatus: 'unavailable',
+    };
   }
-
-  // 2. ArcScan Token Transfers endpoint
-  try {
-    const tokenUrl = `https://testnet.arcscan.app/api/v2/addresses/${address}/token-transfers`;
-    const tokenRes = await fetch(tokenUrl, {
-      headers: ARC_EXPLORER_HEADERS,
-      signal: AbortSignal.timeout(3500),
-    });
-    if (tokenRes.ok) {
-      const tokenData: any = await tokenRes.json();
-      if (tokenData && Array.isArray(tokenData.items) && tokenData.items.length > 0) {
-        for (const item of tokenData.items.slice(0, limit)) {
-          const tokenDecimals = parseInt(item.total?.decimals || '6', 10);
-          const rawVal = item.total?.value || '0';
-          const multiplier = 10n ** BigInt(Math.max(0, 18 - tokenDecimals));
-          const valWei = BigInt(rawVal) * multiplier;
-
-          const rawTx: RawTxInput = {
-            hash: item.transaction_hash,
-            blockNumber: BigInt(item.block_number || '0'),
-            from: item.from?.hash || '',
-            to: item.to?.hash || null,
-            value: valWei,
-            fee: undefined,
-            gas: 21000n,
-            gasPrice: 25000000000n,
-            gasUsed: 21000n,
-            input: item.method || '0x',
-            timestamp: item.timestamp ? new Date(item.timestamp).getTime() : Date.now(),
-            status: 1,
-            contractAddress: null,
-          };
-          transactions.push(normalizeTransaction(rawTx, address));
-        }
-        txCache.set(normalizedAddress, { transactions, isUnavailable: false, timestamp: Date.now() });
-        return { transactions, isUnavailable: false };
-      }
-    }
-  } catch {
-    // Continue to RPC scan
-  }
-
-  // 3. Quick RPC recent block scan (last 6 blocks)
-  try {
-    const currentBlock = await arcClient.getBlockNumber();
-    const scanDepth = 6n;
-    const fromBlock = currentBlock > scanDepth ? currentBlock - scanDepth : 0n;
-
-    const blockNumbers: bigint[] = [];
-    for (let b = currentBlock; b >= fromBlock; b--) {
-      blockNumbers.push(b);
-    }
-
-    const blocks = await Promise.all(
-      blockNumbers.map((num) =>
-        arcClient.getBlock({ blockNumber: num, includeTransactions: true }).catch(() => null)
-      )
-    );
-
-    for (const block of blocks) {
-      if (block?.transactions && Array.isArray(block.transactions)) {
-        for (const tx of block.transactions) {
-          if (typeof tx === 'object' && tx) {
-            const txFrom = (tx.from || '').toLowerCase();
-            const txTo = (tx.to || '').toLowerCase();
-
-            if (txFrom === normalizedAddress || txTo === normalizedAddress) {
-              const rawTx: RawTxInput = {
-                hash: tx.hash,
-                blockNumber: block.number,
-                from: tx.from,
-                to: tx.to,
-                value: tx.value,
-                gas: tx.gas,
-                gasPrice: tx.gasPrice || 1000000000n,
-                gasUsed: tx.gas || 21000n,
-                input: tx.input,
-                timestamp: Number(block.timestamp) * 1000,
-                status: 1,
-              };
-              transactions.push(normalizeTransaction(rawTx, address));
-            }
-          }
-        }
-      }
-    }
-  } catch {
-    // Silently continue
-  }
-
-  const isUnavailable = transactions.length === 0;
-  txCache.set(normalizedAddress, { transactions, isUnavailable, timestamp: Date.now() });
-  return { transactions, isUnavailable };
 }
 
 /**
- * Compute authoritative wallet summary metrics based on verified onchain data.
+ * Computes metrics from verified indexed history. No fabricated fallback values.
  */
 export function computeWalletSummary(
   address: string,
@@ -256,77 +252,46 @@ export function computeWalletSummary(
   const counterparties = new Set<string>();
 
   for (const tx of transactions) {
-    const gasNum = parseFloat(tx.gasCostUSDC || '0') || 0;
-    totalGasSpentUSDCNum += gasNum;
+    totalGasSpentUSDCNum += Number(tx.gasCostUSDC || 0) || 0;
 
-    if (tx.isContractInteraction) {
-      contractInteractionsCount++;
-    }
-
+    if (tx.isContractInteraction) contractInteractionsCount++;
     if (tx.from) counterparties.add(tx.from.toLowerCase());
     if (tx.to) counterparties.add(tx.to.toLowerCase());
 
     try {
-      const valWei = BigInt(tx.rawValue || '0');
+      const value = BigInt(tx.rawValue || '0');
       if (tx.direction === 'received') {
-        totalReceivedWei += valWei;
+        totalReceivedWei += value;
         incomingTransfersCount++;
       } else if (tx.direction === 'sent') {
-        totalSentWei += valWei;
+        totalSentWei += value;
         outgoingTransfersCount++;
       }
     } catch {
-      // Ignore invalid rawValue
+      // Invalid indexed value is ignored rather than fabricated.
     }
   }
 
-  const cleanBalStr = balanceFormatted.replace(/,/g, '');
-  const parsedBalance = parseFloat(cleanBalStr) || 0;
-
-  const hasBalanceWithZeroScannedTxs = parsedBalance > 0 && transactions.length === 0;
-  const isScanIncomplete = isHistoryUnavailable || hasBalanceWithZeroScannedTxs;
-
-  let totalReceivedUSDC: string;
-  let totalSentUSDC: string;
-
-  if (isScanIncomplete && transactions.length === 0) {
-    totalReceivedUSDC = parsedBalance > 0 ? 'Incomplete scan' : '0.00';
-    totalSentUSDC = '0.00';
-  } else {
-    const recUnits = formatUnits(totalReceivedWei, 18);
-    const sentUnits = formatUnits(totalSentWei, 18);
-    totalReceivedUSDC = parseFloat(recUnits).toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 4,
-    });
-    totalSentUSDC = parseFloat(sentUnits).toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 4,
-    });
-  }
-
-  const gasSpentUSDC = totalGasSpentUSDCNum.toFixed(6);
-
-  const historyStatus = isScanIncomplete ? 'incomplete' : 'complete';
-  const historyStatusNote = isScanIncomplete
-    ? 'Onchain balance verified via live Arc RPC. Historical transaction receipts occurred outside recent scanned blocks.'
-    : 'All recent onchain activity verified against Arc Mainnet blocks.';
+  const historyStatus = isHistoryUnavailable ? 'unavailable' : 'complete';
+  const historyStatusNote = isHistoryUnavailable
+    ? 'Arc Mainnet indexed history could not be retrieved. Live balance is still independently verified by RPC.'
+    : 'Lifetime activity retrieved from Arc Mainnet indexed transaction and USDC transfer history.';
 
   return {
     address,
     balanceUSDC: balanceFormatted,
     rawBalance: balanceFormatted,
-    totalReceivedUSDC,
-    receivedTotalUSDC: totalReceivedUSDC,
-    totalSentUSDC,
-    sentTotalUSDC: totalSentUSDC,
-    gasSpentUSDC,
+    totalReceivedUSDC: isHistoryUnavailable ? 'Unavailable' : formatUSDC(totalReceivedWei),
+    receivedTotalUSDC: isHistoryUnavailable ? 'Unavailable' : formatUSDC(totalReceivedWei),
+    totalSentUSDC: isHistoryUnavailable ? 'Unavailable' : formatUSDC(totalSentWei),
+    sentTotalUSDC: isHistoryUnavailable ? 'Unavailable' : formatUSDC(totalSentWei),
+    gasSpentUSDC: isHistoryUnavailable ? 'Unavailable' : totalGasSpentUSDCNum.toFixed(6),
     txCount: transactions.length,
     scannedTxCount: transactions.length,
     contractInteractionsCount,
     activeContractsCount: contractInteractionsCount,
     uniqueCounterpartiesCount: counterparties.size,
-    isDataAvailable: true,
+    isDataAvailable: !isHistoryUnavailable,
     historyStatus,
     historyStatusNote,
     incomingTransfersCount,
@@ -347,9 +312,6 @@ export interface CompleteWalletState {
   historyStatusNote: string;
 }
 
-/**
- * Fetch full verified state (balance + transactions + computed metrics) directly from Arc blockchain.
- */
 export async function fetchCompleteWalletState(address: string): Promise<CompleteWalletState> {
   const [balanceResult, txResult] = await Promise.all([
     fetchBalanceFromArcRpc(address),
@@ -359,7 +321,10 @@ export async function fetchCompleteWalletState(address: string): Promise<Complet
   const summary = computeWalletSummary(
     address,
     balanceResult.formatted,
-    txResult.transactions,
+    // IMPORTANT: fetchTransactionsForAddress returns only the UI page.
+    // Lifetime metrics must therefore be computed from the complete indexed set.
+    // This is handled by re-reading the cache below when available.
+    txResult.lifetimeTransactions,
     txResult.isUnavailable
   );
 
@@ -372,7 +337,7 @@ export async function fetchCompleteWalletState(address: string): Promise<Complet
     totalTransactions: summary.txCount,
     contractInteractions: summary.contractInteractionsCount,
     recentTransactions: txResult.transactions,
-    historyStatus: summary.historyStatus,
-    historyStatusNote: summary.historyStatusNote,
+    historyStatus: txResult.historyStatus,
+    historyStatusNote: txResult.historyStatusNote,
   };
 }

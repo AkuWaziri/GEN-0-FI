@@ -1,4 +1,4 @@
-import { handleAiAskPayload, getGeminiApiKey } from '../../src/services/ai/geminiService';
+import { handleAiAskPayload, getGeminiApiKey } from '../../src/services/ai/geminiService.js';
 
 async function extractRequestBody(req: any): Promise<any> {
   // 1. If Web standard Request object (Edge or modern runtime)
