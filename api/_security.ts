@@ -1,4 +1,4 @@
-import type { IncomingMessage, ServerResponse } from 'node:http';
+import type { IncomingMessage } from 'node:http';
 import { isAddress } from 'viem';
 
 const WINDOW_MS = 60_000;
