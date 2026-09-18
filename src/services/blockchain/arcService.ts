@@ -201,6 +201,20 @@ function parseArcAmount(value: any, fallbackDecimals = 18): { raw: bigint; decim
     return { raw: BigInt(String(value)), decimals: fallbackDecimals };
   }
 
+  // Some Arcscan value fields are already formatted decimal strings
+  // (for example "12.345678"). Convert them exactly to the declared scale
+  // without passing through JavaScript Number.
+  const decimal = String(value).trim();
+  if (/^-?\d+(?:\.\d+)?$/.test(decimal)) {
+    const negative = decimal.startsWith('-');
+    const unsigned = negative ? decimal.slice(1) : decimal;
+    const [whole, fraction = ''] = unsigned.split('.');
+    const scale = Math.max(0, fallbackDecimals);
+    const padded = (fraction + '0'.repeat(scale)).slice(0, scale);
+    const raw = BigInt(whole || '0') * 10n ** BigInt(scale) + BigInt(padded || '0');
+    return { raw: negative ? -raw : raw, decimals: scale };
+  }
+
   return null;
 }
 
@@ -209,6 +223,8 @@ async function fetchActivityTotals(address: string): Promise<{ received: bigint;
   let received = 0n;
   let sent = 0n;
   let cursor = '';
+  const seenMovements = new Set<string>();
+  let activityRows = 0;
 
   for (let page = 0; page < 500; page++) {
     const url = new URL(`${ARCSCAN_V1_BASE}/address/${address}/activity`);
@@ -223,6 +239,8 @@ async function fetchActivityTotals(address: string): Promise<{ received: bigint;
         : Array.isArray(data?.result)
           ? data.result
           : [];
+
+    activityRows += rows.length;
 
     for (const row of rows) {
       const from = addressOf(row?.from);
@@ -255,6 +273,21 @@ async function fetchActivityTotals(address: string): Promise<{ received: bigint;
       if (incoming === outgoing) continue;
 
       const normalized = to18Decimals(amount.raw, amount.decimals);
+
+      // The activity feed is a merged timeline. The same value movement can
+      // appear through multiple indexed representations, so count each exact
+      // movement once per transaction/hash + direction + endpoints + amount.
+      const movementId = [
+        String(row?.tx_hash || row?.txHash || row?.hash || row?.transaction_hash || ''),
+        from || '',
+        to || '',
+        incoming ? 'in' : 'out',
+        normalized.toString(),
+      ].join(':');
+
+      if (seenMovements.has(movementId)) continue;
+      seenMovements.add(movementId);
+
       if (incoming) received += normalized;
       else sent += normalized;
     }
@@ -262,6 +295,10 @@ async function fetchActivityTotals(address: string): Promise<{ received: bigint;
     const next = data?.page?.next ?? data?.next_cursor ?? data?.nextCursor;
     if (!next || rows.length === 0) break;
     cursor = String(next);
+  }
+
+  if (activityRows === 0) {
+    throw new Error('Arcscan activity returned no rows');
   }
 
   return { received, sent };
@@ -455,26 +492,20 @@ export async function fetchCompleteWalletState(address: string): Promise<Complet
     };
   }
 
-  // Use the address transaction index for lifetime received/sent totals.
-  // Do NOT sum the merged /activity feed here: that feed contains multiple
-  // event types touching the address and can represent the same transaction's
-  // value flow more than once. The txlist-derived normalized history has exactly
-  // one row per indexed transaction, so each native value transfer is counted once.
-  let received = 0n;
-  let sent = 0n;
-
-  for (const tx of history.lifetimeTransactions) {
-    try {
-      const value = BigInt(tx.rawValue || '0');
-      if (tx.direction === 'received') {
-        received += value;
-      } else if (tx.direction === 'sent' || tx.direction === 'contract_interaction') {
-        sent += value;
-      }
-    } catch {}
+  // Prefer Arcscan's merged activity because txlist.value only contains
+  // top-level native value. ERC-20 USDC transfers commonly have txlist.value=0.
+  // fetchActivityTotals de-duplicates the merged movement representations.
+  let transferTotals: { received: bigint; sent: bigint };
+  try {
+    transferTotals = await fetchActivityTotals(address);
+  } catch (error) {
+    console.warn('[GEN-0FI] Arc activity totals unavailable:', error);
+    // Do not silently present an incomplete lifetime total as authoritative.
+    // If activity cannot be read, expose the metric as unavailable instead.
+    transferTotals = { received: -1n, sent: -1n };
   }
 
-  const transferTotals = { received, sent };
+  const totalsAvailable = transferTotals.received >= 0n && transferTotals.sent >= 0n;
 
   const summary = computeWalletSummary(
     address,
@@ -487,8 +518,8 @@ export async function fetchCompleteWalletState(address: string): Promise<Complet
   return {
     walletAddress: address,
     currentBalance: summary.balanceUSDC,
-    totalReceived: transferTotals ? summary.totalReceivedUSDC : 'Unavailable',
-    totalSent: transferTotals ? summary.totalSentUSDC : 'Unavailable',
+    totalReceived: totalsAvailable ? summary.totalReceivedUSDC : 'Unavailable',
+    totalSent: totalsAvailable ? summary.totalSentUSDC : 'Unavailable',
     totalGasSpent: summary.gasSpentUSDC,
     totalTransactions: summary.txCount,
     contractInteractions: summary.contractInteractionsCount,
