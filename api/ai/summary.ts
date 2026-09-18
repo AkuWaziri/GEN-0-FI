@@ -1,24 +1,20 @@
+import { applyApiSecurity } from '../_security.js';
 import { isAddress } from 'viem';
 import { callGeminiWithFallback } from '../../src/services/ai/geminiService.js';
 import { fetchCompleteWalletState } from '../../src/services/blockchain/arcService.js';
 
 export default async function handler(req: any, res: any) {
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
-  );
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (!applyApiSecurity(req, res)) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed. Use POST.' });
   }
+
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
+  const contentType = String(req.headers?.['content-type'] || '').toLowerCase();
+  const contentLength = Number(req.headers?.['content-length'] || 0);
+  if (contentType && !contentType.includes('application/json')) return res.status(415).json({ error: 'Content-Type must be application/json' });
+  if (Number.isFinite(contentLength) && contentLength > 64 * 1024) return res.status(413).json({ error: 'Request body too large' });
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
