@@ -157,9 +157,9 @@ export async function fetchBalanceFromArcRpc(
 export async function fetchTransactionsForAddress(
   address: string,
   limit = 50
-): Promise<{ transactions: NormalizedTransaction[]; isUnavailable: boolean; historyStatus: 'complete' | 'incomplete' | 'unavailable' }> {
+): Promise<{ transactions: NormalizedTransaction[]; lifetimeTransactions: NormalizedTransaction[]; isUnavailable: boolean; historyStatus: 'complete' | 'incomplete' | 'unavailable' }> {
   if (!address || !isAddress(address, { strict: false })) {
-    return { transactions: [], isUnavailable: true, historyStatus: 'unavailable' };
+    return { transactions: [], lifetimeTransactions: [], isUnavailable: true, historyStatus: 'unavailable' };
   }
 
   const normalizedAddress = address.toLowerCase();
@@ -167,6 +167,7 @@ export async function fetchTransactionsForAddress(
   if (cached && Date.now() - cached.timestamp < TX_CACHE_TTL_MS) {
     return {
       transactions: cached.transactions.slice(0, limit),
+      lifetimeTransactions: cached.transactions,
       isUnavailable: cached.isUnavailable,
       historyStatus: cached.historyStatus,
     };
@@ -211,6 +212,7 @@ export async function fetchTransactionsForAddress(
     txCache.set(normalizedAddress, result);
     return {
       transactions: transactions.slice(0, limit),
+      lifetimeTransactions: transactions,
       isUnavailable: false,
       historyStatus: 'complete',
     };
@@ -225,6 +227,7 @@ export async function fetchTransactionsForAddress(
     txCache.set(normalizedAddress, result);
     return {
       transactions: [],
+      lifetimeTransactions: [],
       isUnavailable: true,
       historyStatus: 'unavailable',
     };
@@ -321,7 +324,7 @@ export async function fetchCompleteWalletState(address: string): Promise<Complet
     // IMPORTANT: fetchTransactionsForAddress returns only the UI page.
     // Lifetime metrics must therefore be computed from the complete indexed set.
     // This is handled by re-reading the cache below when available.
-    txResult.transactions,
+    txResult.lifetimeTransactions,
     txResult.isUnavailable
   );
 
