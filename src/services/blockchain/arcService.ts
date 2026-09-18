@@ -416,6 +416,64 @@ async function fetchGasAndValueFallback(address: string, transactions: Normalize
   return { received, sent, gas };
 }
 
+export async function fetchWalletAssetSummary(address: string): Promise<{
+  tokenHoldings: number;
+  coinHoldings: number;
+  nftHoldings: number;
+  fungibleHoldings: number;
+  historyStatus: 'complete' | 'unavailable';
+}> {
+  if (!address || !isAddress(address, { strict: false })) {
+    return { tokenHoldings: 0, coinHoldings: 0, nftHoldings: 0, fungibleHoldings: 0, historyStatus: 'unavailable' };
+  }
+
+  const url = ARCSCAN_V1_BASE + '/address/' + address + '/tokens';
+  const data = await fetchJson(url);
+  const rows = Array.isArray(data?.items)
+    ? data.items
+    : Array.isArray(data?.tokens)
+      ? data.tokens
+      : Array.isArray(data?.result)
+        ? data.result
+        : [];
+
+  if (!Array.isArray(rows)) {
+    throw new Error('Arcscan token holdings unavailable');
+  }
+
+  let coinHoldings = 0;
+  let nftHoldings = 0;
+
+  for (const row of rows) {
+    const standard = String(
+      row?.standard ??
+      row?.token_standard ??
+      row?.type ??
+      row?.token?.standard ??
+      ''
+    ).toUpperCase();
+
+    if (standard === 'ERC-721' || standard === 'ERC721' || standard === 'ERC-1155' || standard === 'ERC1155') {
+      nftHoldings++;
+    } else if (standard === 'ERC-20' || standard === 'ERC20') {
+      const balance = row?.balance ?? row?.amount ?? row?.quantity ?? row?.raw_balance;
+      if (balance !== undefined && balance !== null && String(balance) !== '0') {
+        coinHoldings++;
+      } else if (balance === undefined || balance === null) {
+        coinHoldings++;
+      }
+    }
+  }
+
+  return {
+    tokenHoldings: coinHoldings + nftHoldings,
+    coinHoldings,
+    nftHoldings,
+    fungibleHoldings: coinHoldings,
+    historyStatus: 'complete',
+  };
+}
+
 export async function fetchBalanceFromArcRpc(address: string): Promise<{ formatted: string; raw: string; isVerified: boolean }> {
   if (!address || !isAddress(address, { strict: false })) {
     return { formatted: 'Unavailable', raw: '0', isVerified: false };
