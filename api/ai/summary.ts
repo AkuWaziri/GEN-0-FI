@@ -6,10 +6,6 @@ import { fetchCompleteWalletState } from '../../src/services/blockchain/arcServi
 export default async function handler(req: any, res: any) {
   if (!applyApiSecurity(req, res)) return;
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed. Use POST.' });
-  }
-
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
   const contentType = String(req.headers?.['content-type'] || '').toLowerCase();
   const contentLength = Number(req.headers?.['content-length'] || 0);
@@ -157,6 +153,6 @@ If the facts do not support an interpretation, leave it out.`;
     return res.status(200).json(deterministicResult);
 
   } catch (err: any) {
-    return res.status(500).json({ error: err.message || 'Failed to generate summary' });
+    return res.status(500).json({ error: 'Failed to generate summary' });
   }
 }
