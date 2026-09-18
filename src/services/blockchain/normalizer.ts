@@ -1,6 +1,6 @@
 import { formatUnits } from 'viem';
-import { NormalizedTransaction, TxClassification, TxDirection, TxStatus } from '../../types/blockchain';
-import { formatShortAddress } from '../../config/arc';
+import { NormalizedTransaction, TxClassification, TxDirection, TxStatus } from '../../types/blockchain.js';
+import { formatShortAddress } from '../../config/arc.js';
 
 export interface RawTxInput {
   hash: string;
