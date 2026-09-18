@@ -1,5 +1,5 @@
-import { arcClient } from '../../../src/services/blockchain/arcService';
-import { ARC_NETWORK_CONFIG } from '../../../src/config/arc';
+import { arcClient } from '../../../src/services/blockchain/arcService.js';
+import { ARC_NETWORK_CONFIG } from '../../../src/config/arc.js';
 import { formatUnits } from 'viem';
 
 export default async function handler(req: any, res: any) {
