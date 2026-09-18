@@ -4,6 +4,8 @@ import { normalizeTransaction, RawTxInput } from './normalizer.js';
 import { NormalizedTransaction, WalletSummary } from '../../types/blockchain.js';
 
 const ARCSCAN_API_BASE = 'https://api.arc-scan.org/api';
+const ARCSCAN_API_KEY = process.env.ARCSCAN_API_KEY || 'YourApiKeyToken';
+const ARCSCAN_RPC_URL = 'https://rpc.arc-scan.org';
 const NATIVE_USDC_DECIMALS = 18;
 const ERC20_USDC_ADDRESS = '0x3600000000000000000000000000000000000000'.toLowerCase();
 
@@ -16,10 +18,20 @@ export const arcClient = createPublicClient({
   }),
 });
 
+const arcScanClient = createPublicClient({
+  chain: arcChain,
+  transport: http(ARCSCAN_RPC_URL, {
+    timeout: 15_000,
+    retryCount: 2,
+    retryDelay: 750,
+  }),
+});
+
 async function fetchAddressTransactions(address: string): Promise<any[]> {
   const items: any[] = [];
   const offset = 100;
   const maxPages = 500;
+
   for (let page = 1; page <= maxPages; page++) {
     const url = new URL(ARCSCAN_API_BASE);
     url.searchParams.set('module', 'account');
@@ -30,23 +42,26 @@ async function fetchAddressTransactions(address: string): Promise<any[]> {
     url.searchParams.set('page', String(page));
     url.searchParams.set('offset', String(offset));
     url.searchParams.set('sort', 'desc');
+    url.searchParams.set('apikey', ARCSCAN_API_KEY);
 
     const response = await fetch(url.toString(), {
       headers: { Accept: 'application/json', 'User-Agent': 'GEN-0FI/1.0' },
-      signal: AbortSignal.timeout(10_000),
+      signal: AbortSignal.timeout(15_000),
     });
     if (!response.ok) throw new Error(`Arcscan request failed: ${response.status}`);
 
     const data = await response.json();
     if (data.status !== '1') {
-      throw new Error(data?.message || 'Arcscan transaction query failed');
+      const result = typeof data?.result === 'string' ? data.result : '';
+      throw new Error(data?.message || result || 'Arcscan transaction query failed');
     }
 
     const pageItems = Array.isArray(data.result) ? data.result : [];
     items.push(...pageItems);
-    if (pageItems.length < offset) break;
+    if (pageItems.length < offset) return items;
   }
-  return items;
+
+  throw new Error('Arcscan transaction history exceeded the pagination safety limit');
 }
 
 function toRawTransaction(tx: any): RawTxInput {
@@ -72,7 +87,10 @@ function toRawTransaction(tx: any): RawTxInput {
 }
 
 /**
- * Live Arc Mainnet native USDC balance. RPC is authoritative.
+ * Live Arc Mainnet native USDC balance.
+ * Primary source is the configured Arc Mainnet RPC. Arcscan's public RPC is the
+ * independent read-only fallback so a single RPC outage does not turn a verified
+ * onchain balance into "Unavailable".
  */
 export async function fetchBalanceFromArcRpc(
   address: string
@@ -89,14 +107,51 @@ export async function fetchBalanceFromArcRpc(
       isVerified: true,
     };
   } catch (error) {
-    console.warn('[ArcService] Mainnet RPC balance failed:', error);
+    console.warn('[ArcService] Primary Arc Mainnet RPC balance failed:', error);
+  }
+
+  try {
+    const balanceWei = await arcScanClient.getBalance({ address: address as `0x${string}` });
+    return {
+      formatted: formatUSDC(balanceWei),
+      raw: balanceWei.toString(),
+      isVerified: true,
+    };
+  } catch (error) {
+    console.warn('[ArcService] Arcscan RPC balance fallback failed:', error);
+  }
+
+  try {
+    const url = new URL(ARCSCAN_API_BASE);
+    url.searchParams.set('module', 'account');
+    url.searchParams.set('action', 'balance');
+    url.searchParams.set('address', address);
+    url.searchParams.set('apikey', ARCSCAN_API_KEY);
+
+    const response = await fetch(url.toString(), {
+      headers: { Accept: 'application/json', 'User-Agent': 'GEN-0FI/1.0' },
+      signal: AbortSignal.timeout(10_000),
+    });
+    const data = await response.json();
+    if (response.ok && data?.status === '1' && typeof data.result === 'string') {
+      const raw = BigInt(data.result);
+      return {
+        formatted: formatUSDC(raw),
+        raw: raw.toString(),
+        isVerified: true,
+      };
+    }
+    throw new Error(typeof data?.result === 'string' ? data.result : 'Arcscan balance query failed');
+  } catch (error) {
+    console.warn('[ArcService] Arcscan indexed balance fallback failed:', error);
     return { formatted: 'Unavailable', raw: '0', isVerified: false };
   }
 }
 
 /**
- * Complete indexed Arc Mainnet history. Blockscout is Arc's official explorer/data layer.
- * Recent activity is returned to the UI, while lifetime totals are computed from all indexed pages.
+ * Complete indexed Arc Mainnet history. Arcscan indexes mainnet from block 0.
+ * Recent activity is returned to the UI, while lifetime totals are computed
+ * from all indexed address transactions.
  */
 export async function fetchTransactionsForAddress(
   address: string,
@@ -243,9 +298,6 @@ export async function fetchCompleteWalletState(address: string): Promise<Complet
   const summary = computeWalletSummary(
     address,
     balanceResult.formatted,
-    // IMPORTANT: fetchTransactionsForAddress returns only the UI page.
-    // Lifetime metrics must therefore be computed from the complete indexed set.
-    // This is handled by re-reading the cache below when available.
     txResult.lifetimeTransactions,
     txResult.isUnavailable
   );
