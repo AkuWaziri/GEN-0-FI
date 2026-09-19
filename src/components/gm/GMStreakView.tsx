@@ -3,8 +3,7 @@ import { useSendTransaction, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther } from 'viem';
 import { Flame, Loader2, Trophy, CheckCircle2, ExternalLink } from 'lucide-react';
 import { useWallet } from '../../context/WalletContext';
-import { ARC_MAINNET_CHAIN_ID, ARC_MAINNET_EXPLORER_URL } from '../../config/arc';
-import { GM_DATA, GM_FEE_ADDRESS } from '../../services/gm/gmService';
+import { ARC_MAINNET_CHAIN_ID, ARC_MAINNET_EXPLORER_URL, GM_DATA, GM_FEE_ADDRESS } from '../../config/arc';
 
 interface GmStatus {
   gmCount: number;
