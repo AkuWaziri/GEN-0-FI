@@ -1,6 +1,6 @@
 import { isAddress } from 'viem';
-import { applyApiSecurity } from '../../../_security.js';
-import { getGmStatus } from '../../../../src/services/gm/gmService.js';
+import { applyApiSecurity } from '../../_security.js';
+import { getGmStatus } from '../../../src/services/gm/gmService.js';
 
 export default async function handler(req: any, res: any) {
   if (!applyApiSecurity(req, res)) return;
