@@ -9,6 +9,7 @@ import { isSupabaseConfigured } from '../../lib/supabase';
 import { ARC_CHAIN_ID, arcChain, getArcScanTxUrl } from '../../config/arc';
 
 const short = (address: string) => `${address.slice(0, 6)}...${address.slice(-4)}`;
+const PENDING_GM_TX_KEY = 'gen0fi:pending-gm-tx';
 
 export const GMStreakView: React.FC = () => {
   const { address, isCorrectNetwork } = useWallet();
@@ -44,8 +45,51 @@ export const GMStreakView: React.FC = () => {
     }
   };
 
+  const recoverPendingGM = async () => {
+    if (!address || !isGMContractConfigured) return;
+
+    const pendingHash = window.localStorage.getItem(PENDING_GM_TX_KEY);
+    if (!pendingHash) return;
+
+    try {
+      const transaction = await receiptClient.getTransaction({
+        hash: pendingHash as `0x${string}`,
+      });
+
+      if (
+        !transaction.to ||
+        transaction.to.toLowerCase() !== GM_CONTRACT_ADDRESS.toLowerCase() ||
+        transaction.from.toLowerCase() !== address.toLowerCase()
+      ) {
+        window.localStorage.removeItem(PENDING_GM_TX_KEY);
+        return;
+      }
+
+      const receipt = await receiptClient.waitForTransactionReceipt({
+        hash: pendingHash as `0x${string}`,
+        confirmations: 1,
+        pollingInterval: 1000,
+        timeout: 15000,
+      });
+
+      if (receipt.status !== 'success') {
+        window.localStorage.removeItem(PENDING_GM_TX_KEY);
+        return;
+      }
+
+      const nextStats = await indexConfirmedGM(address, pendingHash);
+      window.localStorage.removeItem(PENDING_GM_TX_KEY);
+      setStats(nextStats);
+      setLeaderboard(await getGMLeaderboard(20));
+      setTxHash(pendingHash);
+    } catch (err) {
+      console.warn('Pending GM recovery is still waiting:', err);
+    }
+  };
+
   useEffect(() => {
     load();
+    recoverPendingGM();
   }, [address]);
 
   const handleCheckIn = async () => {
@@ -75,6 +119,7 @@ export const GMStreakView: React.FC = () => {
       });
 
       setTxHash(hash);
+      window.localStorage.setItem(PENDING_GM_TX_KEY, hash);
 
       // Arcscan's public RPC is a browser-safe read endpoint and provides a reliable
       // receipt path for confirming the transaction after the wallet has submitted it.
@@ -90,6 +135,7 @@ export const GMStreakView: React.FC = () => {
       }
 
       const nextStats = await indexConfirmedGM(address, hash);
+      window.localStorage.removeItem(PENDING_GM_TX_KEY);
       setStats(nextStats);
       setLeaderboard(await getGMLeaderboard(20));
     } catch (err: any) {
