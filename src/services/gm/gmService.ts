@@ -15,10 +15,12 @@ export interface GMLeaderboardRow {
   longestStreak: number;
   totalGmDays: number;
   points: number;
+  lastCheckinDate?: string | null;
 }
 
 const dateKey = (date = new Date()) => {
   const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'UTC',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -28,8 +30,8 @@ const dateKey = (date = new Date()) => {
 };
 
 const previousDateKey = (date: string) => {
-  const d = new Date(`${date}T12:00:00`);
-  d.setDate(d.getDate() - 1);
+  const d = new Date(`${date}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - 1);
   return dateKey(d);
 };
 
@@ -52,11 +54,8 @@ const calculateStats = (dates: string[], today: string): GMStats => {
   let longestStreak = 0;
   let run = 0;
   for (let i = 0; i < unique.length; i += 1) {
-    if (i === 0 || previousDateKey(unique[i]) === unique[i - 1]) {
-      run += 1;
-    } else {
-      run = 1;
-    }
+    if (i === 0 || previousDateKey(unique[i]) === unique[i - 1]) run += 1;
+    else run = 1;
     longestStreak = Math.max(longestStreak, run);
   }
 
@@ -64,7 +63,6 @@ const calculateStats = (dates: string[], today: string): GMStats => {
     currentStreak,
     longestStreak,
     totalGmDays: unique.length,
-    // Points are consecutive-day points. Missing a day breaks the streak and resets points.
     points: currentStreak,
     checkedInToday,
     lastCheckinDate: unique.at(-1) || null,
@@ -93,22 +91,32 @@ export async function getGMStats(walletAddress: string): Promise<GMStats> {
     .order('checkin_date', { ascending: true });
 
   if (error) throw error;
-
   return calculateStats((data || []).map((row) => row.checkin_date), today);
 }
 
-export async function checkInGM(walletAddress: string): Promise<GMStats> {
-  if (!supabase) throw new Error('GM service is not configured.');
+/**
+ * Index a GM only after the Arc mainnet transaction has been confirmed.
+ * The blockchain transaction is the source of truth. Supabase is only the index.
+ */
+export async function indexConfirmedGM(
+  walletAddress: string,
+  txHash: string,
+): Promise<GMStats> {
+  if (!supabase) throw new Error('GM indexing is not configured.');
 
   const normalized = walletAddress.toLowerCase();
   const today = dateKey();
 
   const { error } = await supabase
     .from('gm_checkins')
-    .insert({ wallet_address: normalized, checkin_date: today });
+    .insert({
+      wallet_address: normalized,
+      checkin_date: today,
+      tx_hash: txHash.toLowerCase(),
+      chain_id: 5042,
+    });
 
   if (error && error.code !== '23505') throw error;
-
   return getGMStats(normalized);
 }
 
