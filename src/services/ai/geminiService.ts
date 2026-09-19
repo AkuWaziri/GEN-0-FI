@@ -707,7 +707,6 @@ export async function handleAiAskPayload(payload: {
     contractAddress: t.contractAddress || undefined,
     contractName: t.contractName || undefined,
     methodName: t.methodName || undefined,
-    classification: t.classification,
   }));
 
   const systemInstruction = `You are GEN-0 FI, the official onchain financial intelligence assistant and Arc protocol expert.
