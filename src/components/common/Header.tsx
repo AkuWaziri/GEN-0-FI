@@ -17,16 +17,13 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onOpenConnect }) => {
 
   const getTabTitle = () => {
     switch (activeTab) {
-      case 'overview':
-        return 'Overview';
-      case 'activity':
-        return 'Activity';
-      case 'ask':
-        return 'Ask GEN-0';
-      case 'settings':
-        return 'Settings';
-      default:
-        return 'Dashboard';
+      case 'overview': return 'Overview';
+      case 'activity': return 'Activity';
+      case 'ask': return 'Ask GEN-0';
+      case 'gm': return 'GM Streak';
+      case 'leaderboard': return 'Leaderboard';
+      case 'settings': return 'Settings';
+      default: return 'Dashboard';
     }
   };
 
@@ -35,7 +32,6 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onOpenConnect }) => {
       id="main-app-header"
       className="sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6 lg:px-8 py-2.5 bg-[#000000]/90 backdrop-blur-md border-b border-zinc-900 select-none h-14 w-full"
     >
-      {/* Left side: on mobile shows logo, on desktop shows active tab title */}
       <div className="flex items-center gap-3">
         <div className="md:hidden flex items-center gap-2">
           <Logo size="sm" showText={true} />
@@ -48,7 +44,6 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onOpenConnect }) => {
         </div>
       </div>
 
-      {/* Right controls */}
       <div className="flex items-center gap-2 sm:gap-2.5">
         <div className="hidden sm:block">
           <NetworkBadge compact={true} />
