@@ -525,3 +525,230 @@ html.light .bg-black\/80 {
 }
 
 
+
+
+/* =============================================================
+   WHITE MODE
+   Clean, high-contrast surface system optimized for desktop,
+   tablet and mobile layouts.
+   ============================================================= */
+html.white,
+html.white body,
+html.white #root {
+  color-scheme: light;
+  background: #ffffff !important;
+  color: #111827 !important;
+}
+
+html.white body {
+  overflow-x: hidden;
+}
+
+html.white ::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+
+html.white ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+
+html.white ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* App canvas, header and navigation */
+html.white .bg-\[\#090a0c\],
+html.white .bg-\[\#0f1012\],
+html.white .bg-\[\#07080a\],
+html.white .bg-\[\#000000\],
+html.white .bg-\[\#08090b\],
+html.white .bg-\[\#08090b\]\/95,
+html.white #desktop-sidebar,
+html.white #main-app-header,
+html.white #mobile-bottom-nav {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border-color: #e5e7eb !important;
+}
+
+/* Primary cards and panels */
+html.white .bg-\[\#0d0f12\],
+html.white .bg-\[\#0b0d10\],
+html.white .bg-\[\#0b0d10\]\/95,
+html.white .bg-\[\#0c0e12\],
+html.white .bg-\[\#0d0f13\],
+html.white .bg-\[\#0d0f14\],
+html.white .bg-\[\#0c0d10\],
+html.white .bg-\[\#101216\],
+html.white .bg-\[\#111317\],
+html.white .bg-\[\#111418\],
+html.white .bg-\[\#131519\],
+html.white .bg-\[\#14161a\],
+html.white .bg-\[\#14161d\],
+html.white .bg-\[\#151720\],
+html.white .bg-\[\#16181d\],
+html.white .bg-\[\#0e1014\],
+html.white .bg-\[\#090b0e\],
+html.white .bg-\[\#08090c\],
+html.white .bg-\[\#12141a\],
+html.white .bg-\[\#12151b\],
+html.white .bg-\[\#13161c\],
+html.white .bg-\[\#1a1d24\],
+html.white .bg-\[\#050608\],
+html.white .bg-zinc-950,
+html.white .bg-zinc-900 {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border-color: #e5e7eb !important;
+}
+
+html.white .bg-zinc-800 {
+  background-color: #f1f5f9 !important;
+  color: #111827 !important;
+  border-color: #dbe2ea !important;
+}
+
+html.white .hover\:bg-zinc-800:hover,
+html.white .hover\:bg-zinc-800\/40:hover,
+html.white .hover\:bg-zinc-800\/50:hover,
+html.white .hover\:bg-zinc-800\/80:hover,
+html.white .hover\:bg-zinc-800\/90:hover,
+html.white .hover\:bg-zinc-900:hover {
+  background-color: #f1f5f9 !important;
+}
+
+/* Typography: dark ink on white */
+html.white .text-white,
+html.white .text-zinc-100,
+html.white .text-zinc-200 {
+  color: #111827 !important;
+}
+
+html.white .text-zinc-300 {
+  color: #374151 !important;
+}
+
+html.white .text-zinc-400 {
+  color: #6b7280 !important;
+}
+
+html.white .text-zinc-500 {
+  color: #6b7280 !important;
+}
+
+html.white .text-zinc-600 {
+  color: #4b5563 !important;
+}
+
+html.white .hover\:text-white:hover,
+html.white .hover\:text-zinc-200:hover,
+html.white .hover\:text-zinc-300:hover {
+  color: #111827 !important;
+}
+
+/* Borders and separators */
+html.white .border-zinc-900,
+html.white .border-zinc-900\/80,
+html.white .border-zinc-900\/90,
+html.white .border-zinc-800,
+html.white .border-zinc-800\/90,
+html.white .border-zinc-800\/80,
+html.white .border-zinc-800\/50,
+html.white .border-zinc-700,
+html.white .border-zinc-700\/80 {
+  border-color: #e5e7eb !important;
+}
+
+/* Inputs and textareas */
+html.white input,
+html.white textarea {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border-color: #d1d5db !important;
+}
+
+html.white input::placeholder,
+html.white textarea::placeholder {
+  color: #9ca3af !important;
+}
+
+html.white input:focus,
+html.white textarea:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12) !important;
+}
+
+/* Preserve readable blue status accents */
+html.white .text-blue-300 { color: #2563eb !important; }
+html.white .text-blue-400 { color: #2563eb !important; }
+html.white .text-emerald-400 { color: #059669 !important; }
+html.white .text-amber-400 { color: #b45309 !important; }
+html.white .text-red-400 { color: #dc2626 !important; }
+html.white .text-orange-400 { color: #c2410c !important; }
+html.white .text-yellow-400 { color: #a16207 !important; }
+html.white .text-purple-400 { color: #7e22ce !important; }
+
+/* White-mode active controls use blue instead of white-on-white */
+html.white .bg-white.text-black,
+html.white button.bg-white.text-black,
+html.white a.bg-white.text-black {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+  border-color: #2563eb !important;
+}
+
+html.white .bg-white.text-black *,
+html.white button.bg-white.text-black *,
+html.white a.bg-white.text-black * {
+  color: #ffffff !important;
+}
+
+html.white .bg-white.text-black:hover,
+html.white button.bg-white.text-black:hover,
+html.white a.bg-white.text-black:hover {
+  background-color: #1d4ed8 !important;
+}
+
+/* Chat / activity / table-like dense content */
+html.white .whitespace-pre-wrap {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+html.white .font-mono {
+  overflow-wrap: anywhere;
+}
+
+html.white a {
+  overflow-wrap: anywhere;
+}
+
+/* Prevent wide data cards from breaking small screens */
+@media (max-width: 767px) {
+  html.white main {
+    min-width: 0;
+  }
+
+  html.white .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  html.white input,
+  html.white textarea,
+  html.white button {
+    max-width: 100%;
+  }
+}
+
+@media (min-width: 768px) {
+  html.white main {
+    min-width: 0;
+  }
+}
+
+/* Respect device safe areas for mobile navigation and chat controls */
+@supports (padding: max(0px)) {
+  html.white #mobile-bottom-nav {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom)) !important;
+  }
+}
