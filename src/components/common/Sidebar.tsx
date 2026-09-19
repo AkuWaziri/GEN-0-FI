@@ -3,9 +3,9 @@ import { Logo } from './Logo';
 import { NetworkBadge } from './NetworkBadge';
 import { AddressBadge } from './AddressBadge';
 import { useWallet } from '../../context/WalletContext';
-import { LayoutDashboard, History, Sparkles, Settings, LogOut, Wallet } from 'lucide-react';
+import { LayoutDashboard, History, Sparkles, Settings, LogOut, Wallet, Flame, Trophy } from 'lucide-react';
 
-export type TabType = 'overview' | 'activity' | 'ask' | 'settings';
+export type TabType = 'overview' | 'ask' | 'gm' | 'activity' | 'leaderboard' | 'settings';
 
 interface SidebarProps {
   activeTab: TabType;
@@ -19,7 +19,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
   const navItems = [
     { id: 'overview' as TabType, label: 'Overview', icon: LayoutDashboard },
     { id: 'ask' as TabType, label: 'Ask GEN-0', icon: Sparkles, badge: 'AI' },
+    { id: 'gm' as TabType, label: 'GM Streak', icon: Flame },
     { id: 'activity' as TabType, label: 'Activity', icon: History },
+    { id: 'leaderboard' as TabType, label: 'Leaderboard', icon: Trophy },
     { id: 'settings' as TabType, label: 'Settings', icon: Settings },
   ];
 
@@ -29,17 +31,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
       className="hidden md:flex flex-col w-60 shrink-0 bg-[#08090b] border-r border-zinc-900 min-h-screen p-4 justify-between select-none"
     >
       <div className="space-y-4">
-        {/* Brand Logo */}
         <div className="px-2 pt-1 pb-0.5">
           <Logo size="md" />
         </div>
 
-        {/* Network Status Pill */}
         <div className="px-1">
           <NetworkBadge />
         </div>
 
-        {/* Navigation Items */}
         <nav className="space-y-1.5" aria-label="Main Navigation" role="tablist">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -85,7 +84,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
         </nav>
       </div>
 
-      {/* Sidebar Footer: Connected Wallet Info */}
       <div className="pt-3 border-t border-zinc-900 space-y-2.5">
         {isConnected && address ? (
           <div className="p-2.5 rounded-xl bg-[#0e1014] border border-zinc-800/90 hover:border-blue-500/30 hover:shadow-[0_0_18px_-3px_rgba(59,130,246,0.18)] transition-all">
