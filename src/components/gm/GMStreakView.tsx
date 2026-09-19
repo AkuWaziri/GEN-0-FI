@@ -1,17 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { Flame, Check, Trophy, CalendarDays, RefreshCw, ExternalLink } from 'lucide-react';
 import { useWallet } from '../../context/WalletContext';
-import { usePublicClient, useWriteContract } from 'wagmi';
+import { useWriteContract } from 'wagmi';
+import { createPublicClient, http } from 'viem';
 import { GM_CONTRACT_ABI, GM_CONTRACT_ADDRESS, GM_FEE_WEI, isGMContractConfigured } from '../../config/gmContract';
 import { indexConfirmedGM, getGMLeaderboard, getGMStats, GMLeaderboardRow, GMStats } from '../../services/gm/gmService';
 import { isSupabaseConfigured } from '../../lib/supabase';
-import { ARC_CHAIN_ID, getArcScanTxUrl } from '../../config/arc';
+import { ARC_CHAIN_ID, arcChain, getArcScanTxUrl } from '../../config/arc';
 
 const short = (address: string) => `${address.slice(0, 6)}...${address.slice(-4)}`;
 
 export const GMStreakView: React.FC = () => {
   const { address, isCorrectNetwork } = useWallet();
-  const publicClient = usePublicClient({ chainId: ARC_CHAIN_ID });
+  const receiptClient = createPublicClient({
+    chain: arcChain,
+    transport: http('https://rpc.arc-scan.org'),
+  });
   const { writeContractAsync } = useWriteContract();
 
   const [stats, setStats] = useState<GMStats | null>(null);
@@ -57,11 +61,6 @@ export const GMStreakView: React.FC = () => {
       return;
     }
 
-    if (!publicClient) {
-      setError('Arc Mainnet client is unavailable. Please try again.');
-      return;
-    }
-
     setCheckingIn(true);
     setError(null);
     setTxHash(null);
@@ -77,7 +76,14 @@ export const GMStreakView: React.FC = () => {
 
       setTxHash(hash);
 
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      // Arcscan's public RPC is a browser-safe read endpoint and provides a reliable
+      // receipt path for confirming the transaction after the wallet has submitted it.
+      const receipt = await receiptClient.waitForTransactionReceipt({
+        hash,
+        confirmations: 1,
+        pollingInterval: 1000,
+        timeout: 60000,
+      });
 
       if (receipt.status !== 'success') {
         throw new Error('GM transaction reverted.');
