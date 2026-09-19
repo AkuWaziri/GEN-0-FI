@@ -176,9 +176,9 @@ export const GMStreakView: React.FC = () => {
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.25em] text-blue-400 font-mono">Daily onchain check-in · 0.01 USDC</p>
+            <p className="text-[10px] uppercase tracking-[0.25em] text-blue-400 font-mono">Daily onchain check-in</p>
             <h1 className="mt-1 text-2xl sm:text-3xl font-bold text-white tracking-tight">GM Streak</h1>
-            <p className="mt-2 text-sm text-zinc-400">Each GM is an Arc Mainnet transaction. Network fees apply separately.</p>
+            <p className="mt-2 text-sm text-zinc-400">Each GM is an Arc Mainnet transaction.</p>
           </div>
           <button onClick={load} disabled={loading} className="p-2.5 rounded-xl border border-zinc-800 text-zinc-400 hover:text-white hover:border-blue-500/30 transition-colors">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -197,7 +197,7 @@ export const GMStreakView: React.FC = () => {
         <div className="rounded-2xl border border-zinc-800 bg-[#111317] p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
           <div>
             <div className="text-sm font-semibold text-white">{stats?.checkedInToday ? 'GM checked in today' : 'You have not checked in today'}</div>
-            <div className="text-xs text-zinc-500 mt-1">{stats?.checkedInToday ? 'Come back tomorrow to extend the streak.' : 'A successful transaction costs 0.01 USDC plus the normal Arc network fee.'}</div>
+            <div className="text-xs text-zinc-500 mt-1">{stats?.checkedInToday ? 'Come back tomorrow to extend the streak.' : 'A successful transaction is recorded on Arc Mainnet.'}</div>
           </div>
           <button onClick={handleCheckIn} disabled={checkingIn || loading || Boolean(stats?.checkedInToday)} className="w-full sm:w-auto min-w-36 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white text-black text-sm font-bold hover:bg-zinc-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
             {checkingIn ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
