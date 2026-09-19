@@ -1508,3 +1508,153 @@ html.white a.bg-white.text-black:hover {
 html.white ::-webkit-scrollbar-track { background: var(--lb-canvas) !important; }
 html.white ::-webkit-scrollbar-thumb { background: #b49f80 !important; }
 html.white ::-webkit-scrollbar-thumb:hover { background: #987f5f !important; }
+
+
+/* =============================================================
+   FINAL LIGHT BROWN HARDENING
+   Use valid attribute selectors so Tailwind arbitrary classes
+   cannot leave white/warm-white pockets behind.
+   ============================================================= */
+html.white,
+html.white body,
+html.white #root {
+  background-color: #e7dcc9 !important;
+  color: #2b2925 !important;
+}
+
+/* Known legacy dark surfaces -> brown. */
+html.white [class*="bg-[#090a0c]"],
+html.white [class*="bg-[#0f1012]"],
+html.white [class*="bg-[#07080a]"],
+html.white [class*="bg-[#000000]"],
+html.white [class*="bg-[#08090b]"],
+html.white [class*="bg-[#0d0f12]"],
+html.white [class*="bg-[#0b0d10]"],
+html.white [class*="bg-[#0c0e12]"],
+html.white [class*="bg-[#0d0f13]"],
+html.white [class*="bg-[#0d0f14]"],
+html.white [class*="bg-[#0c0d10]"],
+html.white [class*="bg-[#101216]"],
+html.white [class*="bg-[#111317]"],
+html.white [class*="bg-[#111418]"],
+html.white [class*="bg-[#131519]"],
+html.white [class*="bg-[#14161a]"],
+html.white [class*="bg-[#14161d]"],
+html.white [class*="bg-[#151720]"],
+html.white [class*="bg-[#16181d]"],
+html.white [class*="bg-[#0e1014]"],
+html.white [class*="bg-[#090b0e]"],
+html.white [class*="bg-[#08090c]"],
+html.white [class*="bg-[#12141a]"],
+html.white [class*="bg-[#12151b]"],
+html.white [class*="bg-[#13161c]"],
+html.white [class*="bg-[#1a1d24]"],
+html.white [class*="bg-[#050608]"] {
+  background-color: #ded1bc !important;
+  color: #2b2925 !important;
+  border-color: #c2ae90 !important;
+}
+
+/* Every actual white / warm-white surface -> brown. */
+html.white .bg-white:not(.text-black),
+html.white [class*="bg-[#ffffff]"],
+html.white [class*="bg-[#fffdf7]"],
+html.white [class*="bg-[#fbf8f1]"],
+html.white [class*="bg-[#f8fafc]"],
+html.white [class*="bg-[#f7f3e8]"],
+html.white [class*="bg-[#f4efe3]"] {
+  background-color: #ded1bc !important;
+  color: #2b2925 !important;
+  border-color: #c2ae90 !important;
+}
+
+/* Do not allow white primary controls to disappear into the canvas. */
+html.white button.bg-white,
+html.white a.bg-white,
+html.white button[class*="bg-[#ffffff]"],
+html.white a[class*="bg-[#ffffff]"] {
+  background-color: #315f9f !important;
+  color: #ffffff !important;
+  border-color: #315f9f !important;
+}
+
+html.white button.bg-white *,
+html.white a.bg-white *,
+html.white button[class*="bg-[#ffffff]"] *,
+html.white a[class*="bg-[#ffffff]"] * {
+  color: #ffffff !important;
+}
+
+/* Brown theme for common neutral utility surfaces. */
+html.white .bg-zinc-950,
+html.white .bg-zinc-900 {
+  background-color: #ded1bc !important;
+  color: #2b2925 !important;
+  border-color: #c2ae90 !important;
+}
+
+html.white .bg-zinc-800,
+html.white .bg-zinc-700,
+html.white .bg-zinc-600 {
+  background-color: #d4c4aa !important;
+  color: #2b2925 !important;
+  border-color: #bfae93 !important;
+}
+
+/* Logo must have dark contrast in light brown mode. */
+html.white #gen0-brand-logo svg path,
+html.white #gen0-brand-logo .project-logo-mark {
+  fill: #2b2925 !important;
+  color: #2b2925 !important;
+}
+
+html.white #gen0-brand-logo .text-zinc-950 {
+  color: #2b2925 !important;
+}
+
+/* Header/sidebar/mobile navigation get a distinct surface, not white. */
+html.white #main-app-header,
+html.white #desktop-sidebar,
+html.white #mobile-bottom-nav {
+  background-color: #ded1bc !important;
+  border-color: #c2ae90 !important;
+}
+
+/* Inputs and selects stay lighter than cards, but never white. */
+html.white input,
+html.white textarea,
+html.white select {
+  background-color: #e9dfcf !important;
+  color: #2b2925 !important;
+  border-color: #c2ae90 !important;
+}
+
+/* White text utilities become readable brown-theme ink. */
+html.white .text-white,
+html.white .text-zinc-100,
+html.white .text-zinc-200 {
+  color: #2b2925 !important;
+}
+
+html.white .text-zinc-300 { color: #403b34 !important; }
+html.white .text-zinc-400 { color: #5f584d !important; }
+html.white .text-zinc-500 { color: #71695d !important; }
+
+/* Keep deliberate blue controls and status colors intact. */
+html.white .bg-blue-500\/10,
+html.white .bg-blue-500\/15,
+html.white .bg-blue-500\/20 {
+  color: #315f9f !important;
+}
+
+html.white .glow-blue-tab,
+html.white [role="tab"][aria-selected="true"] {
+  background-color: rgba(49, 95, 159, 0.13) !important;
+  color: #315f9f !important;
+  border-color: rgba(49, 95, 159, 0.34) !important;
+}
+
+html.white #gen0-app-footer {
+  background-color: #e7dcc9 !important;
+  border-top-color: #c2ae90 !important;
+}
