@@ -88,7 +88,7 @@ export const SettingsView: React.FC = () => {
                 aria-label="Switch to White Mode"
               >
                 <Contrast className="w-3.5 h-3.5" />
-                <span>Dark Grey</span>
+                <span>White</span>
               </button>
             </div>
 
