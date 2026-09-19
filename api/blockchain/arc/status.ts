@@ -1,27 +1,26 @@
 import { createPublicClient, formatUnits, http } from 'viem';
+import { applyApiSecurity } from '../../_security.js';
+import {
+  ARC_MAINNET_CHAIN_ID,
+  ARC_MAINNET_EXPLORER_URL,
+  ARC_MAINNET_RPC_URL,
+  ARC_NETWORK_CONFIG,
+} from '../../../src/config/arc.js';
 
-const ARC_MAINNET_CHAIN_ID = 5042;
-const ARC_MAINNET_RPC_URL = process.env.ARC_MAINNET_RPC_URL || 'https://rpc.mainnet.arc.io';
-const ARC_MAINNET_EXPLORER_URL = 'https://explorer.arc.io';
+const ARC_RPC = process.env.ARC_MAINNET_RPC_URL || ARC_MAINNET_RPC_URL;
+
 const arcClient = createPublicClient({
   chain: {
     id: ARC_MAINNET_CHAIN_ID,
     name: 'Arc',
     nativeCurrency: { name: 'USD Coin', symbol: 'USDC', decimals: 18 },
-    rpcUrls: { default: { http: [ARC_MAINNET_RPC_URL] } },
+    rpcUrls: { default: { http: [ARC_RPC] } },
   },
-  transport: http(ARC_MAINNET_RPC_URL, { timeout: 15_000, retryCount: 2 }),
+  transport: http(ARC_RPC, { timeout: 15_000, retryCount: 2 }),
 });
 
 export default async function handler(req: any, res: any) {
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
-  );
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  if (!applyApiSecurity(req, res)) return;
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -48,15 +47,17 @@ export default async function handler(req: any, res: any) {
       blockNumber: Number(blockNumber),
       latencyMs: latency,
       gasPriceGwei,
-      rpcUrl: ARC_MAINNET_RPC_URL,
+      rpcUrl: ARC_RPC,
       nativeCurrency: 'USDC',
       explorerUrl: ARC_MAINNET_EXPLORER_URL,
     });
   } catch (error: any) {
+    console.error('[Arc Status API] RPC error:', error?.message || error);
+
     return res.status(503).json({
       connected: false,
       error: 'Arc RPC connection error',
-      message: error?.message || 'RPC request timed out',
+      message: 'Unable to query Arc Mainnet right now',
       chainId: ARC_NETWORK_CONFIG.chainId,
       rpcUrl: ARC_NETWORK_CONFIG.rpcUrl,
     });
