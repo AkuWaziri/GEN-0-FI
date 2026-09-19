@@ -1,7 +1,6 @@
+import { GM_DATA, GM_FEE_ADDRESS, GM_FEE_RAW } from '../../config/arc.js';
+
 const ARC_SCAN_API = 'https://api.arc-scan.org/api';
-export const GM_FEE_ADDRESS = '0x5Bce25397eEfbc76f6479e6838c00a5115dbEA4c';
-export const GM_FEE_RAW = '20000000000000000'; // 0.02 USDC, Arc native USDC uses 18 decimals.
-export const GM_DATA = '0x47454e2d3046492d474d'; // "GEN-0FI-GM"
 
 export interface GmRecord {
   hash: string;
@@ -39,10 +38,17 @@ function isGmTransaction(tx: ArcTx): boolean {
 }
 
 async function fetchFeeAddressTransactions(): Promise<ArcTx[]> {
-  const response = await fetch(
-    `${ARC_SCAN_API}?module=account&action=txlist&address=${GM_FEE_ADDRESS}&startblock=0&endblock=latest&page=1&offset=1000&sort=desc`,
-    { headers: { Accept: 'application/json', 'User-Agent': 'GEN-0FI/1.0' }, cache: 'no-store' }
-  );
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  let response: Response;
+  try {
+    response = await fetch(
+      `${ARC_SCAN_API}?module=account&action=txlist&address=${GM_FEE_ADDRESS}&startblock=0&endblock=latest&page=1&offset=1000&sort=desc`,
+      { headers: { Accept: 'application/json' }, cache: 'no-store', signal: controller.signal }
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
   if (!response.ok) throw new Error('Arcscan GM history unavailable');
   const data = await response.json();
   if (!Array.isArray(data?.result)) return [];
