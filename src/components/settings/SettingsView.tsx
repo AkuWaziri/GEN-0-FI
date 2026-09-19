@@ -36,7 +36,7 @@ export const SettingsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Theme: Dark and Grey Mode Switcher */}
+      {/* Theme: Dark and Warm White Mode Switcher */}
       <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 glow-blue-card-hover space-y-4 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -51,13 +51,13 @@ export const SettingsView: React.FC = () => {
           </div>
 
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-300 text-xs font-mono font-semibold">
-            {theme === 'dark' ? 'Black Mode' : 'White Mode'}
+            {theme === 'dark' ? 'Dark Mode' : 'Warm White Mode'}
           </span>
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
           <p className="text-xs text-zinc-400 leading-relaxed max-w-md">
-            Switch between Black and White mode. Your display choice is immediately applied across the workspace and remembered for future visits.
+            Switch between Dark and Warm White mode. Your display choice is immediately applied across the workspace and remembered for future visits.
           </p>
 
           {/* Switching Buttons */}
@@ -71,10 +71,10 @@ export const SettingsView: React.FC = () => {
                     ? 'bg-white text-black glow-blue-cta shadow-sm'
                     : 'text-zinc-400 hover:text-white'
                 }`}
-                aria-label="Switch to Black Mode"
+                aria-label="Switch to Dark Mode"
               >
                 <Moon className="w-3.5 h-3.5" />
-                <span>Black</span>
+                <span>Dark</span>
               </button>
 
               <button
@@ -85,10 +85,10 @@ export const SettingsView: React.FC = () => {
                     ? 'bg-white text-black glow-blue-cta shadow-sm'
                     : 'text-zinc-400 hover:text-white'
                 }`}
-                aria-label="Switch to White Mode"
+                aria-label="Switch to Warm White Mode"
               >
                 <Contrast className="w-3.5 h-3.5" />
-                <span>White</span>
+                <span>Warm White</span>
               </button>
             </div>
 
