@@ -9,8 +9,6 @@ import { OverviewView } from './components/dashboard/OverviewView';
 import { ActivityView } from './components/activity/ActivityView';
 import { AskGen0View } from './components/ask/AskGen0View';
 import { SettingsView } from './components/settings/SettingsView';
-import { GMStreakView } from './components/gm/GMStreakView';
-import { LeaderboardView } from './components/gm/LeaderboardView';
 import { ConnectWalletModal } from './components/wallet/ConnectWalletModal';
 import { WrongNetworkView } from './components/wallet/WrongNetworkView';
 import { WelcomeOnboarding } from './components/wallet/WelcomeOnboarding';
@@ -89,11 +87,7 @@ const AppContent: React.FC = () => {
 
             {activeTab === 'ask' && <AskGen0View />}
 
-            {activeTab === 'gm' && <GMStreakView />}
-
             {activeTab === 'activity' && <ActivityView />}
-
-            {activeTab === 'leaderboard' && <LeaderboardView />}
 
             {activeTab === 'settings' && <SettingsView />}
           </div>
