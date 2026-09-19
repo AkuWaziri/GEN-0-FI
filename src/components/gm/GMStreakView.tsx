@@ -10,6 +10,7 @@ interface GmStatus {
   gmCount: number;
   streak: number;
   points: number;
+  currentStreakPoints?: number;
   lastGmAt: number | null;
   nextGmAt: number | null;
   canGm: boolean;
@@ -121,7 +122,7 @@ export const GMStreakView: React.FC = () => {
 
           <div className="flex items-center gap-2 text-xs text-zinc-500">
             <Trophy className="w-4 h-4 text-yellow-400" />
-            Day N = N points
+            Day N = N points · lifetime total
           </div>
         </div>
 
@@ -134,7 +135,7 @@ export const GMStreakView: React.FC = () => {
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
             <div className="text-[10px] uppercase tracking-widest text-zinc-500">Points</div>
             <div className="mt-2 text-2xl font-bold text-white">{status.points}</div>
-            <div className="text-xs text-zinc-500">current streak points</div>
+            <div className="text-xs text-zinc-500">lifetime streak points</div>
           </div>
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
             <div className="text-[10px] uppercase tracking-widest text-zinc-500">Total GMs</div>
@@ -184,7 +185,7 @@ export const GMStreakView: React.FC = () => {
         </div>
 
         <div className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-900/30 p-4 text-xs text-zinc-500">
-          Streak scoring: day 1 = 1 point, day 2 = 2 points, day 3 = 3 points, continuing upward for each consecutive GM.
+          Streak scoring: day 1 = 1 point, day 2 = 2 points, day 3 = 3 points. Points accumulate across verified streaks; a broken streak starts again at 1.
         </div>
       </div>
     </section>
