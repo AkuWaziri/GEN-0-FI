@@ -1354,3 +1354,157 @@ html.white .gm-streak-page .bg-black\\/20 {
   color: #2a2926 !important;
   border-color: #c4b399 !important;
 }
+
+
+/* =============================================================
+   LIGHT BROWN SYSTEM: FULL SURFACE + TAB POLISH
+   ============================================================= */
+html.white {
+  --lb-canvas: #e7dcc9;
+  --lb-surface: #ded1bc;
+  --lb-surface-2: #d4c4aa;
+  --lb-surface-hover: #cbb99d;
+  --lb-border: #c2ae90;
+  --lb-border-strong: #ae9878;
+  --lb-ink: #2b2925;
+  --lb-muted: #665f54;
+  --lb-blue: #315f9f;
+  --lb-sage: #4f735d;
+  --lb-terracotta: #a45f45;
+  --lb-plum: #715b78;
+}
+
+html.white,
+html.white body,
+html.white #root,
+html.white main,
+html.white header,
+html.white footer,
+html.white nav,
+html.white aside,
+html.white section,
+html.white article {
+  background-color: var(--lb-canvas) !important;
+  color: var(--lb-ink) !important;
+}
+
+/* Eliminate the remaining white / warm-white surfaces. */
+html.white .bg-white,
+html.white .bg-white\\/95,
+html.white .bg-white\\/90,
+html.white .bg-white\\/80,
+html.white .bg-white\\/70,
+html.white .bg-white\\/60,
+html.white .bg-\\[\\#ffffff\\],
+html.white .bg-\\[\\#fff\\],
+html.white .bg-\\[\\#fffdf7\\],
+html.white .bg-\\[\\#fbf8f1\\],
+html.white .bg-\\[\\#f8fafc\\],
+html.white .bg-\\[\\#f7f3e8\\],
+html.white .bg-\\[\\#f4efe3\\] {
+  background-color: var(--lb-surface) !important;
+  color: var(--lb-ink) !important;
+  border-color: var(--lb-border) !important;
+}
+
+/* Any arbitrary near-white Tailwind surface gets pulled into the brown system. */
+html.white [class*="bg-[#fff"],
+html.white [class*="bg-[#fbf"],
+html.white [class*="bg-[#f8f"],
+html.white [class*="bg-[#f7f"],
+html.white [class*="bg-[#f4f"] {
+  background-color: var(--lb-surface) !important;
+  color: var(--lb-ink) !important;
+  border-color: var(--lb-border) !important;
+}
+
+/* Stronger visual hierarchy for cards, panels and controls. */
+html.white .bg-zinc-800,
+html.white .bg-zinc-700,
+html.white .bg-zinc-600,
+html.white .bg-zinc-500 {
+  background-color: var(--lb-surface-2) !important;
+  color: var(--lb-ink) !important;
+  border-color: var(--lb-border) !important;
+}
+
+html.white .hover\\:bg-zinc-800:hover,
+html.white .hover\\:bg-zinc-900:hover,
+html.white .hover\\:bg-zinc-700:hover {
+  background-color: var(--lb-surface-hover) !important;
+}
+
+html.white .border-white,
+html.white .border-zinc-900,
+html.white .border-zinc-800,
+html.white .border-zinc-700,
+html.white .border-zinc-600 {
+  border-color: var(--lb-border) !important;
+}
+
+html.white .divide-zinc-800 > :not([hidden]) ~ :not([hidden]),
+html.white .divide-zinc-700 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--lb-border) !important;
+}
+
+/* Typography stays dark and readable on the brown canvas. */
+html.white .text-white,
+html.white .text-zinc-100,
+html.white .text-zinc-200 { color: var(--lb-ink) !important; }
+html.white .text-zinc-300 { color: #403b34 !important; }
+html.white .text-zinc-400 { color: #5f584d !important; }
+html.white .text-zinc-500 { color: #71695d !important; }
+html.white .text-zinc-600 { color: #544d43 !important; }
+
+html.white input,
+html.white textarea,
+html.white select {
+  background-color: #e9dfcf !important;
+  color: var(--lb-ink) !important;
+  border-color: var(--lb-border) !important;
+}
+
+html.white input::placeholder,
+html.white textarea::placeholder { color: #776f62 !important; }
+
+/* Tab palette: blue, sage, terracotta and plum work against light brown. */
+html.white .glow-blue-tab,
+html.white [role="tab"][aria-selected="true"] {
+  background-color: rgba(49, 95, 159, 0.13) !important;
+  color: var(--lb-blue) !important;
+  border-color: rgba(49, 95, 159, 0.34) !important;
+  box-shadow: 0 0 18px -5px rgba(49, 95, 159, 0.25) !important;
+}
+
+html.white .glow-blue-tab:hover,
+html.white [role="tab"]:hover {
+  background-color: rgba(49, 95, 159, 0.09) !important;
+}
+
+html.white .text-blue-300,
+html.white .text-blue-400 { color: var(--lb-blue) !important; }
+html.white .text-emerald-400 { color: var(--lb-sage) !important; }
+html.white .text-orange-400,
+html.white .text-red-400 { color: var(--lb-terracotta) !important; }
+html.white .text-purple-400 { color: var(--lb-plum) !important; }
+html.white .text-amber-400,
+html.white .text-yellow-400 { color: #8a682e !important; }
+
+/* Preserve blue as the primary action colour while keeping it integrated. */
+html.white .bg-white.text-black,
+html.white button.bg-white.text-black,
+html.white a.bg-white.text-black {
+  background-color: var(--lb-blue) !important;
+  color: #ffffff !important;
+  border-color: var(--lb-blue) !important;
+}
+
+html.white .bg-white.text-black:hover,
+html.white button.bg-white.text-black:hover,
+html.white a.bg-white.text-black:hover {
+  background-color: #284f86 !important;
+}
+
+html.white ::-webkit-scrollbar-track { background: var(--lb-canvas) !important; }
+html.white ::-webkit-scrollbar-thumb { background: #b49f80 !important; }
+html.white ::-webkit-scrollbar-thumb:hover { background: #987f5f !important; }
