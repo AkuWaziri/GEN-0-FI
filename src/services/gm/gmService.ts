@@ -64,34 +64,61 @@ export function buildGmRecords(txs: ArcTx[]): GmRecord[] {
 export function calculateStreak(records: GmRecord[], address: string) {
   const mine = records
     .filter((record) => record.address.toLowerCase() === address.toLowerCase())
-    .sort((a, b) => b.timestamp - a.timestamp);
+    .sort((a, b) => a.timestamp - b.timestamp);
 
   if (mine.length === 0) {
-    return { gmCount: 0, streak: 0, points: 0, lastGmAt: null as number | null };
+    return {
+      gmCount: 0,
+      streak: 0,
+      points: 0,
+      currentStreakPoints: 0,
+      lastGmAt: null as number | null,
+    };
   }
 
-  const now = Date.now();
-  const latest = mine[0];
-  const elapsed = now - latest.timestamp;
+  const MIN_GM_GAP = 24 * 60 * 60 * 1000;
+  const MAX_STREAK_GAP = 48 * 60 * 60 * 1000;
 
-  // A GM is valid once every 24 hours. A streak remains alive for the next
-  // 24-hour window after the previous GM, giving the user until 48h after
-  // the previous GM to continue the consecutive-day sequence.
-  if (elapsed >= 48 * 60 * 60 * 1000) {
-    return { gmCount: mine.length, streak: 0, points: 0, lastGmAt: latest.timestamp };
-  }
+  // Points accumulate across the wallet's verified GM history.
+  // A continuous streak contributes 1 + 2 + ... + N points.
+  // When a streak breaks, the next GM starts a fresh 1-point sequence.
+  let totalPoints = 0;
+  let segmentLength = 1;
 
-  let streak = 1;
   for (let i = 1; i < mine.length; i += 1) {
-    const gap = mine[i - 1].timestamp - mine[i].timestamp;
-    if (gap < 24 * 60 * 60 * 1000 || gap > 48 * 60 * 60 * 1000) break;
-    streak += 1;
+    const gap = mine[i].timestamp - mine[i - 1].timestamp;
+
+    if (gap >= MIN_GM_GAP && gap <= MAX_STREAK_GAP) {
+      segmentLength += 1;
+    } else {
+      totalPoints += (segmentLength * (segmentLength + 1)) / 2;
+      segmentLength = 1;
+    }
+  }
+
+  totalPoints += (segmentLength * (segmentLength + 1)) / 2;
+
+  const latest = mine[mine.length - 1];
+  const elapsed = Date.now() - latest.timestamp;
+
+  let currentStreak = 0;
+  let currentStreakPoints = 0;
+
+  if (elapsed < MAX_STREAK_GAP) {
+    currentStreak = 1;
+    for (let i = mine.length - 1; i > 0; i -= 1) {
+      const gap = mine[i].timestamp - mine[i - 1].timestamp;
+      if (gap < MIN_GM_GAP || gap > MAX_STREAK_GAP) break;
+      currentStreak += 1;
+    }
+    currentStreakPoints = (currentStreak * (currentStreak + 1)) / 2;
   }
 
   return {
     gmCount: mine.length,
-    streak,
-    points: (streak * (streak + 1)) / 2,
+    streak: currentStreak,
+    points: totalPoints,
+    currentStreakPoints,
     lastGmAt: latest.timestamp,
   };
 }
