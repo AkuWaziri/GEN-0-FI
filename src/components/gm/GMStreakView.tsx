@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Flame, Check, Trophy, CalendarDays, RefreshCw, ExternalLink } from 'lucide-react';
 import { useWallet } from '../../context/WalletContext';
 import { usePublicClient, useWriteContract } from 'wagmi';
-import { checkTransactionReceipt } from 'viem/actions';
 import { GM_CONTRACT_ABI, GM_CONTRACT_ADDRESS, GM_FEE_WEI, isGMContractConfigured } from '../../config/gmContract';
 import { indexConfirmedGM, getGMLeaderboard, getGMStats, GMLeaderboardRow, GMStats } from '../../services/gm/gmService';
 import { isSupabaseConfigured } from '../../lib/supabase';
