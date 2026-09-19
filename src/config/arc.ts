@@ -53,7 +53,3 @@ export function formatShortHash(hash: string, chars = 6): string {
   if (!hash || hash.length < 14) return hash || '';
   return `${hash.slice(0, chars + 2)}...${hash.slice(-chars)}`;
 }
-
-export const GM_FEE_ADDRESS = '0x5Bce25397eEfbc76f6479e6838c00a5115dbEA4c' as const;
-export const GM_FEE_RAW = '20000000000000000' as const;
-export const GM_DATA = '0x47454e2d3046492d474d' as const;
