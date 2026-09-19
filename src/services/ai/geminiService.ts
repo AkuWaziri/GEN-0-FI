@@ -83,9 +83,9 @@ export function getGeminiClient(): GoogleGenAI | null {
  * 3. gemini-3.8-flash (Standard general task model)
  */
 const CANDIDATE_MODELS = [
-  'gemini-3.1-flash-lite',
-  'gemini-flash-latest',
+  'gemini-3.1-pro-preview',
   'gemini-3.8-flash',
+  'gemini-3.1-flash-lite',
 ];
 
 /**
@@ -578,6 +578,72 @@ export async function handleAiAskPayload(payload: {
     historyStatus,
   };
 
+  // Exact-answer layer: simple questions are answered from fresh server-side Arc data.
+  const exactQuestion = message.toLowerCase().trim();
+
+  if (address) {
+    const exactAnswers: Array<[RegExp, string]> = [
+      [/^(what('s| is) )?my balance\??$/, balance === 'Unavailable' ? 'Unavailable' : balance + ' USDC'],
+      [/^how much (usdc )?do i have\??$/, balance === 'Unavailable' ? 'Unavailable' : balance + ' USDC'],
+      [/^current balance\??$/, balance === 'Unavailable' ? 'Unavailable' : balance + ' USDC'],
+      [/^how much have i sent\??$/, totalSent === 'Unavailable' ? 'Unavailable' : totalSent + ' USDC'],
+      [/^(what('s| is) )?my total sent\??$/, totalSent === 'Unavailable' ? 'Unavailable' : totalSent + ' USDC'],
+      [/^how much have i received\??$/, totalReceived === 'Unavailable' ? 'Unavailable' : totalReceived + ' USDC'],
+      [/^(what('s| is) )?my total received\??$/, totalReceived === 'Unavailable' ? 'Unavailable' : totalReceived + ' USDC'],
+      [/^how much gas have i spent\??$/, totalGasSpent === 'Unavailable' ? 'Unavailable' : totalGasSpent + ' USDC'],
+      [/^(what('s| is) )?my gas spent\??$/, totalGasSpent === 'Unavailable' ? 'Unavailable' : totalGasSpent + ' USDC'],
+      [/^how many transactions (do i have|have i)\??$/, txCount + ' transactions'],
+      [/^transaction count\??$/, txCount + ' transactions'],
+      [/^how many coins (do i have|am i holding)\??$/, walletAssets?.coinHoldings == null ? 'Unavailable' : walletAssets.coinHoldings + ' coins'],
+      [/^coin holdings\??$/, walletAssets?.coinHoldings == null ? 'Unavailable' : walletAssets.coinHoldings + ' coins'],
+      [/^how many nfts (do i have|am i holding)\??$/, walletAssets?.nftHoldings == null ? 'Unavailable' : walletAssets.nftHoldings + ' NFTs'],
+      [/^nft holdings\??$/, walletAssets?.nftHoldings == null ? 'Unavailable' : walletAssets.nftHoldings + ' NFTs'],
+    ];
+
+    for (const [pattern, answer] of exactAnswers) {
+      if (pattern.test(exactQuestion)) {
+        return { answer, referencedTxHashes: [], model: 'deterministic-exact' };
+      }
+    }
+
+    const asksRecent =
+      /^(show|what('s| is)|tell me|give me) (my )?(the )?(most )?(recent|latest|last) (transaction|tx)\??$/.test(exactQuestion) ||
+      /^my (most )?(recent|latest|last) (transaction|tx)\??$/.test(exactQuestion);
+
+    if (asksRecent) {
+      const tx = recentTransactions[0];
+      if (!tx) return { answer: 'No recent transaction is available in the verified Arc transaction history.', referencedTxHashes: [], model: 'deterministic-exact' };
+      const direction = tx.direction === 'received' ? 'Received' : tx.direction === 'sent' ? 'Sent' : tx.direction === 'contract_interaction' ? 'Contract interaction' : 'Transaction';
+      const amount = tx.value && tx.value !== '0' ? tx.value + ' USDC' : 'No transfer value';
+      const date = tx.timestamp ? new Date(tx.timestamp).toISOString().replace('T', ' ').replace('.000Z', ' UTC') : 'Unavailable';
+      return {
+        answer: ['Latest transaction', direction + ' · ' + amount, 'Date: ' + date, 'Status: ' + (tx.status || 'unknown'), 'Gas: ' + (tx.gasCostUSDC || 'Unavailable') + ' USDC', 'Hash: ' + tx.hash].join('\n'),
+        referencedTxHashes: [tx.hash],
+        model: 'deterministic-exact',
+      };
+    }
+
+    const asksHowGen0 =
+      /how does gen-?0( fi)? work\??/.test(exactQuestion) ||
+      /how does gen-?0( fi)? (get|read|understand) my wallet/.test(exactQuestion) ||
+      /what is gen-?0( fi)? and how does it work/.test(exactQuestion);
+
+    if (asksHowGen0) {
+      return {
+        answer: [
+          'GEN-0FI connects your wallet to an onchain financial intelligence layer.',
+          '',
+          '1. Wallet connection: your wallet remains under your control. GEN-0FI does not receive your private key or seed phrase.',
+          '2. Arc data: GEN-0FI reads live Arc Mainnet balance and indexed transaction/activity data.',
+          '3. Normalization: raw blockchain data is converted into balance, received, sent, gas, transaction, contract, coin, and NFT metrics.',
+          '4. Intelligence: Ask GEN-0 uses that verified context to answer questions about your wallet, Arc, and GEN-0FI.',
+          '5. Explanation: when you ask why something happened, GEN-0 explains the verified transaction or metric without inventing missing data.',
+        ].join('\n'),
+        referencedTxHashes: [],
+        model: 'deterministic-gen0',
+      };
+    }
+  }
 
   // If no wallet is connected and user asks a personal wallet question, answer immediately with guidance
   const qLower = message.toLowerCase().trim();
