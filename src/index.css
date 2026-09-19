@@ -929,3 +929,217 @@ html.white ::-webkit-scrollbar-thumb {
 html.white ::-webkit-scrollbar-thumb:hover {
   background: #a99f8c !important;
 }
+
+
+/* =============================================================
+   FINAL WARM WHITE / MILK MODE
+   ============================================================= */
+html.white,
+html.white body,
+html.white #root {
+  color-scheme: light !important;
+  background: #f4efe3 !important;
+  color: #20242a !important;
+}
+
+/* Force every app surface, including footer/navigation, onto the milk canvas. */
+html.white body,
+html.white #root,
+html.white main,
+html.white header,
+html.white footer,
+html.white nav,
+html.white aside,
+html.white section,
+html.white article {
+  background-color: #f4efe3 !important;
+  color: #20242a !important;
+  border-color: #ddd5c5 !important;
+}
+
+/* Preserve hierarchy with barely darker milk cards. */
+html.white .bg-\\[\\#090a0c\\],
+html.white .bg-\\[\\#0f1012\\],
+html.white .bg-\\[\\#07080a\\],
+html.white .bg-\\[\\#000000\\],
+html.white .bg-\\[\\#08090b\\],
+html.white .bg-\\[\\#08090b\\]\\/95,
+html.white .bg-\\[\\#0d0f12\\],
+html.white .bg-\\[\\#0b0d10\\],
+html.white .bg-\\[\\#0b0d10\\]\\/95,
+html.white .bg-\\[\\#0c0e12\\],
+html.white .bg-\\[\\#0d0f13\\],
+html.white .bg-\\[\\#0d0f14\\],
+html.white .bg-\\[\\#0c0d10\\],
+html.white .bg-\\[\\#101216\\],
+html.white .bg-\\[\\#111317\\],
+html.white .bg-\\[\\#111418\\],
+html.white .bg-\\[\\#131519\\],
+html.white .bg-\\[\\#14161a\\],
+html.white .bg-\\[\\#14161d\\],
+html.white .bg-\\[\\#151720\\],
+html.white .bg-\\[\\#16181d\\],
+html.white .bg-\\[\\#0e1014\\],
+html.white .bg-\\[\\#090b0e\\],
+html.white .bg-\\[\\#08090c\\],
+html.white .bg-\\[\\#12141a\\],
+html.white .bg-\\[\\#12151b\\],
+html.white .bg-\\[\\#13161c\\],
+html.white .bg-\\[\\#1a1d24\\],
+html.white .bg-\\[\\#050608\\],
+html.white .bg-zinc-950,
+html.white .bg-zinc-900 {
+  background-color: #f4efe3 !important;
+  color: #20242a !important;
+  border-color: #ddd5c5 !important;
+}
+
+html.white .bg-zinc-800,
+html.white .bg-zinc-700,
+html.white .bg-zinc-600 {
+  background-color: #e9e1d1 !important;
+  color: #20242a !important;
+  border-color: #d3c9b6 !important;
+}
+
+/* Warm hover surfaces */
+html.white .hover\\:bg-zinc-800:hover,
+html.white .hover\\:bg-zinc-900:hover,
+html.white .hover\\:bg-zinc-800\\/40:hover,
+html.white .hover\\:bg-zinc-800\\/50:hover,
+html.white .hover\\:bg-zinc-800\\/80:hover,
+html.white .hover\\:bg-zinc-800\\/90:hover {
+  background-color: #e5dccb !important;
+}
+
+/* Replace white-on-dark typography everywhere so no information disappears. */
+html.white .text-white,
+html.white .text-zinc-100,
+html.white .text-zinc-200 {
+  color: #20242a !important;
+}
+
+html.white .text-zinc-300 { color: #343a40 !important; }
+html.white .text-zinc-400 { color: #5c6168 !important; }
+html.white .text-zinc-500 { color: #6b6f75 !important; }
+html.white .text-zinc-600 { color: #4b5057 !important; }
+
+html.white .hover\\:text-white:hover,
+html.white .hover\\:text-zinc-200:hover,
+html.white .hover\\:text-zinc-300:hover {
+  color: #111827 !important;
+}
+
+/* Borders, dividers and table lines */
+html.white .border-zinc-900,
+html.white .border-zinc-900\\/80,
+html.white .border-zinc-900\\/90,
+html.white .border-zinc-800,
+html.white .border-zinc-800\\/90,
+html.white .border-zinc-800\\/80,
+html.white .border-zinc-800\\/50,
+html.white .border-zinc-700,
+html.white .border-zinc-700\\/80 {
+  border-color: #ddd5c5 !important;
+}
+
+html.white hr {
+  border-color: #ddd5c5 !important;
+}
+
+html.white input,
+html.white textarea,
+html.white select {
+  background-color: #fbf8f1 !important;
+  color: #20242a !important;
+  border-color: #cfc5b2 !important;
+}
+
+html.white input::placeholder,
+html.white textarea::placeholder {
+  color: #77736b !important;
+}
+
+/* Keep status colors distinct against milk. */
+html.white .text-blue-300,
+html.white .text-blue-400 { color: #1d4ed8 !important; }
+html.white .text-emerald-400 { color: #047857 !important; }
+html.white .text-amber-400 { color: #a16207 !important; }
+html.white .text-red-400 { color: #b91c1c !important; }
+html.white .text-orange-400 { color: #c2410c !important; }
+html.white .text-yellow-400 { color: #854d0e !important; }
+html.white .text-purple-400 { color: #7e22ce !important; }
+
+/* Remove black/white theme remnants from controls and buttons. */
+html.white .bg-white.text-black,
+html.white button.bg-white.text-black,
+html.white a.bg-white.text-black {
+  background-color: #2f6fed !important;
+  color: #ffffff !important;
+  border-color: #2f6fed !important;
+}
+
+html.white .bg-white.text-black *,
+html.white button.bg-white.text-black *,
+html.white a.bg-white.text-black * {
+  color: #ffffff !important;
+}
+
+/* Warm white surfaces for generic white controls that are not primary CTAs. */
+html.white .bg-white:not(.text-black) {
+  background-color: #fbf8f1 !important;
+  color: #20242a !important;
+}
+
+/* Data visibility and mobile containment. */
+html.white .whitespace-pre-wrap,
+html.white .font-mono,
+html.white a {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+html.white table {
+  width: 100%;
+}
+
+html.white th,
+html.white td {
+  color: #20242a !important;
+  border-color: #ddd5c5 !important;
+}
+
+@media (max-width: 767px) {
+  html.white main,
+  html.white section,
+  html.white article,
+  html.white form,
+  html.white footer {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  html.white .overflow-x-auto {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  html.white input,
+  html.white textarea,
+  html.white button {
+    max-width: 100%;
+  }
+}
+
+html.white ::-webkit-scrollbar-track {
+  background: #f4efe3 !important;
+}
+
+html.white ::-webkit-scrollbar-thumb {
+  background: #c8bda8 !important;
+}
+
+html.white ::-webkit-scrollbar-thumb:hover {
+  background: #aa9d87 !important;
+}
