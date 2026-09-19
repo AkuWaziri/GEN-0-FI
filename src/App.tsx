@@ -9,6 +9,8 @@ import { OverviewView } from './components/dashboard/OverviewView';
 import { ActivityView } from './components/activity/ActivityView';
 import { AskGen0View } from './components/ask/AskGen0View';
 import { SettingsView } from './components/settings/SettingsView';
+import { GMStreakView } from './components/gm/GMStreakView';
+import { LeaderboardView } from './components/gm/LeaderboardView';
 import { ConnectWalletModal } from './components/wallet/ConnectWalletModal';
 import { WrongNetworkView } from './components/wallet/WrongNetworkView';
 import { WelcomeOnboarding } from './components/wallet/WelcomeOnboarding';
@@ -30,7 +32,6 @@ const AppContent: React.FC = () => {
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
   const [isIdentityModalOpen, setIsIdentityModalOpen] = useState(false);
 
-  // Initialize soft click sound on all interactive elements
   useEffect(() => {
     const cleanup = initGlobalClickSound();
     return cleanup;
@@ -42,7 +43,6 @@ const AppContent: React.FC = () => {
     });
   };
 
-  // If user is not connected, show the minimal, clear landing view
   if (!isConnected || !address) {
     return (
       <>
@@ -55,28 +55,22 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // If wallet is connected to an unsupported network (e.g., Ethereum, Base, Arbitrum),
-  // show dedicated WrongNetworkView instead of broken dashboard
   if (!isCorrectNetwork) {
     return <WrongNetworkView />;
   }
 
-  // Connected SaaS Application Dashboard on Arc Mainnet
   return (
     <div className="min-h-screen bg-[#090a0c] text-zinc-100 flex flex-col md:flex-row antialiased selection:bg-white selection:text-black">
-      {/* First-time onboarding welcome state */}
       {showWelcomeOverlay && (
         <WelcomeOnboarding onDismiss={dismissWelcomeOverlay} />
       )}
 
-      {/* Desktop Navigation Sidebar */}
       <Sidebar
         activeTab={activeTab}
         onSelectTab={setActiveTab}
         onOpenConnect={() => setIsIdentityModalOpen(true)}
       />
 
-      {/* Main Content Viewport */}
       <div className="flex-1 flex flex-col min-w-0 pb-20 md:pb-0 bg-[#0f1012]">
         <Header
           activeTab={activeTab}
@@ -93,9 +87,13 @@ const AppContent: React.FC = () => {
               />
             )}
 
+            {activeTab === 'ask' && <AskGen0View />}
+
+            {activeTab === 'gm' && <GMStreakView />}
+
             {activeTab === 'activity' && <ActivityView />}
 
-            {activeTab === 'ask' && <AskGen0View />}
+            {activeTab === 'leaderboard' && <LeaderboardView />}
 
             {activeTab === 'settings' && <SettingsView />}
           </div>
@@ -104,16 +102,13 @@ const AppContent: React.FC = () => {
         </main>
       </div>
 
-      {/* Mobile Bottom Navigation */}
       <MobileNav activeTab={activeTab} onSelectTab={setActiveTab} />
 
-      {/* Connected Wallet Identity & Disconnect Modal */}
       <WalletIdentityModal
         isOpen={isIdentityModalOpen}
         onClose={() => setIsIdentityModalOpen(false)}
       />
 
-      {/* Connect Wallet Fallback Modal */}
       <ConnectWalletModal
         isOpen={isConnectModalOpen}
         onClose={() => setIsConnectModalOpen(false)}
@@ -130,4 +125,4 @@ export default function App() {
       </WalletProvider>
     </ThemeProvider>
   );
-}
+};
