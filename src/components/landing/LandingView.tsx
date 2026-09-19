@@ -2,19 +2,23 @@ import React from 'react';
 import { Logo } from '../common/Logo';
 import { Footer } from '../common/Footer';
 import { Wallet } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
 
 interface LandingViewProps {
   onOpenConnect: () => void;
 }
 
 export const LandingView: React.FC<LandingViewProps> = ({ onOpenConnect }) => {
+  const { theme } = useTheme();
+  const isWhite = theme === 'white';
+
   return (
     <div className="min-h-screen bg-[#000000] text-zinc-100 flex flex-col justify-between selection:bg-white selection:text-black">
       {/* Top Navbar with Connect Wallet on the right side */}
-      <header className="flex items-center justify-between px-4 sm:px-8 lg:px-12 py-3.5 sm:py-4 border-b border-zinc-900 w-full bg-[#000000]/90 backdrop-blur-md sticky top-0 z-30">
+      <header className={`flex items-center justify-between px-4 sm:px-8 lg:px-12 py-3.5 sm:py-4 border-b w-full backdrop-blur-md sticky top-0 z-30 transition-colors duration-200 ${isWhite ? 'border-zinc-200 bg-white/90' : 'border-zinc-900 bg-[#000000]/90'}`}>
         <Logo size="md" />
         <div className="flex items-center gap-2.5 sm:gap-3">
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#111317] border border-blue-500/25 text-xs font-mono text-zinc-300 shadow-[0_0_12px_rgba(59,130,246,0.15)]">
+          <div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-500/25 text-xs font-mono shadow-[0_0_12px_rgba(59,130,246,0.15)] ${isWhite ? 'bg-blue-50 text-zinc-700' : 'bg-[#111317] text-zinc-300'}`}>
             <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.8)]" />
             <span>Arc Mainnet</span>
           </div>
