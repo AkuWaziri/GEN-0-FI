@@ -1,6 +1,6 @@
 import React from 'react';
 import { TabType } from './Sidebar';
-import { LayoutDashboard, History, Sparkles, Settings } from 'lucide-react';
+import { LayoutDashboard, History, Sparkles, Settings, Flame, Trophy } from 'lucide-react';
 
 interface MobileNavProps {
   activeTab: TabType;
@@ -11,7 +11,9 @@ export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, onSelectTab }) 
   const navItems = [
     { id: 'overview' as TabType, label: 'Overview', icon: LayoutDashboard },
     { id: 'ask' as TabType, label: 'Ask', icon: Sparkles },
+    { id: 'gm' as TabType, label: 'GM', icon: Flame },
     { id: 'activity' as TabType, label: 'Activity', icon: History },
+    { id: 'leaderboard' as TabType, label: 'Ranks', icon: Trophy },
     { id: 'settings' as TabType, label: 'Settings', icon: Settings },
   ];
 
@@ -20,7 +22,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, onSelectTab }) 
       id="mobile-bottom-nav"
       role="tablist"
       aria-label="Mobile Navigation"
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#08090b]/95 backdrop-blur-lg border-t border-zinc-900 px-3 py-1.5 flex items-center justify-around select-none shadow-lg pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#08090b]/95 backdrop-blur-lg border-t border-zinc-900 px-1.5 py-1.5 flex items-center justify-around select-none shadow-lg pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]"
     >
       {navItems.map((item) => {
         const Icon = item.icon;
@@ -32,7 +34,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, onSelectTab }) 
             role="tab"
             aria-selected={isActive}
             onClick={() => onSelectTab(item.id)}
-            className={`relative flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition-all duration-200 ease-out cursor-pointer min-w-[60px] select-none ${
+            className={`relative flex flex-col items-center justify-center gap-1 py-1 px-2 rounded-xl transition-all duration-200 ease-out cursor-pointer min-w-[50px] select-none ${
               isActive
                 ? 'text-white font-semibold bg-blue-500/[0.09] border glow-blue-tab'
                 : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/40 border border-transparent font-medium'
