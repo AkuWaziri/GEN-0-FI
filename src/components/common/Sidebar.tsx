@@ -79,14 +79,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
                     {item.badge}
                   </span>
                 )}
-
-                {/* Thin blue indicator beneath active tab */}
-                {isActive && (
-                  <span
-                    className="absolute bottom-0 left-3 right-3 h-[2px] bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.8)]"
-                    aria-hidden="true"
-                  />
-                )}
               </button>
             );
           })}
