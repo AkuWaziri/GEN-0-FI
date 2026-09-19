@@ -46,14 +46,6 @@ export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, onSelectTab }) 
               }`}
             />
             <span className="text-[10px] tracking-tight">{item.label}</span>
-
-            {/* Thin blue indicator beneath active tab */}
-            {isActive && (
-              <span
-                className="absolute bottom-0.5 left-2.5 right-2.5 h-[2px] bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.8)]"
-                aria-hidden="true"
-              />
-            )}
           </button>
         );
       })}
