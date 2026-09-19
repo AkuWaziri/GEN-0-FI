@@ -34,7 +34,7 @@ export const LeaderboardView: React.FC = () => {
   }, []);
 
   return (
-    <section className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+    <section className="gm-leaderboard-page w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
       <div className="rounded-3xl border border-zinc-800 bg-[#0e1014] overflow-hidden shadow-xl">
         <div className="p-5 sm:p-8 border-b border-zinc-800">
           <div className="inline-flex items-center gap-2 rounded-full border border-yellow-400/20 bg-yellow-400/10 px-3 py-1 text-[10px] font-mono uppercase tracking-widest text-yellow-300">
