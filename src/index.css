@@ -1143,3 +1143,59 @@ html.white ::-webkit-scrollbar-thumb {
 html.white ::-webkit-scrollbar-thumb:hover {
   background: #aa9d87 !important;
 }
+
+
+/* =============================================================
+   FOOTER FIX: FORCE WARM WHITE MODE THROUGH THE ENTIRE FOOTER
+   ============================================================= */
+html.white #gen0-app-footer {
+  background-color: #f4efe3 !important;
+  background-image: none !important;
+  color: #20242a !important;
+  border-top-color: #ddd5c5 !important;
+  box-shadow: none !important;
+}
+
+html.white #gen0-app-footer .text-zinc-200,
+html.white #gen0-app-footer .text-zinc-300,
+html.white #gen0-app-footer .text-zinc-400,
+html.white #gen0-app-footer .text-zinc-500,
+html.white #gen0-app-footer .text-zinc-600 {
+  color: #5c6168 !important;
+}
+
+html.white #gen0-app-footer .text-zinc-200 {
+  color: #20242a !important;
+}
+
+html.white #gen0-app-footer .bg-\[\#111317\],
+html.white #gen0-app-footer .bg-zinc-800,
+html.white #gen0-app-footer .bg-zinc-900 {
+  background-color: #e9e1d1 !important;
+  color: #20242a !important;
+  border-color: #d3c9b6 !important;
+}
+
+html.white #gen0-app-footer .border-zinc-800,
+html.white #gen0-app-footer .border-zinc-900,
+html.white #gen0-app-footer .border-zinc-900\/90 {
+  border-color: #d3c9b6 !important;
+}
+
+html.white #gen0-app-footer .bg-zinc-800:hover,
+html.white #gen0-app-footer .hover\:bg-zinc-800:hover {
+  background-color: #dfd6c5 !important;
+}
+
+html.white #gen0-app-footer a:hover {
+  color: #1f2937 !important;
+}
+
+html.white #gen0-app-footer .bg-\[\#111317\] svg,
+html.white #gen0-app-footer svg {
+  color: #5c6168;
+}
+
+html.white #gen0-app-footer .bg-\[\#111317\]:hover svg {
+  color: #1f2937;
+}
