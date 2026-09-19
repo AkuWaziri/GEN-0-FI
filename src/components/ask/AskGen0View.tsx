@@ -106,7 +106,7 @@ export const AskGen0View: React.FC = () => {
 
   const [inputPrompt, setInputPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [activeModel, setActiveModel] = useState<string>('gemini-3.8-flash');
+  const [activeModel, setActiveModel] = useState<string>('gemini-3.1-pro-preview');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -218,7 +218,7 @@ export const AskGen0View: React.FC = () => {
   };
 
   return (
-    <div className="w-full p-4 sm:p-6 lg:p-8 flex flex-col h-[calc(100vh-3.5rem)] space-y-3 sm:space-y-4 animate-in fade-in duration-200">
+    <div className="w-full p-4 sm:p-6 lg:p-8 flex flex-col min-h-[calc(100vh-3.5rem)] h-[calc(100dvh-3.5rem)] max-h-[calc(100dvh-3.5rem)] space-y-3 sm:space-y-4 pb-2 sm:pb-4 animate-in fade-in duration-200">
       {/* Header */}
       <div className="flex items-center justify-between pb-2 border-b border-zinc-900">
         <div>
@@ -231,7 +231,7 @@ export const AskGen0View: React.FC = () => {
             </h1>
             <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-[10px] font-mono text-blue-400">
               <Cpu className="w-2.5 h-2.5" />
-              {activeModel === 'deterministic-verifier' ? 'Arc Deterministic Engine' : 'Gemini 3.8 Flash'}
+              {activeModel === 'deterministic-verifier' || activeModel === 'deterministic-exact' || activeModel === 'deterministic-gen0' ? 'GEN-0 Verified Engine' : activeModel === 'gemini-3.1-pro-preview' ? 'Gemini 3.1 Pro' : activeModel}
             </span>
           </div>
         </div>
@@ -264,7 +264,7 @@ export const AskGen0View: React.FC = () => {
               )}
 
               <div
-                className={`max-w-[85%] sm:max-w-[78%] rounded-xl p-3.5 text-xs sm:text-sm leading-relaxed ${
+                className={`max-w-[92%] sm:max-w-[78%] min-w-0 rounded-xl p-3.5 text-xs sm:text-sm leading-relaxed ${
                   isUser
                     ? 'bg-white text-black font-semibold rounded-tr-none shadow-sm'
                     : 'bg-[#131519] text-zinc-200 border border-zinc-800 rounded-tl-none shadow-sm'
@@ -347,7 +347,7 @@ export const AskGen0View: React.FC = () => {
           onChange={(e) => setInputPrompt(e.target.value)}
           placeholder="Ask anything about your Arc wallet, balance, or transactions..."
           disabled={isGenerating}
-          className="w-full pl-3.5 pr-11 py-3 rounded-xl bg-[#0d0f12] border border-zinc-800 focus:border-blue-500/50 glow-blue-focus focus:outline-none text-xs sm:text-sm text-white placeholder:text-zinc-500 shadow-sm transition-all"
+          className="w-full min-w-0 pl-3.5 pr-11 py-3 rounded-xl bg-[#0d0f12] border border-zinc-800 focus:border-blue-500/50 glow-blue-focus focus:outline-none text-xs sm:text-sm text-white placeholder:text-zinc-500 shadow-sm transition-all"
         />
 
         <button
