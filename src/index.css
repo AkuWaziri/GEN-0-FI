@@ -1221,3 +1221,136 @@ html.white .gm-streak-page .bg-black\/20 {
   background-color: rgba(233, 225, 209, 0.55) !important;
   border-color: #d3c9b6 !important;
 }
+
+/* =============================================================
+   LIGHT BROWN THEME OVERRIDE
+   ============================================================= */
+html.white,
+html.white body,
+html.white #root {
+  background: #e7dcc9 !important;
+  color: #2a2926 !important;
+}
+
+html.white body,
+html.white #root,
+html.white main,
+html.white header,
+html.white footer,
+html.white nav,
+html.white aside,
+html.white section,
+html.white article {
+  background-color: #e7dcc9 !important;
+  color: #2a2926 !important;
+  border-color: #cdbda5 !important;
+}
+
+html.white .bg-\\[\\#090a0c\\],
+html.white .bg-\\[\\#0f1012\\],
+html.white .bg-\\[\\#07080a\\],
+html.white .bg-\\[\\#000000\\],
+html.white .bg-\\[\\#08090b\\],
+html.white .bg-\\[\\#08090b\\]\\/95,
+html.white .bg-\\[\\#0d0f12\\],
+html.white .bg-\\[\\#0b0d10\\],
+html.white .bg-\\[\\#0b0d10\\]\\/95,
+html.white .bg-\\[\\#0c0e12\\],
+html.white .bg-\\[\\#0d0f13\\],
+html.white .bg-\\[\\#0d0f14\\],
+html.white .bg-\\[\\#0c0d10\\],
+html.white .bg-\\[\\#101216\\],
+html.white .bg-\\[\\#111317\\],
+html.white .bg-\\[\\#111418\\],
+html.white .bg-\\[\\#131519\\],
+html.white .bg-\\[\\#14161a\\],
+html.white .bg-\\[\\#14161d\\],
+html.white .bg-\\[\\#151720\\],
+html.white .bg-\\[\\#16181d\\],
+html.white .bg-\\[\\#0e1014\\],
+html.white .bg-\\[\\#090b0e\\],
+html.white .bg-\\[\\#08090c\\],
+html.white .bg-\\[\\#12141a\\],
+html.white .bg-\\[\\#12151b\\],
+html.white .bg-\\[\\#13161c\\],
+html.white .bg-\\[\\#1a1d24\\],
+html.white .bg-\\[\\#050608\\],
+html.white .bg-zinc-950,
+html.white .bg-zinc-900 {
+  background-color: #e7dcc9 !important;
+  color: #2a2926 !important;
+  border-color: #cdbda5 !important;
+}
+
+html.white .bg-zinc-800,
+html.white .bg-zinc-700,
+html.white .bg-zinc-600 {
+  background-color: #dacbb5 !important;
+  color: #2a2926 !important;
+  border-color: #c4b399 !important;
+}
+
+html.white .hover\\:bg-zinc-800:hover,
+html.white .hover\\:bg-zinc-900:hover,
+html.white .hover\\:bg-zinc-800\\/40:hover,
+html.white .hover\\:bg-zinc-800\\/50:hover,
+html.white .hover\\:bg-zinc-800\\/80:hover,
+html.white .hover\\:bg-zinc-800\\/90:hover {
+  background-color: #d2c2aa !important;
+}
+
+html.white .text-white,
+html.white .text-zinc-100,
+html.white .text-zinc-200 {
+  color: #2a2926 !important;
+}
+
+html.white .text-zinc-300 { color: #403d37 !important; }
+html.white .text-zinc-400 { color: #625d54 !important; }
+html.white .text-zinc-500 { color: #746e63 !important; }
+html.white .text-zinc-600 { color: #514c44 !important; }
+
+html.white .border-zinc-900,
+html.white .border-zinc-900\\/80,
+html.white .border-zinc-900\\/90,
+html.white .border-zinc-800,
+html.white .border-zinc-800\\/90,
+html.white .border-zinc-800\\/80,
+html.white .border-zinc-800\\/50,
+html.white .border-zinc-700,
+html.white .border-zinc-700\\/80 {
+  border-color: #cdbda5 !important;
+}
+
+html.white input,
+html.white textarea,
+html.white select,
+html.white .bg-white:not(.text-black) {
+  background-color: #f1e9dc !important;
+  color: #2a2926 !important;
+  border-color: #c4b399 !important;
+}
+
+html.white ::-webkit-scrollbar-track { background: #e7dcc9 !important; }
+html.white ::-webkit-scrollbar-thumb { background: #b9a98f !important; }
+html.white ::-webkit-scrollbar-thumb:hover { background: #9f8e73 !important; }
+
+html.white #gen0-app-footer {
+  background-color: #e7dcc9 !important;
+  border-top-color: #cdbda5 !important;
+}
+
+html.white .gm-streak-page .bg-\\[\\#0e1014\\],
+html.white .gm-leaderboard-page .bg-\\[\\#0e1014\\] {
+  background-color: #e7dcc9 !important;
+  color: #2a2926 !important;
+  border-color: #cdbda5 !important;
+}
+
+html.white .gm-streak-page .bg-zinc-900\\/50,
+html.white .gm-leaderboard-page .bg-zinc-900\\/30,
+html.white .gm-streak-page .bg-black\\/20 {
+  background-color: #dacbb5 !important;
+  color: #2a2926 !important;
+  border-color: #c4b399 !important;
+}
