@@ -97,9 +97,7 @@ export const AskGen0View: React.FC = () => {
     {
       id: 'welcome',
       role: 'assistant',
-      content: isConnected
-        ? `Hello! I am GEN-0 FI, your blockchain-grounded assistant for Arc.\n\nI operate in two modes:\n1. Wallet Intelligence: Ask about your live USDC balance, verified incoming/outgoing transfers, gas expenditures, or recent transaction history.\n2. Protocol & GEN-0 Knowledge: Ask about Arc's native USDC gas model, protocol architecture, or how GEN-0 FI works.`
-        : `Welcome to GEN-0 AI. I am your blockchain-grounded assistant for Arc.\n\nYou can ask general questions about Arc and GEN-0 FI right now, or connect your wallet to unlock live Wallet Intelligence.`,
+      content: "Hello bro! I'm GEN0 AI, how can I help you today...",
       timestamp: Date.now(),
     },
   ]);
