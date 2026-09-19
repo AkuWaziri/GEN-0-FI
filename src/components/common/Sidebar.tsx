@@ -3,7 +3,7 @@ import { Logo } from './Logo';
 import { NetworkBadge } from './NetworkBadge';
 import { AddressBadge } from './AddressBadge';
 import { useWallet } from '../../context/WalletContext';
-import { LayoutDashboard, History, Sparkles, Settings, LogOut, Wallet, Flame, Trophy } from 'lucide-react';
+import { LayoutDashboard, History, Sparkles, Settings, LogOut, Wallet } from 'lucide-react';
 
 export type TabType = 'overview' | 'ask' | 'gm' | 'activity' | 'leaderboard' | 'settings';
 
@@ -19,9 +19,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
   const navItems = [
     { id: 'overview' as TabType, label: 'Overview', icon: LayoutDashboard },
     { id: 'ask' as TabType, label: 'Ask GEN-0', icon: Sparkles, badge: 'AI' },
-    { id: 'gm' as TabType, label: 'GM Streak', icon: Flame },
     { id: 'activity' as TabType, label: 'Activity', icon: History },
-    { id: 'leaderboard' as TabType, label: 'Leaderboard', icon: Trophy },
     { id: 'settings' as TabType, label: 'Settings', icon: Settings },
   ];
 
