@@ -105,7 +105,7 @@ export const GMStreakView: React.FC = () => {
   const busy = isSending || isConfirming;
 
   return (
-    <section className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+    <section className="gm-streak-page w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
       <div className="rounded-3xl border border-zinc-800 bg-[#0e1014] p-5 sm:p-8 shadow-xl">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-5">
           <div>
