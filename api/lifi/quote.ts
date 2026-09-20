@@ -1,4 +1,4 @@
-import { applyApiSecurity } from '../../_security.js';
+import { applyApiSecurity } from '../_security.js';
 
 const LIFI_QUOTE_URL = 'https://li.quest/v1/quote';
 
