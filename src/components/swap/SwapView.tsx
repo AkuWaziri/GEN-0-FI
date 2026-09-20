@@ -232,7 +232,7 @@ export const SwapView: React.FC = () => {
         integrator: 'GEN-0FI',
         fee: '0.005',
       });
-      const data = await fetchJson(`${API}/quote?${params.toString()}`);
+      const data = await fetchJson(`/api/lifi/quote?${params.toString()}`);
       setQuote(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No LI.FI route is available for this selection.');
