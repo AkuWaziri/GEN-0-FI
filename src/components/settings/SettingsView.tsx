@@ -4,162 +4,76 @@ import {
   Shield,
   Volume2,
   VolumeX,
-  Contrast,
   Moon,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { soundEngine } from '../../utils/sound';
 
 export const SettingsView: React.FC = () => {
-  const { theme, toggleTheme, setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const [isMuted, setIsMuted] = useState(soundEngine.getIsMuted());
 
-  const toggleSound = () => {
-    const next = soundEngine.toggleMute();
-    setIsMuted(next);
-  };
-
-  const handleThemeChange = (mode: 'dark' | 'white') => {
+  const handleThemeChange = (mode: 'dark' | 'brown') => {
     soundEngine.playSoftClick(520, 0.05);
     setTheme(mode);
   };
 
+  const toggleSound = () => setIsMuted(soundEngine.toggleMute());
+
   return (
-    <div className="w-full p-4 sm:p-6 lg:p-8 space-y-5 sm:space-y-6 animate-in fade-in duration-200">
-      {/* Header */}
-      <div className="pb-1 border-b border-zinc-900">
+    <div className="w-full p-4 sm:p-6 lg:p-8 space-y-5 animate-in fade-in duration-200">
+      <div className="pb-2 border-b border-zinc-900">
         <div className="flex items-center gap-2">
           <SettingsIcon className="w-4 h-4 text-white" />
-          <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
-            Settings
-          </h1>
+          <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">Settings</h1>
         </div>
       </div>
 
-      {/* Theme: Dark and Warm White Mode Switcher */}
-      <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 glow-blue-card-hover space-y-4 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {theme === 'dark' ? (
-              <Moon className="w-4 h-4 text-blue-400 drop-shadow-[0_0_6px_rgba(59,130,246,0.5)]" />
-            ) : (
-              <Contrast className="w-4 h-4 text-slate-300 drop-shadow-[0_0_6px_rgba(148,163,184,0.5)]" />
-            )}
-            <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">
-              Theme & Appearance
-            </h2>
+      <div className="p-4 sm:p-5 rounded-2xl bg-[#0d0f12] border border-zinc-800 glow-blue-card-hover shadow-sm">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">Appearance</h2>
+            <p className="text-xs text-zinc-500 mt-1">{theme === 'dark' ? 'Dark' : 'Brown'}</p>
           </div>
-
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-300 text-xs font-mono font-semibold">
-            {theme === 'dark' ? 'Dark Mode' : 'Warm White Mode'}
-          </span>
-        </div>
-
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
-          <p className="text-xs text-zinc-400 leading-relaxed max-w-md">
-            Switch between Dark and Warm White mode. Your display choice is immediately applied across the workspace and remembered for future visits.
-          </p>
-
-          {/* Switching Buttons */}
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="flex items-center bg-[#131519] p-1 rounded-xl border border-zinc-800">
-              <button
-                type="button"
-                onClick={() => handleThemeChange('dark')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold font-mono transition-all cursor-pointer ${
-                  theme === 'dark'
-                    ? 'bg-white text-black glow-blue-cta shadow-sm'
-                    : 'text-zinc-400 hover:text-white'
-                }`}
-                aria-label="Switch to Dark Mode"
-              >
-                <Moon className="w-3.5 h-3.5" />
-                <span>Dark</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleThemeChange('white')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold font-mono transition-all cursor-pointer ${
-                  theme === 'white'
-                    ? 'bg-white text-black glow-blue-cta shadow-sm'
-                    : 'text-zinc-400 hover:text-white'
-                }`}
-                aria-label="Switch to Warm White Mode"
-              >
-                <Contrast className="w-3.5 h-3.5" />
-                <span>Warm White</span>
-              </button>
-            </div>
-
-            {/* Quick 1-click Toggle Button */}
-            <button
-              type="button"
-              onClick={() => {
-                soundEngine.playSoftClick(520, 0.05);
-                toggleTheme();
-              }}
-              className="px-3 py-1.5 rounded-xl bg-[#131519] hover:bg-zinc-800 border border-zinc-800 text-xs font-mono text-zinc-300 hover:text-white transition-all cursor-pointer whitespace-nowrap"
-              aria-label="Toggle Theme"
-            >
-              Toggle
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Audio & Tactile Feedback */}
-      <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 space-y-3 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {isMuted ? (
-              <VolumeX className="w-4 h-4 text-zinc-400" />
-            ) : (
-              <Volume2 className="w-4 h-4 text-white" />
-            )}
-            <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">Audio & Tactile Feedback</h2>
-          </div>
-
           <button
-            onClick={toggleSound}
-            className={`px-3 py-1 rounded-lg text-xs font-semibold font-mono transition-all cursor-pointer ${
-              !isMuted
-                ? 'bg-white text-black glow-blue-cta'
-                : 'bg-[#131519] border border-zinc-800 text-zinc-400 hover:text-white'
-            }`}
+            type="button"
+            onClick={() => handleThemeChange(theme === 'dark' ? 'brown' : 'dark')}
+            className="relative w-24 h-10 rounded-xl overflow-hidden border border-zinc-700 shadow-sm transition-all"
+            aria-label={theme === 'dark' ? 'Switch to Brown mode' : 'Switch to Dark mode'}
           >
-            {!isMuted ? 'ENABLED' : 'MUTED'}
+            <span className="absolute inset-y-0 left-0 w-1/2 bg-[#111317]" />
+            <span className="absolute inset-y-0 right-0 w-1/2 bg-[#8b5e3c]" />
+            <span
+              className={`absolute top-1 w-8 h-8 rounded-lg bg-white shadow-md transition-all ${theme === 'dark' ? 'left-1' : 'right-1'}`}
+            />
           </button>
         </div>
+        <div className="mt-3 flex items-center justify-between text-[11px] font-medium">
+          <span className="text-zinc-500">Dark</span>
+          <span className="text-[#9a6a45]">Brown</span>
+        </div>
+      </div>
 
-        <div className="flex items-center justify-between text-xs text-zinc-400">
-          <p className="leading-relaxed">
-            Plays a subtle, soft click sound on all buttons, tabs, and interactive elements.
-          </p>
-          <button
-            onClick={() => soundEngine.playSoftClick(540, 0.05)}
-            className="px-2.5 py-1 rounded bg-[#131519] border border-zinc-800 hover:border-zinc-600 text-[11px] text-zinc-300 hover:text-white whitespace-nowrap ml-4 cursor-pointer"
-          >
-            Test Sound
+      <div className="p-4 sm:p-5 rounded-2xl bg-[#0d0f12] border border-zinc-800 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {isMuted ? <VolumeX className="w-4 h-4 text-zinc-400" /> : <Volume2 className="w-4 h-4 text-white" />}
+            <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">Sound</h2>
+          </div>
+          <button onClick={toggleSound} className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${!isMuted ? 'bg-white text-black glow-blue-cta' : 'bg-[#131519] border border-zinc-800 text-zinc-400'}`}>
+            {!isMuted ? 'ON' : 'OFF'}
           </button>
         </div>
       </div>
 
-      {/* Security Guarantee */}
-      <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 space-y-2.5 shadow-sm">
+      <div className="p-4 sm:p-5 rounded-2xl bg-[#0d0f12] border border-zinc-800 space-y-2.5 shadow-sm">
         <div className="flex items-center gap-2">
           <Shield className="w-4 h-4 text-white" />
-          <h2 className="text-xs sm:text-sm font-bold text-white tracking-tight">Security & Privacy Protocol</h2>
+          <h2 className="text-xs sm:text-sm font-bold text-white tracking-tight">Security & Privacy</h2>
         </div>
-
         <p className="text-xs text-zinc-400 leading-relaxed">
-          GEN-0 FI operates under a strict read-only model. The application never accesses, requests, or stores private keys, seed phrases, or wallet passwords. All balances and transactions are verified directly against the public Arc blockchain.
+          GEN-0FI never requests or stores private keys, seed phrases, or wallet passwords. Balances and transactions are verified against the public Arc blockchain.
         </p>
-
-        <div className="pt-2 flex items-center justify-between text-[11px] text-zinc-500 border-t border-zinc-900 font-mono">
-          <span>App Version 1.0.0 (Arc MVP)</span>
-          <span>Secure Read-Only Architecture</span>
-        </div>
       </div>
     </div>
   );
