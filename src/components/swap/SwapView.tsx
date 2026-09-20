@@ -196,13 +196,54 @@ function tokenBalanceFor(
 
   const tokenAddress =
     normalizeAddress(token.address);
+  const tokenCoinKey =
+    normalizeAddress(token.coinKey);
+  const tokenSymbol =
+    normalizeAddress(token.symbol);
+
+  const isNativeAddress = (value: string) =>
+    value === normalizeAddress(NATIVE) ||
+    value ===
+      '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
 
   return (
-    chainBalances.find(
-      item =>
-        normalizeAddress(item.address) ===
-        tokenAddress,
-    ) || null
+    chainBalances.find(item => {
+      const itemAddress =
+        normalizeAddress(item.address);
+      const itemCoinKey =
+        normalizeAddress(item.coinKey);
+      const itemSymbol =
+        normalizeAddress(item.symbol);
+
+      if (
+        itemAddress &&
+        tokenAddress &&
+        itemAddress === tokenAddress
+      ) {
+        return true;
+      }
+
+      if (
+        tokenCoinKey &&
+        itemCoinKey &&
+        itemCoinKey === tokenCoinKey
+      ) {
+        return true;
+      }
+
+      if (
+        isNativeAddress(tokenAddress) &&
+        isNativeAddress(itemAddress) &&
+        itemSymbol === tokenSymbol
+      ) {
+        return true;
+      }
+
+      return (
+        itemSymbol === tokenSymbol &&
+        Number(item.chainId) === chainId
+      );
+    }) || null
   );
 }
 
