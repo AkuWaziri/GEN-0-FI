@@ -79,6 +79,7 @@ export const SwapView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [quote, setQuote] = useState<any>(null);
   const [quoting, setQuoting] = useState(false);
+  const [arcNativeBalance, setArcNativeBalance] = useState<string | null>(null);
 
   const fromBalance = tokenBalanceFor(balances, fromChainId, fromToken);
 
@@ -169,6 +170,7 @@ export const SwapView: React.FC = () => {
   useEffect(() => {
     if (!address) {
       setBalances(null);
+      setArcNativeBalance(null);
       return;
     }
     let cancelled = false;
@@ -186,6 +188,18 @@ export const SwapView: React.FC = () => {
       });
     return () => { cancelled = true; };
   }, [address]);
+
+  useEffect(() => {
+    if (!address || (fromChainId !== 5042 && toChainId !== 5042)) {
+      setArcNativeBalance(null);
+      return;
+    }
+    let cancelled = false;
+    fetchJson('/api/blockchain/arc/balance/' + address)
+      .then((data) => { if (!cancelled) setArcNativeBalance(data?.rawBalance ?? null); })
+      .catch(() => { if (!cancelled) setArcNativeBalance(null); });
+    return () => { cancelled = true; };
+  }, [address, fromChainId, toChainId]);
 
   const fromChain = useMemo(
     () => chains.find((chain) => chain.id === fromChainId),
@@ -221,6 +235,15 @@ export const SwapView: React.FC = () => {
       setQuoting(false);
     }
   };
+
+  useEffect(() => {
+    if (!address || !fromToken || !toToken || !amount || Number(amount) <= 0) {
+      setQuote(null);
+      return;
+    }
+    const timer = window.setTimeout(() => { requestQuote(); }, 450);
+    return () => window.clearTimeout(timer);
+  }, [address, fromToken, toToken, amount, fromChainId, toChainId]);
 
   const switchFromChain = async () => {
     try {
@@ -280,6 +303,8 @@ export const SwapView: React.FC = () => {
                 setAmount={setAmount}
                 balance={fromBalance}
                 loadingBalance={loadingBalances}
+                arcNativeBalance={arcNativeBalance}
+                balances={balances}
                 onSwitchChain={switchFromChain}
               />
 
@@ -301,10 +326,12 @@ export const SwapView: React.FC = () => {
                 token={toToken}
                 setToken={setToToken}
                 loading={loadingChains || loadingToTokens}
-                amount=""
+                amount={quote?.estimate?.toAmount ? formatBalance(quote.estimate.toAmount, toToken?.decimals || 18) : ''}
                 setAmount={() => {}}
                 balance={null}
                 loadingBalance={false}
+                arcNativeBalance={arcNativeBalance}
+                balances={balances}
                 onSwitchChain={() => {}}
               />
             </div>
@@ -376,6 +403,8 @@ function TokenPanel(props: {
   setAmount: (value: string) => void;
   balance: BalanceToken | null;
   loadingBalance: boolean;
+  arcNativeBalance: string | null;
+  balances: Record<string, BalanceToken[]> | null;
   onSwitchChain: () => void;
 }) {
   const [openMenu, setOpenMenu] = useState<'chain' | 'token' | null>(null);
@@ -432,6 +461,12 @@ function TokenPanel(props: {
   const menuClass = warmWhite
     ? 'border-[#bfae93] bg-[#ded1bc] text-[#2b2925]'
     : 'border-zinc-600 bg-[#181a1f] text-white';
+
+  const tokenWalletBalance = (token: LiFiToken) => {
+    if (props.chainId === 5042 && token.symbol?.toUpperCase() === 'USDC' && props.arcNativeBalance !== null) return formatBalance(props.arcNativeBalance, 18);
+    const item = tokenBalanceFor(props.balances, props.chainId, token);
+    return item?.amount ? formatBalance(item.amount, token.decimals || 18) : '0';
+  };
 
   const visibleChains = props.chains.filter((chain) => chain.name.toLowerCase().includes(search.toLowerCase()));
   const visibleTokens = props.tokens.filter((token) =>
@@ -551,6 +586,7 @@ function TokenPanel(props: {
           onChange={(e) => props.setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
           placeholder="0.00"
           inputMode="decimal"
+          readOnly={props.label === 'You receive'}
           className="w-full bg-transparent text-3xl font-semibold text-white outline-none placeholder:text-zinc-700"
         />
         <div className="mt-2 flex items-center justify-between text-xs text-zinc-500">
