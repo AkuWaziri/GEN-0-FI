@@ -24,15 +24,41 @@ export default async function handler(req: any, res: any) {
       functionName: 'lastCheckInDay',
       args: [wallet as `0x${string}`],
     });
+
     const scanFrom = latestBlock > 200000n ? latestBlock - 200000n : 0n;
-    const chunkSize = 10000n;
+    const chunkSize = 1000n;
     const events: any[] = [];
+
     for (let fromBlock = scanFrom; fromBlock <= latestBlock; fromBlock += chunkSize + 1n) {
       const toBlock = fromBlock + chunkSize > latestBlock ? latestBlock : fromBlock + chunkSize;
-      const logs = await client.getLogs({ address: CONTRACT, event: EVENT, args: { wallet: wallet as `0x${string}` }, fromBlock, toBlock });
-      for (const log of logs) events.push({ blockNumber: log.blockNumber?.toString(), transactionHash: log.transactionHash, day: log.args.day?.toString(), timestamp: log.args.timestamp?.toString(), fee: log.args.fee?.toString() });
+      const logs = await client.getLogs({
+        address: CONTRACT,
+        event: EVENT,
+        args: { wallet: wallet as `0x${string}` },
+        fromBlock,
+        toBlock,
+      });
+
+      for (const log of logs) {
+        events.push({
+          blockNumber: log.blockNumber?.toString(),
+          transactionHash: log.transactionHash,
+          day: log.args.day?.toString(),
+          timestamp: log.args.timestamp?.toString(),
+          fee: log.args.fee?.toString(),
+        });
+      }
     }
-    return res.status(200).json({ wallet, contract: CONTRACT, latestBlock: latestBlock.toString(), todayDay: Math.floor(Date.now() / 86400000).toString(), lastCheckInDay: lastCheckInDay.toString(), eventCount: events.length, events });
+
+    return res.status(200).json({
+      wallet,
+      contract: CONTRACT,
+      latestBlock: latestBlock.toString(),
+      todayDay: Math.floor(Date.now() / 86400000).toString(),
+      lastCheckInDay: lastCheckInDay.toString(),
+      eventCount: events.length,
+      events,
+    });
   } catch (error: any) {
     console.error('[Arc GM Debug] error:', error?.message || error);
     return res.status(503).json({ error: 'Arc GM debug query failed', message: error?.message || String(error) });
