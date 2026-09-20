@@ -96,17 +96,24 @@ export const GMStreakView: React.FC = () => {
       void (async () => {
         try {
           const latestBlock = await receiptClient.getBlockNumber();
-          // Arc produces roughly two blocks per second, so 500k blocks gives us
-          // several days of history. The previous 100k window could miss a GM
-          // from earlier in the day, leaving today's confirmed GM unindexed.
-          const fromBlock = latestBlock > 500000n ? latestBlock - 500000n : 0n;
-          const logs = await receiptClient.getLogs({
-            address: GM_CONTRACT_ADDRESS as `0x${string}`,
-            event: GM_CONTRACT_ABI[2],
-            args: { wallet: address as `0x${string}` },
-            fromBlock,
-            toBlock: latestBlock,
-          });
+          // Arcscan limits log-range queries. Scan in small deterministic
+          // chunks instead of relying on one large eth_getLogs request.
+          const scanFrom = latestBlock > 500000n ? latestBlock - 500000n : 0n;
+          const chunkSize = 20000n;
+          const logs = [];
+          for (let fromBlock = scanFrom; fromBlock <= latestBlock; fromBlock += chunkSize + 1n) {
+            const toBlock = fromBlock + chunkSize > latestBlock
+              ? latestBlock
+              : fromBlock + chunkSize;
+            const chunkLogs = await receiptClient.getLogs({
+              address: GM_CONTRACT_ADDRESS as `0x${string}`,
+              event: GM_CONTRACT_ABI[2],
+              args: { wallet: address as `0x${string}` },
+              fromBlock,
+              toBlock,
+            });
+            logs.push(...chunkLogs);
+          }
 
           const latestGM = logs.at(-1);
           if (!latestGM?.transactionHash) return;
