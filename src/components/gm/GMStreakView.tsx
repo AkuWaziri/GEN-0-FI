@@ -45,6 +45,58 @@ export const GMStreakView: React.FC = () => {
     }
   };
 
+  const syncOnchainGM = async () => {
+    if (!address || !isGMContractConfigured) return false;
+
+    try {
+      // The contract is the source of truth for whether this wallet has
+      // already checked in today. Do not rely on Supabase for button state.
+      const todayDay = BigInt(Math.floor(Date.now() / 86400000));
+      const lastCheckInDay = await receiptClient.readContract({
+        address: GM_CONTRACT_ADDRESS as `0x${string}`,
+        abi: GM_CONTRACT_ABI,
+        functionName: 'lastCheckInDay',
+        args: [address as `0x${string}`],
+      });
+
+      if (lastCheckInDay !== todayDay) return false;
+
+      // Supabase may lag or fail after a successful onchain transaction.
+      // Find today's confirmed GM event and repair the index automatically.
+      const latestBlock = await receiptClient.getBlockNumber();
+      const fromBlock = latestBlock > 50000n ? latestBlock - 50000n : 0n;
+      const logs = await receiptClient.getLogs({
+        address: GM_CONTRACT_ADDRESS as `0x${string}`,
+        event: GM_CONTRACT_ABI[2],
+        args: { wallet: address as `0x${string}` },
+        fromBlock,
+        toBlock: latestBlock,
+      });
+
+      const latestGM = logs.at(-1);
+      if (latestGM?.transactionHash) {
+        const nextStats = await indexConfirmedGM(address, latestGM.transactionHash);
+        setStats(nextStats);
+        setLeaderboard(await getGMLeaderboard(20));
+        setTxHash(latestGM.transactionHash);
+      } else {
+        // Even if the event lookup is temporarily unavailable, the button
+        // must still reflect the onchain contract state.
+        setStats((current) => current ? {
+          ...current,
+          checkedInToday: true,
+          currentStreak: Math.max(current.currentStreak, 1),
+          points: Math.max(current.points, 1),
+        } : current);
+      }
+
+      return true;
+    } catch (err) {
+      console.warn('Onchain GM sync is still waiting:', err);
+      return false;
+    }
+  };
+
   const recoverPendingGM = async () => {
     if (!address || !isGMContractConfigured) return;
 
@@ -88,12 +140,31 @@ export const GMStreakView: React.FC = () => {
   };
 
   useEffect(() => {
-    load();
-    recoverPendingGM();
+    let cancelled = false;
+
+    const initialise = async () => {
+      await load();
+      if (cancelled) return;
+      await recoverPendingGM();
+      if (cancelled) return;
+      await syncOnchainGM();
+    };
+
+    initialise();
+    return () => {
+      cancelled = true;
+    };
   }, [address]);
 
   const handleCheckIn = async () => {
     if (!address || checkingIn) return;
+
+    // Check Arc directly before opening the wallet. This prevents a second
+    // paid transaction attempt when Supabase has not caught up yet.
+    if (await syncOnchainGM()) {
+      setError('You already checked in today.');
+      return;
+    }
 
     if (!isCorrectNetwork) {
       setError('Switch your wallet to Arc Mainnet before checking in.');
