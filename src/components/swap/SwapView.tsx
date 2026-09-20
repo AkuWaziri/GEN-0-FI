@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ArrowDownUp, ChevronDown, Loader2, RefreshCw, Wallet } from 'lucide-react';
 import { switchChain } from '@wagmi/core';
 import { useAccount, useChainId } from 'wagmi';
@@ -371,71 +372,152 @@ function TokenPanel(props: {
   loadingBalance: boolean;
   onSwitchChain: () => void;
 }) {
-  const [chainOpen, setChainOpen] = useState(false);
-  const [tokenOpen, setTokenOpen] = useState(false);
+  const [openMenu, setOpenMenu] = useState<'chain' | 'token' | null>(null);
+  const [menuRect, setMenuRect] = useState({ top: 0, left: 0, width: 0, maxHeight: 320 });
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
 
-  return (
-    <div className={`relative rounded-2xl border border-zinc-800 bg-[#111317] p-4 ${chainOpen || tokenOpen ? 'z-[60]' : 'z-0'}`}>
-      <div className="text-xs font-medium text-zinc-500 mb-2">{props.label}</div>
+  const openDropdown = (type: 'chain' | 'token') => {
+    if (openMenu === type) {
+      setOpenMenu(null);
+      return;
+    }
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const spaceBelow = window.innerHeight - rect.bottom - 12;
+    const spaceAbove = rect.top - 12;
+    const maxHeight = Math.max(180, Math.min(type === 'chain' ? 320 : 360, Math.max(spaceBelow, spaceAbove)));
+    const placeAbove = spaceBelow < 220 && spaceAbove > spaceBelow;
+    setMenuRect({
+      top: placeAbove ? Math.max(8, rect.top - maxHeight - 8) : rect.bottom + 8,
+      left: rect.left,
+      width: rect.width,
+      maxHeight,
+    });
+    setOpenMenu(type);
+  };
 
-      <div className="relative">
-        <button
-          onClick={() => setChainOpen(!chainOpen)}
-          className="w-full flex items-center justify-between rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-white"
+  useEffect(() => {
+    if (!openMenu) return;
+    const reposition = () => {
+      const rect = triggerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const spaceBelow = window.innerHeight - rect.bottom - 12;
+      const spaceAbove = rect.top - 12;
+      const maxHeight = Math.max(180, Math.min(openMenu === 'chain' ? 320 : 360, Math.max(spaceBelow, spaceAbove)));
+      const placeAbove = spaceBelow < 220 && spaceAbove > spaceBelow;
+      setMenuRect({
+        top: placeAbove ? Math.max(8, rect.top - maxHeight - 8) : rect.bottom + 8,
+        left: rect.left,
+        width: rect.width,
+        maxHeight,
+      });
+    };
+    window.addEventListener('resize', reposition);
+    window.addEventListener('scroll', reposition, true);
+    return () => {
+      window.removeEventListener('resize', reposition);
+      window.removeEventListener('scroll', reposition, true);
+    };
+  }, [openMenu]);
+
+  const warmWhite = typeof document !== 'undefined' && document.documentElement.classList.contains('white');
+  const menuClass = warmWhite
+    ? 'border-[#bfae93] bg-[#ded1bc] text-[#2b2925]'
+    : 'border-zinc-600 bg-[#181a1f] text-white';
+
+  const dropdown = openMenu
+    ? createPortal(
+        <div
+          className={`fixed rounded-xl border shadow-2xl overflow-y-auto${menuClass}`}
+          style={{
+            top: menuRect.top,
+            left: menuRect.left,
+            width: menuRect.width,
+            maxHeight: menuRect.maxHeight,
+            zIndex: 2147483647,
+          }}
+          role="listbox"
         >
-          <span>{props.chain?.name || 'Select chain'}</span>
-          <ChevronDown className="w-4 h-4 text-zinc-500" />
-        </button>
-        {chainOpen && (
-          <div className="absolute z-[100] mt-2 w-full max-h-64 overflow-auto rounded-xl border border-zinc-600 bg-[#181a1f] shadow-2xl">
-            {props.chains.map((chain) => (
+          {openMenu === 'chain' ? (
+            props.chains.map((chain) => (
               <button
                 key={chain.id}
+                type="button"
                 onClick={() => {
                   props.setChainId(chain.id);
-                  setChainOpen(false);
+                  setOpenMenu(null);
                 }}
-                className="w-full text-left px-3 py-2.5 text-sm text-white hover:bg-zinc-800"
+                className={warmWhite
+                  ? 'w-full text-left px-3 py-3 text-sm text-[#2b2925] hover:bg-[#cbb99d] transition'
+                  : 'w-full text-left px-3 py-3 text-sm text-white hover:bg-zinc-800 transition'}
               >
-                {chain.name}
+                <span className="block truncate">{chain.name}</span>
+                <span className={warmWhite ? 'text-xs text-[#71695d]' : 'text-xs text-zinc-500'}>Chain ID {chain.id}</span>
               </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="relative mt-3">
-        <button
-          onClick={() => setTokenOpen(!tokenOpen)}
-          className="w-full flex items-center justify-between rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5"
-        >
-          <span className="flex items-center gap-2">
-            {props.token?.logoURI && <img src={props.token.logoURI} alt="" className="w-6 h-6 rounded-full" />}
-            <span className="text-white font-medium">{props.token?.symbol || 'Select token'}</span>
-          </span>
-          <ChevronDown className="w-4 h-4 text-zinc-500" />
-        </button>
-        {tokenOpen && (
-          <div className="absolute z-[100] mt-2 w-full max-h-72 overflow-auto rounded-xl border border-zinc-600 bg-[#181a1f] shadow-2xl">
-            {props.tokens.map((token) => (
+            ))
+          ) : (
+            props.tokens.map((token) => (
               <button
                 key={token.address}
+                type="button"
                 onClick={() => {
                   props.setToken(token);
-                  setTokenOpen(false);
+                  setOpenMenu(null);
                 }}
-                className="w-full flex items-center justify-between px-3 py-2.5 text-sm text-white hover:bg-zinc-800"
+                className={warmWhite
+                  ? 'w-full flex items-center justify-between px-3 py-3 text-sm text-[#2b2925] hover:bg-[#cbb99d] transition'
+                  : 'w-full flex items-center justify-between px-3 py-3 text-sm text-white hover:bg-zinc-800 transition'}
               >
-                <span className="flex items-center gap-2 text-zinc-200">
-                  {token.logoURI && <img src={token.logoURI} alt="" className="w-6 h-6 rounded-full" />}
-                  <span>{token.symbol}</span>
+                <span className="flex items-center gap-2 min-w-0">
+                  {token.logoURI && <img src={token.logoURI} alt="" className="w-6 h-6 rounded-full shrink-0" />}
+                  <span className="truncate">{token.symbol}</span>
                 </span>
-                {token.priceUSD && <span className="text-zinc-500">${Number(token.priceUSD).toLocaleString()}</span>}
+                {token.priceUSD && (
+                  <span className={warmWhite ? 'text-xs text-[#71695d] ml-3' : 'text-xs text-zinc-500 ml-3'}>
+                    ${Number(token.priceUSD).toLocaleString()}
+                  </span>
+                )}
               </button>
-            ))}
-          </div>
-        )}
-      </div>
+            ))
+          )}
+          {((openMenu === 'chain' && props.chains.length === 0) || (openMenu === 'token' && props.tokens.length === 0)) && (
+            <div className={warmWhite ? 'px-4 py-5 text-sm text-[#71695d]' : 'px-4 py-5 text-sm text-zinc-400'}>
+              {props.loading ? 'Loading...' : 'Nothing available'}
+            </div>
+          )}
+        </div>,
+        document.body,
+      )
+    : null;
+
+  return (
+    <div className="relative rounded-2xl border border-zinc-800 bg-[#111317] p-4">
+      <div className="text-xs font-medium text-zinc-500 mb-2">{props.label}</div>
+
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => openDropdown('chain')}
+        className="w-full flex items-center justify-between rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-white"
+      >
+        <span className="truncate">{props.chain?.name || 'Select chain'}</span>
+        <ChevronDown className="w-4 h-4 text-zinc-500 shrink-0" />
+      </button>
+
+      <button
+        ref={openMenu === 'token' ? triggerRef : undefined}
+        type="button"
+        onClick={() => openDropdown('token')}
+        className="w-full mt-3 flex items-center justify-between rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5"
+      >
+        <span className="flex items-center gap-2 min-w-0">
+          {props.token?.logoURI && <img src={props.token.logoURI} alt="" className="w-6 h-6 rounded-full shrink-0" />}
+          <span className="text-white font-medium truncate">{props.token?.symbol || 'Select token'}</span>
+        </span>
+        <ChevronDown className="w-4 h-4 text-zinc-500 shrink-0" />
+      </button>
+
+      {dropdown}
 
       <div className="mt-4">
         <input
