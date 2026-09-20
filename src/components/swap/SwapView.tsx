@@ -53,6 +53,27 @@ function normalizeAddress(address?: string) {
   return String(address || '').toLowerCase();
 }
 
+function isUserRejectedError(error: unknown) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : String(error || '');
+
+  const code =
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error
+      ? String((error as { code?: unknown }).code)
+      : '';
+
+  return (
+    code === '4001' ||
+    /user rejected|user denied|rejected the request|request rejected|action_rejected/i.test(
+      message,
+    )
+  );
+}
+
 function isTokenLike(token: any) {
   return Boolean(
     token &&
@@ -1024,9 +1045,11 @@ export const SwapView: React.FC = () => {
         });
       } catch (err) {
         setError(
-          err instanceof Error
-            ? err.message
-            : 'Unable to switch wallet network.',
+          isUserRejectedError(err)
+            ? 'Cancelled'
+            : err instanceof Error
+              ? err.message
+              : 'Unable to switch wallet network.',
         );
       }
     };
@@ -1155,9 +1178,11 @@ export const SwapView: React.FC = () => {
         setError('Transaction submitted. Your bridge/swap is now processing.');
       } catch (err) {
         setError(
-          err instanceof Error
-            ? err.message
-            : 'The route could not be submitted.',
+          isUserRejectedError(err)
+            ? 'Cancelled'
+            : err instanceof Error
+              ? err.message
+              : 'The route could not be submitted.',
         );
       } finally {
         setExecuting(false);
