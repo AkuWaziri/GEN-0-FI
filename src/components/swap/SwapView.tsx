@@ -1,4 +1,3 @@
-tsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -38,79 +37,217 @@ type BalanceToken = LiFiToken & {
   amountUSD?: string;
 };
 
-type LiFiTokenResponse =
-  | LiFiToken[]
-  | Record<string, LiFiToken[]>
-  | {
-      tokens?: LiFiToken[] | Record<string, LiFiToken[]>;
-    };
-
 const API = 'https://li.quest/v1';
 
-const NATIVE = '0x0000000000000000000000000000000000000000';
+const NATIVE =
+  '0x0000000000000000000000000000000000000000';
 
 function normalizeAddress(address?: string) {
   return String(address || '').toLowerCase();
 }
 
-function isValidToken(token: any, chainId: number): token is LiFiToken {
-  if (!token || typeof token !== 'object') return false;
+function isTokenLike(token: any) {
+  return Boolean(
+    token &&
+      typeof token === 'object' &&
+      token.symbol &&
+      (token.address || token.coinKey),
+  );
+}
 
-  if (!token.symbol) return false;
-  if (!Number.isFinite(Number(token.decimals))) return false;
+function normalizeToken(
+  token: any,
+  chainId: number,
+): LiFiToken | null {
+  if (!isTokenLike(token)) {
+    return null;
+  }
 
   const tokenChainId = Number(token.chainId);
 
-  if (tokenChainId && tokenChainId !== chainId) {
-    return false;
+  /*
+   * Some LI.FI token response shapes include chainId.
+   * Others inherit the chain from the request and omit it.
+   *
+   * If chainId is present, make sure it matches.
+   */
+  if (
+    Number.isFinite(tokenChainId) &&
+    tokenChainId > 0 &&
+    tokenChainId !== chainId
+  ) {
+    return null;
   }
 
-  return Boolean(token.address);
-}
+  const decimals = Number(token.decimals);
 
-function normalizeToken(token: any, chainId: number): LiFiToken | null {
-  if (!isValidToken(token, chainId)) return null;
+  if (!Number.isFinite(decimals)) {
+    return null;
+  }
+
+  let address = token.address
+    ? String(token.address)
+    : '';
+
+  /*
+   * Native assets can sometimes arrive without an address.
+   * LI.FI uses the zero address representation for native assets
+   * in the controlled UI.
+   */
+  if (!address) {
+    address = NATIVE;
+  }
 
   return {
-    address: String(token.address),
+    address,
     symbol: String(token.symbol),
-    decimals: Number(token.decimals),
+    decimals,
     chainId,
-    name: token.name ? String(token.name) : undefined,
-    coinKey: token.coinKey ? String(token.coinKey) : undefined,
-    priceUSD: token.priceUSD ? String(token.priceUSD) : undefined,
-    logoURI: token.logoURI ? String(token.logoURI) : undefined,
+    name: token.name
+      ? String(token.name)
+      : undefined,
+    coinKey: token.coinKey
+      ? String(token.coinKey)
+      : undefined,
+    priceUSD:
+      token.priceUSD !== undefined &&
+      token.priceUSD !== null
+        ? String(token.priceUSD)
+        : undefined,
+    logoURI: token.logoURI
+      ? String(token.logoURI)
+      : undefined,
   };
 }
 
 function extractTokens(
-  data: LiFiTokenResponse,
+  data: any,
   chainId: number,
 ): LiFiToken[] {
-  let rawTokens: any[] = [];
+  const candidates: any[] = [];
 
+  const addArray = (value: any) => {
+    if (Array.isArray(value)) {
+      candidates.push(...value);
+    }
+  };
+
+  const addChainObject = (value: any) => {
+    if (
+      value &&
+      typeof value === 'object' &&
+      !Array.isArray(value)
+    ) {
+      addArray(value[String(chainId)]);
+    }
+  };
+
+  /*
+   * Shape 1:
+   *
+   * [
+   *   { symbol: 'USDC', ... }
+   * ]
+   */
   if (Array.isArray(data)) {
-    rawTokens = data;
-  } else if (data && typeof data === 'object') {
-    const wrapped = (data as any).tokens;
+    addArray(data);
+  }
 
-    if (Array.isArray(wrapped)) {
-      rawTokens = wrapped;
-    } else if (wrapped && typeof wrapped === 'object') {
-      rawTokens = wrapped[String(chainId)] || [];
-    } else {
-      rawTokens = (data as any)[String(chainId)] || [];
+  if (data && typeof data === 'object') {
+    /*
+     * Shape 2:
+     *
+     * {
+     *   tokens: [...]
+     * }
+     */
+    addArray(data.tokens);
+
+    /*
+     * Shape 3:
+     *
+     * {
+     *   tokens: {
+     *     "5042": [...]
+     *   }
+     * }
+     */
+    addChainObject(data.tokens);
+
+    /*
+     * Shape 4:
+     *
+     * {
+     *   "5042": [...]
+     * }
+     */
+    addArray(data[String(chainId)]);
+
+    /*
+     * Shape 5:
+     *
+     * {
+     *   chains: {
+     *     "5042": [...]
+     *   }
+     * }
+     */
+    addChainObject(data.chains);
+
+    /*
+     * Shape 6:
+     *
+     * {
+     *   data: {
+     *     tokens: [...]
+     *   }
+     * }
+     */
+    if (
+      data.data &&
+      typeof data.data === 'object'
+    ) {
+      addArray(data.data.tokens);
+
+      /*
+       * {
+       *   data: {
+       *     tokens: {
+       *       "5042": [...]
+       *     }
+       *   }
+       * }
+       */
+      addChainObject(data.data.tokens);
+
+      /*
+       * {
+       *   data: {
+       *     "5042": [...]
+       *   }
+       * }
+       */
+      addArray(data.data[String(chainId)]);
     }
   }
 
-  const normalized = rawTokens
-    .map((token) => normalizeToken(token, chainId))
-    .filter((token): token is LiFiToken => Boolean(token));
+  const normalized = candidates
+    .map((token) =>
+      normalizeToken(token, chainId),
+    )
+    .filter(
+      (token): token is LiFiToken =>
+        Boolean(token),
+    );
 
   const seen = new Set<string>();
 
   return normalized.filter((token) => {
-    const key = `${normalizeAddress(token.address)}:${token.chainId}`;
+    const key = [
+      normalizeAddress(token.address),
+      token.symbol.toUpperCase(),
+      String(chainId),
+    ].join(':');
 
     if (seen.has(key)) {
       return false;
@@ -121,21 +258,32 @@ function extractTokens(
   });
 }
 
-function formatBalance(amount: string | undefined, decimals: number) {
-  if (!amount) return '0';
+function formatBalance(
+  amount: string | undefined,
+  decimals: number,
+) {
+  if (!amount) {
+    return '0';
+  }
 
   try {
     const raw = BigInt(amount);
 
-    if (raw === 0n) return '0';
+    if (raw === 0n) {
+      return '0';
+    }
 
     const divisor = 10 ** decimals;
 
-    if (!Number.isFinite(divisor)) return '0';
+    if (!Number.isFinite(divisor)) {
+      return '0';
+    }
 
     const value = Number(raw) / divisor;
 
-    if (!Number.isFinite(value)) return '0';
+    if (!Number.isFinite(value)) {
+      return '0';
+    }
 
     return value.toLocaleString('en-US', {
       maximumFractionDigits: 6,
@@ -150,23 +298,33 @@ function tokenBalanceFor(
   chainId: number,
   token: LiFiToken | null,
 ) {
-  if (!balances || !token) return null;
+  if (!balances || !token) {
+    return null;
+  }
 
-  const items = balances[String(chainId)] || [];
+  const items =
+    balances[String(chainId)] || [];
 
-  const address = normalizeAddress(token.address);
-
-  const found = items.find(
-    (item) => normalizeAddress(item.address) === address,
+  const address = normalizeAddress(
+    token.address,
   );
 
-  if (found) return found;
+  const found = items.find(
+    (item) =>
+      normalizeAddress(item.address) ===
+      address,
+  );
+
+  if (found) {
+    return found;
+  }
 
   if (address === NATIVE) {
     return (
       items.find(
         (item) =>
-          normalizeAddress(item.address) === NATIVE ||
+          normalizeAddress(item.address) ===
+            NATIVE ||
           item.coinKey === token.coinKey,
       ) || null
     );
@@ -182,12 +340,14 @@ function findPreferredToken(
   return (
     tokens.find(
       (token) =>
-        token.symbol?.toUpperCase() === preferredSymbol &&
+        token.symbol?.toUpperCase() ===
+          preferredSymbol &&
         token.chainId,
     ) ||
     tokens.find(
       (token) =>
-        token.coinKey?.toUpperCase() === preferredSymbol &&
+        token.coinKey?.toUpperCase() ===
+          preferredSymbol &&
         token.chainId,
     ) ||
     tokens[0] ||
@@ -196,46 +356,99 @@ function findPreferredToken(
 }
 
 export const SwapView: React.FC = () => {
-  const { address, isConnected, connectWallet } = useWallet();
+  const {
+    address,
+    isConnected,
+    connectWallet,
+  } = useWallet();
+
   const connectedChainId = useChainId();
-  const { isConnected: wagmiConnected } = useAccount();
 
-  const [chains, setChains] = useState<LiFiChain[]>([]);
+  const {
+    isConnected: wagmiConnected,
+  } = useAccount();
 
-  const [fromChainId, setFromChainId] = useState(5042);
-  const [toChainId, setToChainId] = useState(8453);
+  const [chains, setChains] =
+    useState<LiFiChain[]>([]);
 
-  const [fromTokens, setFromTokens] = useState<LiFiToken[]>([]);
-  const [toTokens, setToTokens] = useState<LiFiToken[]>([]);
+  const [fromChainId, setFromChainId] =
+    useState(5042);
 
-  const [fromToken, setFromToken] = useState<LiFiToken | null>(null);
-  const [toToken, setToToken] = useState<LiFiToken | null>(null);
+  const [toChainId, setToChainId] =
+    useState(8453);
+
+  const [fromTokens, setFromTokens] =
+    useState<LiFiToken[]>([]);
+
+  const [toTokens, setToTokens] =
+    useState<LiFiToken[]>([]);
+
+  const [fromToken, setFromToken] =
+    useState<LiFiToken | null>(null);
+
+  const [toToken, setToToken] =
+    useState<LiFiToken | null>(null);
 
   const [balances, setBalances] =
-    useState<Record<string, BalanceToken[]> | null>(null);
+    useState<
+      Record<string, BalanceToken[]> | null
+    >(null);
 
-  const [amount, setAmount] = useState('');
+  const [amount, setAmount] =
+    useState('');
 
-  const [loadingChains, setLoadingChains] = useState(true);
-  const [loadingFromTokens, setLoadingFromTokens] = useState(false);
-  const [loadingToTokens, setLoadingToTokens] = useState(false);
-  const [loadingBalances, setLoadingBalances] = useState(false);
+  const [
+    loadingChains,
+    setLoadingChains,
+  ] = useState(true);
 
-  const [fromTokenError, setFromTokenError] = useState<string | null>(null);
-  const [toTokenError, setToTokenError] = useState<string | null>(null);
+  const [
+    loadingFromTokens,
+    setLoadingFromTokens,
+  ] = useState(false);
 
-  const [error, setError] = useState<string | null>(null);
+  const [
+    loadingToTokens,
+    setLoadingToTokens,
+  ] = useState(false);
 
-  const [quote, setQuote] = useState<any>(null);
-  const [quoting, setQuoting] = useState(false);
+  const [
+    loadingBalances,
+    setLoadingBalances,
+  ] = useState(false);
 
-  const fromBalance = tokenBalanceFor(
-    balances,
-    fromChainId,
-    fromToken,
-  );
+  const [
+    fromTokenError,
+    setFromTokenError,
+  ] = useState<string | null>(null);
 
-  const fetchJson = async (url: string) => {
+  const [
+    toTokenError,
+    setToTokenError,
+  ] = useState<string | null>(null);
+
+  const [error, setError] =
+    useState<string | null>(null);
+
+  const [quote, setQuote] =
+    useState<any>(null);
+
+  const [quoting, setQuoting] =
+    useState(false);
+
+  const [refreshKey, setRefreshKey] =
+    useState(0);
+
+  const fromBalance =
+    tokenBalanceFor(
+      balances,
+      fromChainId,
+      fromToken,
+    );
+
+  const fetchJson = async (
+    url: string,
+  ) => {
     const response = await fetch(url, {
       headers: {
         Accept: 'application/json',
@@ -247,7 +460,8 @@ export const SwapView: React.FC = () => {
       let message = `LI.FI request failed (${response.status})`;
 
       try {
-        const body = await response.json();
+        const body =
+          await response.json();
 
         if (body?.message) {
           message = body.message;
@@ -258,7 +472,7 @@ export const SwapView: React.FC = () => {
               : message;
         }
       } catch {
-        // Keep the HTTP status message.
+        // Keep HTTP status message.
       }
 
       throw new Error(message);
@@ -268,10 +482,10 @@ export const SwapView: React.FC = () => {
   };
 
   /*
-   * Load chains once.
+   * CHAIN LOADER
    *
-   * Do not change this logic when fixing token loading.
-   * The chain selector is already working.
+   * This is intentionally left independent
+   * from the token loader.
    */
   useEffect(() => {
     let cancelled = false;
@@ -279,59 +493,89 @@ export const SwapView: React.FC = () => {
     setLoadingChains(true);
     setError(null);
 
-    fetchJson(`${API}/chains?chainTypes=EVM`)
+    fetchJson(
+      `${API}/chains?chainTypes=EVM`,
+    )
       .then((data) => {
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
-        const rawList = Array.isArray(data)
-          ? data
-          : Array.isArray(data?.chains)
-            ? data.chains
-            : [];
+        const rawList =
+          Array.isArray(data)
+            ? data
+            : Array.isArray(data?.chains)
+              ? data.chains
+              : [];
 
-        const supported = rawList
-          .filter(
-            (chain: any) =>
-              Number(chain?.id) &&
-              chain?.name,
-          )
-          .map(
-            (chain: any): LiFiChain => ({
-              id: Number(chain.id),
-              key: chain.key,
-              name: String(chain.name),
-              chainType: chain.chainType,
-              nativeToken: chain.nativeToken,
-              logoURI: chain.logoURI,
-            }),
-          )
-          .sort((a: LiFiChain, b: LiFiChain) =>
-            a.name.localeCompare(b.name),
-          );
+        const supported =
+          rawList
+            .filter(
+              (chain: any) =>
+                Number(chain?.id) &&
+                chain?.name,
+            )
+            .map(
+              (
+                chain: any,
+              ): LiFiChain => ({
+                id: Number(chain.id),
+                key: chain.key,
+                name: String(
+                  chain.name,
+                ),
+                chainType:
+                  chain.chainType,
+                nativeToken:
+                  chain.nativeToken,
+                logoURI:
+                  chain.logoURI,
+              }),
+            )
+            .sort(
+              (
+                a: LiFiChain,
+                b: LiFiChain,
+              ) =>
+                a.name.localeCompare(
+                  b.name,
+                ),
+            );
 
         setChains(supported);
 
         if (
           supported.length > 0 &&
           !supported.some(
-            (chain) => chain.id === fromChainId,
+            (chain) =>
+              chain.id ===
+              fromChainId,
           )
         ) {
-          setFromChainId(supported[0].id);
+          setFromChainId(
+            supported[0].id,
+          );
         }
 
         if (
           supported.length > 0 &&
           !supported.some(
-            (chain) => chain.id === toChainId,
+            (chain) =>
+              chain.id ===
+              toChainId,
           )
         ) {
           const destination =
             supported.find(
-              (chain) => chain.id !== fromChainId,
-            ) || supported[0];
+              (chain) =>
+                chain.id !==
+                fromChainId,
+            ) ||
+            supported[0];
 
-          setToChainId(destination.id);
+          setToChainId(
+            destination.id,
+          );
         }
       })
       .catch((err) => {
@@ -356,118 +600,135 @@ export const SwapView: React.FC = () => {
 
   /*
    * SOURCE TOKEN LOADER
-   *
-   * This is the main fix.
-   *
-   * Important differences:
-   * - Uses a request id so an old chain request cannot overwrite
-   *   a newer chain selection.
-   * - Handles array and object LI.FI responses.
-   * - Handles wrapped { tokens: ... } responses.
-   * - Validates the returned chainId.
-   * - Adds the selected chain's native token if LI.FI exposes it
-   *   through the chain response.
    */
   useEffect(() => {
     let cancelled = false;
-
-    const requestId = Date.now();
 
     setLoadingFromTokens(true);
     setFromTokenError(null);
     setFromTokens([]);
     setFromToken(null);
 
-    const loadSourceTokens = async () => {
-      try {
-        const data = await fetchJson(
-          `${API}/tokens?chains=${encodeURIComponent(
-            String(fromChainId),
-          )}&chainTypes=EVM`,
-        );
+    const loadSourceTokens =
+      async () => {
+        try {
+          const data =
+            await fetchJson(
+              `${API}/tokens?chains=${encodeURIComponent(
+                String(fromChainId),
+              )}&chainTypes=EVM`,
+            );
 
-        if (cancelled) return;
+          if (cancelled) {
+            return;
+          }
 
-        const tokens = extractTokens(
-          data as LiFiTokenResponse,
-          fromChainId,
-        );
-
-        const selectedChain = chains.find(
-          (chain) => chain.id === fromChainId,
-        );
-
-        /*
-         * LI.FI's token catalogue normally contains native tokens,
-         * but if the chain object provides one and it is missing
-         * from the catalogue, add it.
-         */
-        if (selectedChain?.nativeToken) {
-          const nativeToken =
-            normalizeToken(
-              {
-                ...selectedChain.nativeToken,
-                address:
-                  selectedChain.nativeToken.address ||
-                  NATIVE,
-                chainId: fromChainId,
-              },
+          const tokens =
+            extractTokens(
+              data,
               fromChainId,
             );
 
-          if (nativeToken) {
-            const alreadyExists = tokens.some(
-              (token) =>
-                normalizeAddress(token.address) ===
-                normalizeAddress(nativeToken.address),
+          const selectedChain =
+            chains.find(
+              (chain) =>
+                chain.id ===
+                fromChainId,
             );
 
-            if (!alreadyExists) {
-              tokens.unshift(nativeToken);
+          /*
+           * If the chain endpoint exposes
+           * a native token but the token
+           * catalogue does not contain it,
+           * add it.
+           */
+          if (
+            selectedChain?.nativeToken
+          ) {
+            const nativeToken =
+              normalizeToken(
+                {
+                  ...selectedChain.nativeToken,
+                  address:
+                    selectedChain
+                      .nativeToken
+                      .address ||
+                    NATIVE,
+                  chainId:
+                    fromChainId,
+                },
+                fromChainId,
+              );
+
+            if (nativeToken) {
+              const exists =
+                tokens.some(
+                  (token) =>
+                    normalizeAddress(
+                      token.address,
+                    ) ===
+                    normalizeAddress(
+                      nativeToken.address,
+                    ),
+                );
+
+              if (!exists) {
+                tokens.unshift(
+                  nativeToken,
+                );
+              }
             }
           }
-        }
 
-        if (cancelled) return;
+          if (cancelled) {
+            return;
+          }
 
-        if (tokens.length === 0) {
-          setFromTokenError(
-            `LI.FI returned no supported tokens for ${selectedChain?.name || `chain ${fromChainId}`}.`,
+          if (tokens.length === 0) {
+            setFromTokenError(
+              `LI.FI returned no supported tokens for ${
+                selectedChain?.name ||
+                `chain ${fromChainId}`
+              }.`,
+            );
+          }
+
+          setFromTokens(tokens);
+          setFromToken(
+            findPreferredToken(
+              tokens,
+            ),
           );
+        } catch (err) {
+          if (cancelled) {
+            return;
+          }
+
+          setFromTokens([]);
+          setFromToken(null);
+
+          setFromTokenError(
+            err instanceof Error
+              ? err.message
+              : 'Unable to load source tokens from LI.FI.',
+          );
+        } finally {
+          if (!cancelled) {
+            setLoadingFromTokens(false);
+          }
         }
-
-        setFromTokens(tokens);
-        setFromToken(findPreferredToken(tokens));
-      } catch (err) {
-        if (cancelled) return;
-
-        setFromTokens([]);
-        setFromToken(null);
-
-        setFromTokenError(
-          err instanceof Error
-            ? err.message
-            : 'Unable to load source tokens from LI.FI.',
-        );
-      } finally {
-        if (!cancelled) {
-          setLoadingFromTokens(false);
-        }
-      }
-    };
+      };
 
     void loadSourceTokens();
 
     return () => {
       cancelled = true;
-
-      /*
-       * requestId is intentionally retained here to make it clear
-       * that each chain change owns its token request lifecycle.
-       */
-      void requestId;
     };
-  }, [fromChainId, chains]);
+  }, [
+    fromChainId,
+    chains,
+    refreshKey,
+  ]);
 
   /*
    * DESTINATION TOKEN LOADER
@@ -480,90 +741,123 @@ export const SwapView: React.FC = () => {
     setToTokens([]);
     setToToken(null);
 
-    const loadDestinationTokens = async () => {
-      try {
-        const data = await fetchJson(
-          `${API}/tokens?chains=${encodeURIComponent(
-            String(toChainId),
-          )}&chainTypes=EVM`,
-        );
+    const loadDestinationTokens =
+      async () => {
+        try {
+          const data =
+            await fetchJson(
+              `${API}/tokens?chains=${encodeURIComponent(
+                String(toChainId),
+              )}&chainTypes=EVM`,
+            );
 
-        if (cancelled) return;
+          if (cancelled) {
+            return;
+          }
 
-        const tokens = extractTokens(
-          data as LiFiTokenResponse,
-          toChainId,
-        );
-
-        const selectedChain = chains.find(
-          (chain) => chain.id === toChainId,
-        );
-
-        if (selectedChain?.nativeToken) {
-          const nativeToken =
-            normalizeToken(
-              {
-                ...selectedChain.nativeToken,
-                address:
-                  selectedChain.nativeToken.address ||
-                  NATIVE,
-                chainId: toChainId,
-              },
+          const tokens =
+            extractTokens(
+              data,
               toChainId,
             );
 
-          if (nativeToken) {
-            const alreadyExists = tokens.some(
-              (token) =>
-                normalizeAddress(token.address) ===
-                normalizeAddress(nativeToken.address),
+          const selectedChain =
+            chains.find(
+              (chain) =>
+                chain.id ===
+                toChainId,
             );
 
-            if (!alreadyExists) {
-              tokens.unshift(nativeToken);
+          if (
+            selectedChain?.nativeToken
+          ) {
+            const nativeToken =
+              normalizeToken(
+                {
+                  ...selectedChain.nativeToken,
+                  address:
+                    selectedChain
+                      .nativeToken
+                      .address ||
+                    NATIVE,
+                  chainId:
+                    toChainId,
+                },
+                toChainId,
+              );
+
+            if (nativeToken) {
+              const exists =
+                tokens.some(
+                  (token) =>
+                    normalizeAddress(
+                      token.address,
+                    ) ===
+                    normalizeAddress(
+                      nativeToken.address,
+                    ),
+                );
+
+              if (!exists) {
+                tokens.unshift(
+                  nativeToken,
+                );
+              }
             }
           }
-        }
 
-        if (cancelled) return;
+          if (cancelled) {
+            return;
+          }
 
-        if (tokens.length === 0) {
-          setToTokenError(
-            `LI.FI returned no supported tokens for ${selectedChain?.name || `chain ${toChainId}`}.`,
+          if (tokens.length === 0) {
+            setToTokenError(
+              `LI.FI returned no supported tokens for ${
+                selectedChain?.name ||
+                `chain ${toChainId}`
+              }.`,
+            );
+          }
+
+          setToTokens(tokens);
+          setToToken(
+            findPreferredToken(
+              tokens,
+            ),
           );
+        } catch (err) {
+          if (cancelled) {
+            return;
+          }
+
+          setToTokens([]);
+          setToToken(null);
+
+          setToTokenError(
+            err instanceof Error
+              ? err.message
+              : 'Unable to load destination tokens from LI.FI.',
+          );
+        } finally {
+          if (!cancelled) {
+            setLoadingToTokens(false);
+          }
         }
-
-        setToTokens(tokens);
-        setToToken(findPreferredToken(tokens));
-      } catch (err) {
-        if (cancelled) return;
-
-        setToTokens([]);
-        setToToken(null);
-
-        setToTokenError(
-          err instanceof Error
-            ? err.message
-            : 'Unable to load destination tokens from LI.FI.',
-        );
-      } finally {
-        if (!cancelled) {
-          setLoadingToTokens(false);
-        }
-      }
-    };
+      };
 
     void loadDestinationTokens();
 
     return () => {
       cancelled = true;
     };
-  }, [toChainId, chains]);
+  }, [
+    toChainId,
+    chains,
+    refreshKey,
+  ]);
 
   /*
-   * Wallet balances.
-   *
-   * This remains real LI.FI wallet balance data.
+   * REAL LI.FI WALLET BALANCES
    */
   useEffect(() => {
     if (!address) {
@@ -576,19 +870,26 @@ export const SwapView: React.FC = () => {
     setLoadingBalances(true);
 
     fetchJson(
-      `${API}/wallets/${encodeURIComponent(address)}/balances`,
+      `${API}/wallets/${encodeURIComponent(
+        address,
+      )}/balances`,
     )
       .then((data) => {
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         const balanceData =
-          data?.balances && typeof data.balances === 'object'
+          data?.balances &&
+          typeof data.balances ===
+            'object'
             ? data.balances
             : data;
 
         setBalances(
           balanceData &&
-            typeof balanceData === 'object'
+            typeof balanceData ===
+              'object'
             ? balanceData
             : {},
         );
@@ -612,7 +913,9 @@ export const SwapView: React.FC = () => {
   const fromChain = useMemo(
     () =>
       chains.find(
-        (chain) => chain.id === fromChainId,
+        (chain) =>
+          chain.id ===
+          fromChainId,
       ),
     [chains, fromChainId],
   );
@@ -620,96 +923,135 @@ export const SwapView: React.FC = () => {
   const toChain = useMemo(
     () =>
       chains.find(
-        (chain) => chain.id === toChainId,
+        (chain) =>
+          chain.id ===
+          toChainId,
       ),
     [chains, toChainId],
   );
 
-  const requestQuote = async () => {
-    if (
-      !address ||
-      !fromToken ||
-      !toToken ||
-      !amount ||
-      Number(amount) <= 0
-    ) {
-      return;
-    }
+  const requestQuote =
+    async () => {
+      if (
+        !address ||
+        !fromToken ||
+        !toToken ||
+        !amount ||
+        Number(amount) <= 0
+      ) {
+        return;
+      }
 
-    setQuoting(true);
-    setQuote(null);
-    setError(null);
+      setQuoting(true);
+      setQuote(null);
+      setError(null);
 
-    try {
-      /*
-       * Keep the existing quote flow intact for now.
-       * Execution will be added only after quote and token
-       * selection are confirmed working.
-       */
-      const [whole, fraction = ''] = amount
-        .trim()
-        .split('.');
+      try {
+        const [
+          whole,
+          fraction = '',
+        ] = amount
+          .trim()
+          .split('.');
 
-      const paddedFraction =
-        fraction
-          .slice(0, fromToken.decimals)
-          .padEnd(fromToken.decimals, '0');
+        const paddedFraction =
+          fraction
+            .slice(
+              0,
+              fromToken.decimals,
+            )
+            .padEnd(
+              fromToken.decimals,
+              '0',
+            );
 
-      const rawAmount = BigInt(
-        `${whole || '0'}${paddedFraction}`,
-      ).toString();
+        const rawAmount =
+          BigInt(
+            `${whole || '0'}${paddedFraction}`,
+          ).toString();
 
-      const params = new URLSearchParams({
-        fromChain: String(fromChainId),
-        toChain: String(toChainId),
-        fromToken: fromToken.address,
-        toToken: toToken.address,
-        fromAddress: address,
-        toAddress: address,
-        fromAmount: rawAmount,
-        integrator: 'GEN-0FI',
-      });
+        const params =
+          new URLSearchParams({
+            fromChain:
+              String(fromChainId),
+            toChain:
+              String(toChainId),
+            fromToken:
+              fromToken.address,
+            toToken:
+              toToken.address,
+            fromAddress:
+              address,
+            toAddress:
+              address,
+            fromAmount:
+              rawAmount,
+            integrator:
+              'GEN-0FI',
+          });
 
-      const data = await fetchJson(
-        `${API}/quote?${params.toString()}`,
-      );
+        const data =
+          await fetchJson(
+            `${API}/quote?${params.toString()}`,
+          );
 
-      setQuote(data);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'No LI.FI route is available for this selection.',
-      );
-    } finally {
-      setQuoting(false);
-    }
-  };
+        setQuote(data);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'No LI.FI route is available for this selection.',
+        );
+      } finally {
+        setQuoting(false);
+      }
+    };
 
-  const switchFromChain = async () => {
-    try {
-      await switchChain(wagmiConfig, {
-        chainId: fromChainId,
-      });
-    } catch {
-      setError(
-        'Your wallet could not switch to the selected source chain.',
-      );
-    }
-  };
+  const switchFromChain =
+    async () => {
+      try {
+        await switchChain(
+          wagmiConfig,
+          {
+            chainId:
+              fromChainId,
+          },
+        );
+      } catch {
+        setError(
+          'Your wallet could not switch to the selected source chain.',
+        );
+      }
+    };
 
   const swapSides = () => {
-    const previousFromChain = fromChainId;
-    const previousToChain = toChainId;
+    const previousFromChain =
+      fromChainId;
 
-    const previousFromToken = fromToken;
-    const previousToToken = toToken;
+    const previousToChain =
+      toChainId;
 
-    setFromChainId(previousToChain);
-    setToChainId(previousFromChain);
+    const previousFromToken =
+      fromToken;
 
-    setFromToken(previousToToken);
-    setToToken(previousFromToken);
+    const previousToToken =
+      toToken;
+
+    setFromChainId(
+      previousToChain,
+    );
+
+    setToChainId(
+      previousFromChain,
+    );
+
+    setFromToken(
+      previousToToken,
+    );
+
+    setToToken(
+      previousFromToken,
+    );
 
     setAmount('');
     setQuote(null);
@@ -719,10 +1061,6 @@ export const SwapView: React.FC = () => {
   const refreshData = () => {
     setError(null);
 
-    /*
-     * Token loaders are keyed by chain IDs, so force a clean reload
-     * without changing the selected chain.
-     */
     setFromTokens([]);
     setToTokens([]);
 
@@ -733,6 +1071,10 @@ export const SwapView: React.FC = () => {
     setToTokenError(null);
 
     setBalances(null);
+
+    setRefreshKey(
+      (value) => value + 1,
+    );
   };
 
   return (
@@ -748,7 +1090,8 @@ export const SwapView: React.FC = () => {
           </p>
         </div>
 
-        {!isConnected || !wagmiConnected ? (
+        {!isConnected ||
+        !wagmiConnected ? (
           <div className="rounded-2xl border border-zinc-800 bg-[#111317] p-8 text-center">
             <Wallet className="w-8 h-8 text-blue-400 mx-auto mb-3" />
 
@@ -761,7 +1104,9 @@ export const SwapView: React.FC = () => {
             </p>
 
             <button
-              onClick={connectWallet}
+              onClick={
+                connectWallet
+              }
               className="px-5 py-3 rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-semibold transition"
             >
               Connect Wallet
@@ -774,25 +1119,49 @@ export const SwapView: React.FC = () => {
                 label="You send"
                 chain={fromChain}
                 chains={chains}
-                chainId={fromChainId}
-                setChainId={setFromChainId}
-                tokens={fromTokens}
-                token={fromToken}
-                setToken={setFromToken}
+                chainId={
+                  fromChainId
+                }
+                setChainId={
+                  setFromChainId
+                }
+                tokens={
+                  fromTokens
+                }
+                token={
+                  fromToken
+                }
+                setToken={
+                  setFromToken
+                }
                 loading={
                   loadingChains ||
                   loadingFromTokens
                 }
-                tokenError={fromTokenError}
-                amount={amount}
-                setAmount={setAmount}
-                balance={fromBalance}
-                loadingBalance={loadingBalances}
-                onSwitchChain={switchFromChain}
+                tokenError={
+                  fromTokenError
+                }
+                amount={
+                  amount
+                }
+                setAmount={
+                  setAmount
+                }
+                balance={
+                  fromBalance
+                }
+                loadingBalance={
+                  loadingBalances
+                }
+                onSwitchChain={
+                  switchFromChain
+                }
               />
 
               <button
-                onClick={swapSides}
+                onClick={
+                  swapSides
+                }
                 className="w-10 h-10 mb-1 mx-auto rounded-full border border-zinc-700 bg-zinc-900 text-zinc-300 hover:text-white hover:border-blue-500 transition flex items-center justify-center"
                 aria-label="Swap source and destination"
               >
@@ -803,27 +1172,45 @@ export const SwapView: React.FC = () => {
                 label="You receive"
                 chain={toChain}
                 chains={chains}
-                chainId={toChainId}
-                setChainId={setToChainId}
-                tokens={toTokens}
-                token={toToken}
-                setToken={setToToken}
+                chainId={
+                  toChainId
+                }
+                setChainId={
+                  setToChainId
+                }
+                tokens={
+                  toTokens
+                }
+                token={
+                  toToken
+                }
+                setToken={
+                  setToToken
+                }
                 loading={
                   loadingChains ||
                   loadingToTokens
                 }
-                tokenError={toTokenError}
+                tokenError={
+                  toTokenError
+                }
                 amount=""
                 setAmount={() => {}}
                 balance={null}
-                loadingBalance={false}
-                onSwitchChain={() => {}}
+                loadingBalance={
+                  false
+                }
+                onSwitchChain={
+                  () => {}
+                }
               />
             </div>
 
             <div className="mt-4 flex flex-col sm:flex-row gap-3">
               <button
-                onClick={requestQuote}
+                onClick={
+                  requestQuote
+                }
                 disabled={
                   !fromToken ||
                   !toToken ||
@@ -842,7 +1229,9 @@ export const SwapView: React.FC = () => {
               </button>
 
               <button
-                onClick={refreshData}
+                onClick={
+                  refreshData
+                }
                 className="px-4 rounded-xl border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 transition"
                 title="Refresh LI.FI data"
               >
@@ -850,9 +1239,12 @@ export const SwapView: React.FC = () => {
               </button>
             </div>
 
-            {connectedChainId !== fromChainId && (
+            {connectedChainId !==
+              fromChainId && (
               <button
-                onClick={switchFromChain}
+                onClick={
+                  switchFromChain
+                }
                 className="w-full mt-3 rounded-xl border border-amber-500/30 bg-amber-500/5 text-amber-300 py-2.5 text-sm"
               >
                 Switch wallet to{' '}
@@ -876,16 +1268,24 @@ export const SwapView: React.FC = () => {
 
                   <span className="text-lg font-semibold text-white">
                     {formatBalance(
-                      quote.estimate?.toAmount,
-                      toToken?.decimals || 18,
+                      quote
+                        .estimate
+                        ?.toAmount,
+                      toToken
+                        ?.decimals ||
+                        18,
                     )}{' '}
-                    {toToken?.symbol}
+                    {
+                      toToken?.symbol
+                    }
                   </span>
                 </div>
 
                 <div className="mt-2 text-xs text-zinc-500">
                   Route:{' '}
-                  {quote.toolDetails?.name ||
+                  {quote
+                    .toolDetails
+                    ?.name ||
                     quote.tool ||
                     'LI.FI'}
                 </div>
@@ -903,22 +1303,35 @@ function TokenPanel(props: {
   chain?: LiFiChain;
   chains: LiFiChain[];
   chainId: number;
-  setChainId: (id: number) => void;
+  setChainId: (
+    id: number,
+  ) => void;
   tokens: LiFiToken[];
   token: LiFiToken | null;
-  setToken: (token: LiFiToken | null) => void;
+  setToken: (
+    token: LiFiToken | null,
+  ) => void;
   loading: boolean;
   tokenError: string | null;
   amount: string;
-  setAmount: (value: string) => void;
+  setAmount: (
+    value: string,
+  ) => void;
   balance: BalanceToken | null;
   loadingBalance: boolean;
   onSwitchChain: () => void;
 }) {
-  const [openMenu, setOpenMenu] =
-    useState<'chain' | 'token' | null>(null);
+  const [
+    openMenu,
+    setOpenMenu,
+  ] = useState<
+    'chain' | 'token' | null
+  >(null);
 
-  const [menuRect, setMenuRect] = useState({
+  const [
+    menuRect,
+    setMenuRect,
+  ] = useState({
     top: 0,
     left: 0,
     width: 0,
@@ -926,15 +1339,22 @@ function TokenPanel(props: {
   });
 
   const chainTriggerRef =
-    useRef<HTMLButtonElement | null>(null);
+    useRef<HTMLButtonElement | null>(
+      null,
+    );
 
   const tokenTriggerRef =
-    useRef<HTMLButtonElement | null>(null);
+    useRef<HTMLButtonElement | null>(
+      null,
+    );
 
-  const [search, setSearch] = useState('');
+  const [search, setSearch] =
+    useState('');
 
   const openDropdown = (
-    type: 'chain' | 'token',
+    type:
+      | 'chain'
+      | 'token',
   ) => {
     if (openMenu === type) {
       setOpenMenu(null);
@@ -947,22 +1367,34 @@ function TokenPanel(props: {
         ? chainTriggerRef.current
         : tokenTriggerRef.current;
 
-    const rect = trigger?.getBoundingClientRect();
+    const rect =
+      trigger?.getBoundingClientRect();
 
-    if (!rect) return;
+    if (!rect) {
+      return;
+    }
 
     const spaceBelow =
-      window.innerHeight - rect.bottom - 12;
+      window.innerHeight -
+      rect.bottom -
+      12;
 
-    const spaceAbove = rect.top - 12;
+    const spaceAbove =
+      rect.top - 12;
 
-    const maxHeight = Math.max(
-      180,
-      Math.min(
-        type === 'chain' ? 320 : 360,
-        Math.max(spaceBelow, spaceAbove),
-      ),
-    );
+    const maxHeight =
+      Math.max(
+        180,
+        Math.min(
+          type === 'chain'
+            ? 320
+            : 360,
+          Math.max(
+            spaceBelow,
+            spaceAbove,
+          ),
+        ),
+      );
 
     const placeAbove =
       spaceBelow < 220 &&
@@ -972,7 +1404,9 @@ function TokenPanel(props: {
       top: placeAbove
         ? Math.max(
             8,
-            rect.top - maxHeight - 8,
+            rect.top -
+              maxHeight -
+              8,
           )
         : rect.bottom + 8,
       left: rect.left,
@@ -985,7 +1419,9 @@ function TokenPanel(props: {
   };
 
   useEffect(() => {
-    if (!openMenu) return;
+    if (!openMenu) {
+      return;
+    }
 
     const reposition = () => {
       const trigger =
@@ -996,25 +1432,31 @@ function TokenPanel(props: {
       const rect =
         trigger?.getBoundingClientRect();
 
-      if (!rect) return;
+      if (!rect) {
+        return;
+      }
 
       const spaceBelow =
-        window.innerHeight - rect.bottom - 12;
+        window.innerHeight -
+        rect.bottom -
+        12;
 
-      const spaceAbove = rect.top - 12;
+      const spaceAbove =
+        rect.top - 12;
 
-      const maxHeight = Math.max(
-        180,
-        Math.min(
-          openMenu === 'chain'
-            ? 320
-            : 360,
-          Math.max(
-            spaceBelow,
-            spaceAbove,
+      const maxHeight =
+        Math.max(
+          180,
+          Math.min(
+            openMenu === 'chain'
+              ? 320
+              : 360,
+            Math.max(
+              spaceBelow,
+              spaceAbove,
+            ),
           ),
-        ),
-      );
+        );
 
       const placeAbove =
         spaceBelow < 220 &&
@@ -1024,7 +1466,9 @@ function TokenPanel(props: {
         top: placeAbove
           ? Math.max(
               8,
-              rect.top - maxHeight - 8,
+              rect.top -
+                maxHeight -
+                8,
             )
           : rect.bottom + 8,
         left: rect.left,
@@ -1059,218 +1503,269 @@ function TokenPanel(props: {
   }, [openMenu]);
 
   const warmWhite =
-    typeof document !== 'undefined' &&
+    typeof document !==
+      'undefined' &&
     document.documentElement.classList.contains(
       'white',
     );
 
-  const menuClass = warmWhite
-    ? 'border-[#bfae93] bg-[#ded1bc] text-[#2b2925]'
-    : 'border-zinc-600 bg-[#181a1f] text-white';
+  const menuClass =
+    warmWhite
+      ? 'border-[#bfae93] bg-[#ded1bc] text-[#2b2925]'
+      : 'border-zinc-600 bg-[#181a1f] text-white';
 
   const searchValue =
     search.trim().toLowerCase();
 
   const visibleChains =
-    props.chains.filter((chain) =>
-      chain.name
-        .toLowerCase()
-        .includes(searchValue),
+    props.chains.filter(
+      (chain) =>
+        chain.name
+          .toLowerCase()
+          .includes(
+            searchValue,
+          ),
     );
 
   const visibleTokens =
-    props.tokens.filter((token) =>
-      `${token.symbol} ${token.name || ''} ${token.coinKey || ''}`
-        .toLowerCase()
-        .includes(searchValue),
+    props.tokens.filter(
+      (token) =>
+        `${token.symbol} ${
+          token.name || ''
+        } ${
+          token.coinKey || ''
+        }`
+          .toLowerCase()
+          .includes(
+            searchValue,
+          ),
     );
 
-  const dropdown = openMenu
-    ? createPortal(
-        <div
-          className={`fixed rounded-xl border shadow-2xl overflow-hidden ${menuClass}`}
-          style={{
-            top: menuRect.top,
-            left: menuRect.left,
-            width: menuRect.width,
-            maxHeight: menuRect.maxHeight,
-            zIndex: 2147483647,
-          }}
-          role="listbox"
-        >
+  const dropdown =
+    openMenu
+      ? createPortal(
           <div
-            className={
-              warmWhite
-                ? 'sticky top-0 z-10 p-2 bg-[#ded1bc]'
-                : 'sticky top-0 z-10 p-2 bg-[#181a1f]'
-            }
+            className={`fixed rounded-xl border shadow-2xl overflow-hidden ${menuClass}`}
+            style={{
+              top: menuRect.top,
+              left: menuRect.left,
+              width: menuRect.width,
+              maxHeight:
+                menuRect.maxHeight,
+              zIndex:
+                2147483647,
+            }}
+            role="listbox"
           >
-            <input
-              autoFocus
-              value={search}
-              onChange={(e) =>
-                setSearch(e.target.value)
-              }
-              placeholder={
-                openMenu === 'chain'
-                  ? 'Search chains...'
-                  : 'Search coins...'
-              }
+            <div
               className={
                 warmWhite
-                  ? 'w-full rounded-lg border border-[#bfae93] bg-[#eee5d7] px-3 py-2 text-sm text-[#2b2925] outline-none placeholder:text-[#8b8173]'
-                  : 'w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500'
+                  ? 'sticky top-0 z-10 p-2 bg-[#ded1bc]'
+                  : 'sticky top-0 z-10 p-2 bg-[#181a1f]'
               }
-            />
-          </div>
-
-          {openMenu === 'chain' ? (
-            visibleChains.map((chain) => (
-              <button
-                key={chain.id}
-                type="button"
-                onClick={() => {
-                  props.setChainId(
-                    chain.id,
-                  );
-                  setSearch('');
-                  setOpenMenu(null);
-                }}
+            >
+              <input
+                autoFocus
+                value={search}
+                onChange={(e) =>
+                  setSearch(
+                    e.target.value,
+                  )
+                }
+                placeholder={
+                  openMenu ===
+                  'chain'
+                    ? 'Search chains...'
+                    : 'Search coins...'
+                }
                 className={
                   warmWhite
-                    ? 'w-full text-left px-3 py-3 text-sm text-[#2b2925] hover:bg-[#cbb99d] transition'
-                    : 'w-full text-left px-3 py-3 text-sm text-white hover:bg-zinc-800 transition'
+                    ? 'w-full rounded-lg border border-[#bfae93] bg-[#eee5d7] px-3 py-2 text-sm text-[#2b2925] outline-none placeholder:text-[#8b8173]'
+                    : 'w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500'
                 }
-              >
-                <span className="block truncate">
-                  {chain.name}
-                </span>
+              />
+            </div>
 
-                <span
-                  className={
-                    warmWhite
-                      ? 'text-xs text-[#71695d]'
-                      : 'text-xs text-zinc-500'
-                  }
-                >
-                  Chain ID {chain.id}
-                </span>
-              </button>
-            ))
-          ) : (
-            visibleTokens.map((token) => (
-              <button
-                key={`${token.chainId}-${token.address}`}
-                type="button"
-                onClick={() => {
-                  props.setToken(
-                    token,
-                  );
-                  setSearch('');
-                  setOpenMenu(null);
-                }}
-                className={
-                  warmWhite
-                    ? 'w-full flex items-center justify-between px-3 py-3 text-sm text-[#2b2925] hover:bg-[#cbb99d] transition'
-                    : 'w-full flex items-center justify-between px-3 py-3 text-sm text-white hover:bg-zinc-800 transition'
-                }
-              >
-                <span className="flex items-center gap-2 min-w-0">
-                  {token.logoURI ? (
-                    <img
-                      src={token.logoURI}
-                      alt=""
-                      className="w-6 h-6 rounded-full shrink-0"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <span
-                      className={
-                        warmWhite
-                          ? 'w-6 h-6 rounded-full shrink-0 bg-[#c3b294] flex items-center justify-center text-[10px] font-bold text-[#5b5145]'
-                          : 'w-6 h-6 rounded-full shrink-0 bg-zinc-700 flex items-center justify-center text-[10px] font-bold text-zinc-300'
-                      }
-                    >
-                      {token.symbol
-                        .slice(0, 2)
-                        .toUpperCase()}
-                    </span>
-                  )}
-
-                  <span className="truncate">
-                    {token.symbol}
-                  </span>
-
-                  {token.name && (
-                    <span
-                      className={
-                        warmWhite
-                          ? 'truncate text-xs text-[#71695d]'
-                          : 'truncate text-xs text-zinc-500'
-                      }
-                    >
-                      {token.name}
-                    </span>
-                  )}
-                </span>
-
-                {token.priceUSD && (
-                  <span
+            {openMenu ===
+            'chain' ? (
+              visibleChains.map(
+                (chain) => (
+                  <button
+                    key={
+                      chain.id
+                    }
+                    type="button"
+                    onClick={() => {
+                      props.setChainId(
+                        chain.id,
+                      );
+                      setSearch(
+                        '',
+                      );
+                      setOpenMenu(
+                        null,
+                      );
+                    }}
                     className={
                       warmWhite
-                        ? 'text-xs text-[#71695d] ml-3 shrink-0'
-                        : 'text-xs text-zinc-500 ml-3 shrink-0'
+                        ? 'w-full text-left px-3 py-3 text-sm text-[#2b2925] hover:bg-[#cbb99d] transition'
+                        : 'w-full text-left px-3 py-3 text-sm text-white hover:bg-zinc-800 transition'
                     }
                   >
-                    $
-                    {Number(
-                      token.priceUSD,
-                    ).toLocaleString()}
-                  </span>
-                )}
-              </button>
-            ))
-          )}
+                    <span className="block truncate">
+                      {
+                        chain.name
+                      }
+                    </span>
 
-          {openMenu === 'chain' &&
-            visibleChains.length === 0 && (
-              <div
-                className={
-                  warmWhite
-                    ? 'px-4 py-5 text-sm text-[#71695d]'
-                    : 'px-4 py-5 text-sm text-zinc-400'
-                }
-              >
-                {props.loading
-                  ? 'Loading chains...'
-                  : search
-                    ? 'No chains found'
-                    : 'No chains available'}
-              </div>
+                    <span
+                      className={
+                        warmWhite
+                          ? 'text-xs text-[#71695d]'
+                          : 'text-xs text-zinc-500'
+                      }
+                    >
+                      Chain ID{' '}
+                      {
+                        chain.id
+                      }
+                    </span>
+                  </button>
+                ),
+              )
+            ) : (
+              visibleTokens.map(
+                (token) => (
+                  <button
+                    key={`${token.chainId}-${token.address}`}
+                    type="button"
+                    onClick={() => {
+                      props.setToken(
+                        token,
+                      );
+                      setSearch(
+                        '',
+                      );
+                      setOpenMenu(
+                        null,
+                      );
+                    }}
+                    className={
+                      warmWhite
+                        ? 'w-full flex items-center justify-between px-3 py-3 text-sm text-[#2b2925] hover:bg-[#cbb99d] transition'
+                        : 'w-full flex items-center justify-between px-3 py-3 text-sm text-white hover:bg-zinc-800 transition'
+                    }
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      {token.logoURI ? (
+                        <img
+                          src={
+                            token.logoURI
+                          }
+                          alt=""
+                          className="w-6 h-6 rounded-full shrink-0"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <span
+                          className={
+                            warmWhite
+                              ? 'w-6 h-6 rounded-full shrink-0 bg-[#c3b294] flex items-center justify-center text-[10px] font-bold text-[#5b5145]'
+                              : 'w-6 h-6 rounded-full shrink-0 bg-zinc-700 flex items-center justify-center text-[10px] font-bold text-zinc-300'
+                          }
+                        >
+                          {token.symbol
+                            .slice(
+                              0,
+                              2,
+                            )
+                            .toUpperCase()}
+                        </span>
+                      )}
+
+                      <span className="truncate">
+                        {
+                          token.symbol
+                        }
+                      </span>
+
+                      {token.name && (
+                        <span
+                          className={
+                            warmWhite
+                              ? 'truncate text-xs text-[#71695d]'
+                              : 'truncate text-xs text-zinc-500'
+                          }
+                        >
+                          {
+                            token.name
+                          }
+                        </span>
+                      )}
+                    </span>
+
+                    {token.priceUSD && (
+                      <span
+                        className={
+                          warmWhite
+                            ? 'text-xs text-[#71695d] ml-3 shrink-0'
+                            : 'text-xs text-zinc-500 ml-3 shrink-0'
+                        }
+                      >
+                        $
+                        {Number(
+                          token.priceUSD,
+                        ).toLocaleString()}
+                      </span>
+                    )}
+                  </button>
+                ),
+              )
             )}
 
-          {openMenu === 'token' &&
-            visibleTokens.length === 0 && (
-              <div
-                className={
-                  warmWhite
-                    ? 'px-4 py-5 text-sm text-[#71695d]'
-                    : 'px-4 py-5 text-sm text-zinc-400'
-                }
-              >
-                {props.loading
-                  ? 'Loading tokens...'
-                  : props.tokenError
-                    ? props.tokenError
+            {openMenu ===
+              'chain' &&
+              visibleChains.length ===
+                0 && (
+                <div
+                  className={
+                    warmWhite
+                      ? 'px-4 py-5 text-sm text-[#71695d]'
+                      : 'px-4 py-5 text-sm text-zinc-400'
+                  }
+                >
+                  {props.loading
+                    ? 'Loading chains...'
                     : search
-                      ? 'No tokens found'
-                      : 'No tokens available'}
-              </div>
-            )}
-        </div>,
-        document.body,
-      )
-    : null;
+                      ? 'No chains found'
+                      : 'No chains available'}
+                </div>
+              )}
+
+            {openMenu ===
+              'token' &&
+              visibleTokens.length ===
+                0 && (
+                <div
+                  className={
+                    warmWhite
+                      ? 'px-4 py-5 text-sm text-[#71695d]'
+                      : 'px-4 py-5 text-sm text-zinc-400'
+                  }
+                >
+                  {props.loading
+                    ? 'Loading tokens...'
+                    : props.tokenError
+                      ? props.tokenError
+                      : search
+                        ? 'No tokens found'
+                        : 'No tokens available'}
+                </div>
+              )}
+          </div>,
+          document.body,
+        )
+      : null;
 
   return (
     <div className="relative rounded-2xl border border-zinc-800 bg-[#111317] p-4">
@@ -1279,10 +1774,14 @@ function TokenPanel(props: {
       </div>
 
       <button
-        ref={chainTriggerRef}
+        ref={
+          chainTriggerRef
+        }
         type="button"
         onClick={() =>
-          openDropdown('chain')
+          openDropdown(
+            'chain',
+          )
         }
         className="w-full flex items-center justify-between rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-white"
       >
@@ -1295,17 +1794,25 @@ function TokenPanel(props: {
       </button>
 
       <button
-        ref={tokenTriggerRef}
+        ref={
+          tokenTriggerRef
+        }
         type="button"
         onClick={() =>
-          openDropdown('token')
+          openDropdown(
+            'token',
+          )
         }
         className="w-full mt-3 flex items-center justify-between rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5"
       >
         <span className="flex items-center gap-2 min-w-0">
-          {props.token?.logoURI ? (
+          {props.token
+            ?.logoURI ? (
             <img
-              src={props.token.logoURI}
+              src={
+                props.token
+                  .logoURI
+              }
               alt=""
               className="w-6 h-6 rounded-full shrink-0"
               loading="lazy"
@@ -1313,13 +1820,17 @@ function TokenPanel(props: {
           ) : props.token ? (
             <span className="w-6 h-6 rounded-full shrink-0 bg-zinc-700 flex items-center justify-center text-[10px] font-bold text-zinc-300">
               {props.token.symbol
-                .slice(0, 2)
+                .slice(
+                  0,
+                  2,
+                )
                 .toUpperCase()}
             </span>
           ) : null}
 
           <span className="text-white font-medium truncate">
-            {props.token?.symbol ||
+            {props.token
+              ?.symbol ||
               'Select token'}
           </span>
         </span>
@@ -1331,7 +1842,9 @@ function TokenPanel(props: {
 
       <div className="mt-4">
         <input
-          value={props.amount}
+          value={
+            props.amount
+          }
           onChange={(e) =>
             props.setAmount(
               e.target.value.replace(
@@ -1352,12 +1865,18 @@ function TokenPanel(props: {
               ? 'Loading...'
               : props.balance
                 ? formatBalance(
-                    props.balance.amount,
-                    props.token
-                      ?.decimals || 18,
+                    props
+                      .balance
+                      .amount,
+                    props
+                      .token
+                      ?.decimals ||
+                      18,
                   )
                 : '0'}
-            {props.token?.symbol
+
+            {props.token
+              ?.symbol
               ? ` ${props.token.symbol}`
               : ''}
           </span>
@@ -1368,9 +1887,13 @@ function TokenPanel(props: {
                 onClick={() =>
                   props.setAmount(
                     formatBalance(
-                      props.balance?.amount,
-                      props.token
-                        ?.decimals || 18,
+                      props
+                        .balance
+                        ?.amount,
+                      props
+                        .token
+                        ?.decimals ||
+                        18,
                     ),
                   )
                 }
@@ -1389,11 +1912,14 @@ function TokenPanel(props: {
                 : 'mt-2 text-xs text-red-400'
             }
           >
-            {props.tokenError}
+            {
+              props.tokenError
+            }
           </div>
         )}
 
-        {props.chainId === 5042 &&
+        {props.chainId ===
+          5042 &&
           props.onSwitchChain && (
             <button
               onClick={
@@ -1414,7 +1940,8 @@ function TokenPanel(props: {
 
 function warmWhiteSafe() {
   return (
-    typeof document !== 'undefined' &&
+    typeof document !==
+      'undefined' &&
     document.documentElement.classList.contains(
       'white',
     )
