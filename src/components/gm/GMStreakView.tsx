@@ -49,7 +49,7 @@ export const GMStreakView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [checkingIn, setCheckingIn] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);\n  const [onchainConfirmedToday, setOnchainConfirmedToday] = useState(false);
 
   const load = async () => {
     if (!address) return;
@@ -306,20 +306,20 @@ export const GMStreakView: React.FC = () => {
         {error && <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-xs text-red-300">{error}</div>}
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="rounded-2xl border border-blue-500/25 bg-blue-500/[0.06] p-5"><Flame className="w-5 h-5 text-blue-400 mb-4" /><div className="text-3xl font-bold text-white">{stats?.currentStreak ?? 0}</div><div className="text-xs text-zinc-500 mt-1">Current streak</div></div>
+          <div className="rounded-2xl border border-blue-500/25 bg-blue-500/[0.06] p-5"><Flame className="w-5 h-5 text-blue-400 mb-4" /><div className="text-3xl font-bold text-white">{onchainConfirmedToday && !stats?.checkedInToday ? (stats?.currentStreak ?? 0) + 1 : (stats?.currentStreak ?? 0)}</div><div className="text-xs text-zinc-500 mt-1">Current streak</div></div>
           <div className="rounded-2xl border border-zinc-800 bg-[#111317] p-5"><Trophy className="w-5 h-5 text-zinc-300 mb-4" /><div className="text-3xl font-bold text-white">{stats?.longestStreak ?? 0}</div><div className="text-xs text-zinc-500 mt-1">Longest streak</div></div>
-          <div className="rounded-2xl border border-zinc-800 bg-[#111317] p-5"><CalendarDays className="w-5 h-5 text-zinc-300 mb-4" /><div className="text-3xl font-bold text-white">{stats?.totalGmDays ?? 0}</div><div className="text-xs text-zinc-500 mt-1">Total GM days</div></div>
-          <div className="rounded-2xl border border-zinc-800 bg-[#111317] p-5"><div className="text-5xl leading-none mb-2">⚡</div><div className="text-3xl font-bold text-white">{stats?.points ?? 0}</div><div className="text-xs text-zinc-500 mt-1">Streak points</div></div>
+          <div className="rounded-2xl border border-zinc-800 bg-[#111317] p-5"><CalendarDays className="w-5 h-5 text-zinc-300 mb-4" /><div className="text-3xl font-bold text-white">{onchainConfirmedToday && !stats?.checkedInToday ? (stats?.totalGmDays ?? 0) + 1 : (stats?.totalGmDays ?? 0)}</div><div className="text-xs text-zinc-500 mt-1">Total GM days</div></div>
+          <div className="rounded-2xl border border-zinc-800 bg-[#111317] p-5"><div className="text-5xl leading-none mb-2">⚡</div><div className="text-3xl font-bold text-white">{onchainConfirmedToday && !stats?.checkedInToday ? (stats?.currentStreak ?? 0) + 1 : (stats?.points ?? 0)}</div><div className="text-xs text-zinc-500 mt-1">Streak points</div></div>
         </div>
 
         <div className="rounded-2xl border border-zinc-800 bg-[#111317] p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
           <div>
-            <div className="text-sm font-semibold text-white">{stats?.checkedInToday ? 'GM confirmed on Arc Mainnet' : 'You have not checked in today'}</div>
-            <div className="text-xs text-zinc-500 mt-1">{stats?.checkedInToday ? 'Come back tomorrow to extend the streak.' : 'A successful transaction is recorded on Arc Mainnet.'}</div>
+            <div className="text-sm font-semibold text-white">{onchainConfirmedToday || stats?.checkedInToday ? 'GM confirmed on Arc Mainnet' : 'You have not checked in today'}</div>
+            <div className="text-xs text-zinc-500 mt-1">{onchainConfirmedToday || stats?.checkedInToday ? 'Come back tomorrow to extend the streak.' : 'A successful transaction is recorded on Arc Mainnet.'}</div>
           </div>
-          <button onClick={handleCheckIn} disabled={checkingIn || loading || Boolean(stats?.checkedInToday)} className="w-full sm:w-auto min-w-36 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white text-black text-sm font-bold hover:bg-zinc-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+          <button onClick={handleCheckIn} disabled={checkingIn || loading || onchainConfirmedToday || Boolean(stats?.checkedInToday)} className="w-full sm:w-auto min-w-36 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white text-black text-sm font-bold hover:bg-zinc-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
             {checkingIn ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-            {checkingIn ? 'Confirming…' : stats?.checkedInToday ? 'GM Done' : 'GM Today'}
+            {checkingIn ? 'Confirming…' : (onchainConfirmedToday || stats?.checkedInToday) ? 'GM Done' : 'GM Today'}
           </button>
         </div>
 
