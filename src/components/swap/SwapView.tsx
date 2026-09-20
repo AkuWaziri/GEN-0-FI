@@ -311,11 +311,6 @@ export const SwapView: React.FC = () => {
   const { data: walletClient } =
     useWalletClient();
 
-  const publicClient =
-    usePublicClient({
-      chainId: fromChainId,
-    });
-
   const [executing, setExecuting] =
     useState(false);
 
@@ -330,6 +325,11 @@ export const SwapView: React.FC = () => {
 
   const [toChainId, setToChainId] =
     useState<number>(BASE_ID);
+
+  const publicClient =
+    usePublicClient({
+      chainId: fromChainId,
+    });
 
   const [fromTokens, setFromTokens] =
     useState<LiFiToken[]>([]);
