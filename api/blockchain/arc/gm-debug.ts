@@ -43,6 +43,12 @@ export default async function handler(req: any, res: any) {
       await sleep(100);
     }
 
+    const decodeUint256 = (value: unknown) => {
+      const hex = String(value || '');
+      if (!/^0x[0-9a-fA-F]{64}$/.test(hex)) return null;
+      return BigInt(hex).toString();
+    };
+
     const contractLogs = responseItems
       .filter((item: any) => {
         const topics = Array.isArray(item?.topics) ? item.topics : [];
@@ -50,18 +56,23 @@ export default async function handler(req: any, res: any) {
         const topic1 = String(topics[1] || '').toLowerCase();
         return topic0 === EVENT_TOPIC && topic1 === `0x${wallet.slice(2).padStart(64, '0')}`;
       })
-      .map((item: any) => ({
-        transactionHash: item.transactionHash || item.transaction_hash || item.txHash || null,
-        blockNumber: String(item.blockNumber ?? item.block_number ?? ''),
-        args: {
-          wallet,
-          day: item.day != null ? String(item.day) : null,
-          timestamp: item.timestamp != null ? String(item.timestamp) : null,
-          fee: item.fee != null ? String(item.fee) : null,
-          topics: item.topics || null,
-        },
-        raw: item,
-      }));
+      .map((item: any) => {
+        const topics = Array.isArray(item?.topics) ? item.topics : [];
+        const data = String(item?.data || '');
+        const words = data.startsWith('0x') ? data.slice(2).match(/.{64}/g) || [] : [];
+        return {
+          transactionHash: item.transactionHash || item.transaction_hash || item.txHash || null,
+          blockNumber: String(item.blockNumber ?? item.block_number ?? ''),
+          args: {
+            wallet,
+            day: decodeUint256(topics[2]),
+            timestamp: decodeUint256(`0x${words[0] || ''}`),
+            fee: decodeUint256(`0x${words[1] || ''}`),
+            topics,
+          },
+          raw: item,
+        };
+      });
 
     return res.status(200).json({
       wallet,
