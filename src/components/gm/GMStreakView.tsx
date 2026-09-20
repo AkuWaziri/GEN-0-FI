@@ -4,7 +4,7 @@ import { useWallet } from '../../context/WalletContext';
 import { useWriteContract } from 'wagmi';
 import { createPublicClient, http } from 'viem';
 import { GM_CONTRACT_ABI, GM_CONTRACT_ADDRESS, GM_FEE_WEI, isGMContractConfigured } from '../../config/gmContract';
-import { indexConfirmedGM, getGMLeaderboard, getGMStats, GMLeaderboardRow, GMStats } from '../../services/gm/gmService';
+import { indexConfirmedGM, indexConfirmedGMDays, getGMLeaderboard, getGMStats, GMLeaderboardRow, GMStats } from '../../services/gm/gmService';
 import { isSupabaseConfigured } from '../../lib/supabase';
 import { ARC_CHAIN_ID, arcChain, getArcScanTxUrl } from '../../config/arc';
 
