@@ -11,6 +11,31 @@ import { ARC_CHAIN_ID, arcChain, getArcScanTxUrl } from '../../config/arc';
 const short = (address: string) => `${address.slice(0, 6)}...${address.slice(-4)}`;
 const PENDING_GM_TX_KEY = 'gen0fi:pending-gm-tx';
 
+const markConfirmedToday = (current: GMStats | null): GMStats => {
+  if (!current) {
+    return {
+      currentStreak: 1,
+      longestStreak: 1,
+      totalGmDays: 1,
+      points: 1,
+      checkedInToday: true,
+      lastCheckinDate: new Date().toISOString().slice(0, 10),
+    };
+  }
+
+  return {
+    ...current,
+    currentStreak: current.checkedInToday ? current.currentStreak : current.currentStreak + 1,
+    longestStreak: current.checkedInToday
+      ? current.longestStreak
+      : Math.max(current.longestStreak, current.currentStreak + 1),
+    totalGmDays: current.checkedInToday ? current.totalGmDays : current.totalGmDays + 1,
+    points: current.checkedInToday ? current.points : current.currentStreak + 1,
+    checkedInToday: true,
+    lastCheckinDate: new Date().toISOString().slice(0, 10),
+  };
+};
+
 export const GMStreakView: React.FC = () => {
   const { address, isCorrectNetwork } = useWallet();
   const receiptClient = createPublicClient({
@@ -49,8 +74,8 @@ export const GMStreakView: React.FC = () => {
     if (!address || !isGMContractConfigured) return false;
 
     try {
-      // The contract is the source of truth for whether this wallet has
-      // already checked in today. Do not rely on Supabase for button state.
+      // Arc is authoritative for today's GM. Supabase must never control
+      // whether the button is enabled.
       const todayDay = BigInt(Math.floor(Date.now() / 86400000));
       const lastCheckInDay = await receiptClient.readContract({
         address: GM_CONTRACT_ADDRESS as `0x${string}`,
@@ -61,34 +86,34 @@ export const GMStreakView: React.FC = () => {
 
       if (lastCheckInDay !== todayDay) return false;
 
-      // Supabase may lag or fail after a successful onchain transaction.
-      // Find today's confirmed GM event and repair the index automatically.
-      const latestBlock = await receiptClient.getBlockNumber();
-      const fromBlock = latestBlock > 50000n ? latestBlock - 50000n : 0n;
-      const logs = await receiptClient.getLogs({
-        address: GM_CONTRACT_ADDRESS as `0x${string}`,
-        event: GM_CONTRACT_ABI[2],
-        args: { wallet: address as `0x${string}` },
-        fromBlock,
-        toBlock: latestBlock,
-      });
+      // Flip the UI immediately from confirmed onchain state.
+      setStats((current) => markConfirmedToday(current));
 
-      const latestGM = logs.at(-1);
-      if (latestGM?.transactionHash) {
-        const nextStats = await indexConfirmedGM(address, latestGM.transactionHash);
-        setStats(nextStats);
-        setLeaderboard(await getGMLeaderboard(20));
-        setTxHash(latestGM.transactionHash);
-      } else {
-        // Even if the event lookup is temporarily unavailable, the button
-        // must still reflect the onchain contract state.
-        setStats((current) => current ? {
-          ...current,
-          checkedInToday: true,
-          currentStreak: Math.max(current.currentStreak, 1),
-          points: Math.max(current.points, 1),
-        } : current);
-      }
+      // Repair the Supabase index in the background. A slow/failing index
+      // must not keep the button vivid or leave the UI in a syncing state.
+      void (async () => {
+        try {
+          const latestBlock = await receiptClient.getBlockNumber();
+          const fromBlock = latestBlock > 100000n ? latestBlock - 100000n : 0n;
+          const logs = await receiptClient.getLogs({
+            address: GM_CONTRACT_ADDRESS as `0x${string}`,
+            event: GM_CONTRACT_ABI[2],
+            args: { wallet: address as `0x${string}` },
+            fromBlock,
+            toBlock: latestBlock,
+          });
+
+          const latestGM = logs.at(-1);
+          if (!latestGM?.transactionHash) return;
+
+          const nextStats = await indexConfirmedGM(address, latestGM.transactionHash);
+          setStats(nextStats);
+          setLeaderboard(await getGMLeaderboard(20));
+          setTxHash(latestGM.transactionHash);
+        } catch (err) {
+          console.warn('GM index repair is still waiting:', err);
+        }
+      })();
 
       return true;
     } catch (err) {
@@ -129,11 +154,22 @@ export const GMStreakView: React.FC = () => {
         return;
       }
 
-      const nextStats = await indexConfirmedGM(address, pendingHash);
-      window.localStorage.removeItem(PENDING_GM_TX_KEY);
-      setStats(nextStats);
-      setLeaderboard(await getGMLeaderboard(20));
+      // Confirmed onchain: update the UI immediately.
       setTxHash(pendingHash);
+      setStats((current) => markConfirmedToday(current));
+      window.localStorage.removeItem(PENDING_GM_TX_KEY);
+      setCheckingIn(false);
+
+      // Index asynchronously so Supabase latency cannot block the confirmed UI.
+      void (async () => {
+        try {
+          const nextStats = await indexConfirmedGM(address, pendingHash);
+          setStats(nextStats);
+          setLeaderboard(await getGMLeaderboard(20));
+        } catch (err) {
+          console.warn('Pending GM index repair is still waiting:', err);
+        }
+      })();
     } catch (err) {
       console.warn('Pending GM recovery is still waiting:', err);
     }
@@ -159,8 +195,7 @@ export const GMStreakView: React.FC = () => {
   const handleCheckIn = async () => {
     if (!address || checkingIn) return;
 
-    // Check Arc directly before opening the wallet. This prevents a second
-    // paid transaction attempt when Supabase has not caught up yet.
+    // Check Arc directly before opening the wallet.
     if (await syncOnchainGM()) {
       setError('You already checked in today.');
       return;
@@ -192,8 +227,6 @@ export const GMStreakView: React.FC = () => {
       setTxHash(hash);
       window.localStorage.setItem(PENDING_GM_TX_KEY, hash);
 
-      // Arcscan's public RPC is a browser-safe read endpoint and provides a reliable
-      // receipt path for confirming the transaction after the wallet has submitted it.
       const receipt = await receiptClient.waitForTransactionReceipt({
         hash,
         confirmations: 1,
@@ -205,14 +238,28 @@ export const GMStreakView: React.FC = () => {
         throw new Error('GM transaction reverted.');
       }
 
-      const nextStats = await indexConfirmedGM(address, hash);
-      window.localStorage.removeItem(PENDING_GM_TX_KEY);
-      setStats(nextStats);
-      setLeaderboard(await getGMLeaderboard(20));
+      // The transaction is now confirmed on Arc. Reflect that immediately.
+      // Do not wait for Supabase to finish indexing.
+      setStats((current) => markConfirmedToday(current));
+      setCheckingIn(false);
+
+      // Supabase is only an index/cache. Repair it in the background.
+      void (async () => {
+        try {
+          const nextStats = await indexConfirmedGM(address, hash);
+          setStats(nextStats);
+          setLeaderboard(await getGMLeaderboard(20));
+          window.localStorage.removeItem(PENDING_GM_TX_KEY);
+        } catch (err) {
+          console.warn('GM index repair is still waiting:', err);
+        }
+      })();
     } catch (err: any) {
       console.error('GM check-in failed:', err);
       const message = String(err?.shortMessage || err?.message || '');
       if (/already checked in today/i.test(message)) {
+        // Even a rejected duplicate confirms the contract's daily state.
+        setStats((current) => markConfirmedToday(current));
         setError('You already checked in today.');
       } else if (/user rejected|user denied|rejected the request/i.test(message)) {
         setError('GM transaction was cancelled in your wallet.');
@@ -267,7 +314,7 @@ export const GMStreakView: React.FC = () => {
 
         <div className="rounded-2xl border border-zinc-800 bg-[#111317] p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
           <div>
-            <div className="text-sm font-semibold text-white">{stats?.checkedInToday ? 'GM checked in today' : 'You have not checked in today'}</div>
+            <div className="text-sm font-semibold text-white">{stats?.checkedInToday ? 'GM confirmed on Arc Mainnet' : 'You have not checked in today'}</div>
             <div className="text-xs text-zinc-500 mt-1">{stats?.checkedInToday ? 'Come back tomorrow to extend the streak.' : 'A successful transaction is recorded on Arc Mainnet.'}</div>
           </div>
           <button onClick={handleCheckIn} disabled={checkingIn || loading || Boolean(stats?.checkedInToday)} className="w-full sm:w-auto min-w-36 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white text-black text-sm font-bold hover:bg-zinc-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
