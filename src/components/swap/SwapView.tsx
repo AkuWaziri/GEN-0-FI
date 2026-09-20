@@ -7,7 +7,7 @@ import React, {
 import { createPortal } from 'react-dom';
 import { useAccount, useChainId, useSwitchChain } from 'wagmi';
 
-import { useWallet } from '@/context/WalletContext';
+import { useWallet } from '../../context/WalletContext';
 
 type LiFiToken = {
   address: string;
