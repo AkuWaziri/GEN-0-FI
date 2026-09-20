@@ -12,7 +12,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onOpenConnect }) => {
   const { isConnected, address, shortAddress } = useWallet();
   const getTabTitle = () => {
     switch (activeTab) {
-      case 'overview': return 'Overview';
+      case 'overview': return 'Dashboard';
       case 'activity': return 'Activity';
       case 'ask': return 'Ask GEN-0';
       case 'swap': return 'Swap & Bridge';
