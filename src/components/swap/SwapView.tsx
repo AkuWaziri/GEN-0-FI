@@ -374,14 +374,16 @@ function TokenPanel(props: {
 }) {
   const [openMenu, setOpenMenu] = useState<'chain' | 'token' | null>(null);
   const [menuRect, setMenuRect] = useState({ top: 0, left: 0, width: 0, maxHeight: 320 });
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const chainTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const tokenTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const [search, setSearch] = useState('');
 
   const openDropdown = (type: 'chain' | 'token') => {
     if (openMenu === type) {
       setOpenMenu(null);
       return;
     }
-    const rect = triggerRef.current?.getBoundingClientRect();
+    const rect = (type === 'chain' ? chainTriggerRef.current : tokenTriggerRef.current)?.getBoundingClientRect();
     if (!rect) return;
     const spaceBelow = window.innerHeight - rect.bottom - 12;
     const spaceAbove = rect.top - 12;
@@ -399,7 +401,7 @@ function TokenPanel(props: {
   useEffect(() => {
     if (!openMenu) return;
     const reposition = () => {
-      const rect = triggerRef.current?.getBoundingClientRect();
+      const rect = (openMenu === 'chain' ? chainTriggerRef.current : tokenTriggerRef.current)?.getBoundingClientRect();
       if (!rect) return;
       const spaceBelow = window.innerHeight - rect.bottom - 12;
       const spaceAbove = rect.top - 12;
@@ -425,10 +427,15 @@ function TokenPanel(props: {
     ? 'border-[#bfae93] bg-[#ded1bc] text-[#2b2925]'
     : 'border-zinc-600 bg-[#181a1f] text-white';
 
+  const visibleChains = props.chains.filter((chain) => chain.name.toLowerCase().includes(search.toLowerCase()));
+  const visibleTokens = props.tokens.filter((token) =>
+    `${token.symbol} ${token.name || ''}`.toLowerCase().includes(search.toLowerCase()),
+  );
+
   const dropdown = openMenu
     ? createPortal(
         <div
-          className={`fixed rounded-xl border shadow-2xl overflow-y-auto${menuClass}`}
+          className={`fixed rounded-xl border shadow-2xl overflow-y-auto ${menuClass}`}
           style={{
             top: menuRect.top,
             left: menuRect.left,
@@ -438,13 +445,25 @@ function TokenPanel(props: {
           }}
           role="listbox"
         >
+          <div className={warmWhite ? 'sticky top-0 p-2 bg-[#ded1bc]' : 'sticky top-0 p-2 bg-[#181a1f]'}>
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={openMenu === 'chain' ? 'Search chains...' : 'Search coins...'}
+              className={warmWhite
+                ? 'w-full rounded-lg border border-[#bfae93] bg-[#eee5d7] px-3 py-2 text-sm text-[#2b2925] outline-none placeholder:text-[#8b8173]'
+                : 'w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500'}
+            />
+          </div>
           {openMenu === 'chain' ? (
-            props.chains.map((chain) => (
+            visibleChains.map((chain) => (
               <button
                 key={chain.id}
                 type="button"
                 onClick={() => {
                   props.setChainId(chain.id);
+                  setSearch('');
                   setOpenMenu(null);
                 }}
                 className={warmWhite
@@ -456,12 +475,13 @@ function TokenPanel(props: {
               </button>
             ))
           ) : (
-            props.tokens.map((token) => (
+            visibleTokens.map((token) => (
               <button
                 key={token.address}
                 type="button"
                 onClick={() => {
                   props.setToken(token);
+                  setSearch('');
                   setOpenMenu(null);
                 }}
                 className={warmWhite
@@ -480,9 +500,9 @@ function TokenPanel(props: {
               </button>
             ))
           )}
-          {((openMenu === 'chain' && props.chains.length === 0) || (openMenu === 'token' && props.tokens.length === 0)) && (
+          {((openMenu === 'chain' && visibleChains.length === 0) || (openMenu === 'token' && visibleTokens.length === 0)) && (
             <div className={warmWhite ? 'px-4 py-5 text-sm text-[#71695d]' : 'px-4 py-5 text-sm text-zinc-400'}>
-              {props.loading ? 'Loading...' : 'Nothing available'}
+              {props.loading ? 'Loading...' : search ? 'No matches found' : 'Nothing available'}
             </div>
           )}
         </div>,
@@ -495,7 +515,7 @@ function TokenPanel(props: {
       <div className="text-xs font-medium text-zinc-500 mb-2">{props.label}</div>
 
       <button
-        ref={triggerRef}
+        ref={chainTriggerRef}
         type="button"
         onClick={() => openDropdown('chain')}
         className="w-full flex items-center justify-between rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-white"
@@ -505,7 +525,7 @@ function TokenPanel(props: {
       </button>
 
       <button
-        ref={openMenu === 'token' ? triggerRef : undefined}
+        ref={tokenTriggerRef}
         type="button"
         onClick={() => openDropdown('token')}
         className="w-full mt-3 flex items-center justify-between rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5"
