@@ -375,7 +375,7 @@ function TokenPanel(props: {
   const [tokenOpen, setTokenOpen] = useState(false);
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-[#111317] p-4">
+    <div className={`relative rounded-2xl border border-zinc-800 bg-[#111317] p-4 ${chainOpen || tokenOpen ? 'z-[60]' : 'z-0'}`}>
       <div className="text-xs font-medium text-zinc-500 mb-2">{props.label}</div>
 
       <div className="relative">
@@ -387,7 +387,7 @@ function TokenPanel(props: {
           <ChevronDown className="w-4 h-4 text-zinc-500" />
         </button>
         {chainOpen && (
-          <div className="absolute z-30 mt-2 w-full max-h-64 overflow-auto rounded-xl border border-zinc-700 bg-[#181a1f] shadow-2xl">
+          <div className="absolute z-[100] mt-2 w-full max-h-64 overflow-auto rounded-xl border border-zinc-600 bg-[#181a1f] shadow-2xl">
             {props.chains.map((chain) => (
               <button
                 key={chain.id}
@@ -395,7 +395,7 @@ function TokenPanel(props: {
                   props.setChainId(chain.id);
                   setChainOpen(false);
                 }}
-                className="w-full text-left px-3 py-2.5 text-sm text-zinc-200 hover:bg-zinc-800"
+                className="w-full text-left px-3 py-2.5 text-sm text-white hover:bg-zinc-800"
               >
                 {chain.name}
               </button>
@@ -416,7 +416,7 @@ function TokenPanel(props: {
           <ChevronDown className="w-4 h-4 text-zinc-500" />
         </button>
         {tokenOpen && (
-          <div className="absolute z-30 mt-2 w-full max-h-72 overflow-auto rounded-xl border border-zinc-700 bg-[#181a1f] shadow-2xl">
+          <div className="absolute z-[100] mt-2 w-full max-h-72 overflow-auto rounded-xl border border-zinc-600 bg-[#181a1f] shadow-2xl">
             {props.tokens.map((token) => (
               <button
                 key={token.address}
@@ -424,7 +424,7 @@ function TokenPanel(props: {
                   props.setToken(token);
                   setTokenOpen(false);
                 }}
-                className="w-full flex items-center justify-between px-3 py-2.5 text-sm hover:bg-zinc-800"
+                className="w-full flex items-center justify-between px-3 py-2.5 text-sm text-white hover:bg-zinc-800"
               >
                 <span className="flex items-center gap-2 text-zinc-200">
                   {token.logoURI && <img src={token.logoURI} alt="" className="w-6 h-6 rounded-full" />}
