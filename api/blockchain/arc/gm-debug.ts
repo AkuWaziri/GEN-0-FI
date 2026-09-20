@@ -6,8 +6,10 @@ const CONTRACT = '0xCb98496A4BbF6969bF6c8EfF2694992e819047AC' as `0x${string}`;
 
 const client = createPublicClient({
   chain: { id: 5042, name: 'Arc', nativeCurrency: { name: 'USD Coin', symbol: 'USDC', decimals: 18 }, rpcUrls: { default: { http: [RPC] } } },
-  transport: http(RPC, { timeout: 15000, retryCount: 2 }),
+  transport: http(RPC, { timeout: 15000, retryCount: 1 }),
 });
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default async function handler(req: any, res: any) {
   if (!applyApiSecurity(req, res)) return;
@@ -25,18 +27,30 @@ export default async function handler(req: any, res: any) {
     });
 
     const event = parseAbiItem('event GMCheckedIn(address indexed wallet, uint256 indexed day, uint256 timestamp, uint256 fee)');
+    const scanSize = 100n;
     const fromBlock = latestBlock > 200000n ? latestBlock - 200000n : 0n;
     const contractLogs: any[] = [];
-    for (let start = fromBlock; start <= latestBlock; start += 2000n) {
-      const end = start + 1999n > latestBlock ? latestBlock : start + 1999n;
-      const chunk = await client.getLogs({
-        address: CONTRACT,
-        event,
-        args: { wallet: wallet as `0x${string}` },
-        fromBlock: start,
-        toBlock: end,
-      });
+
+    for (let start = fromBlock; start <= latestBlock; start += scanSize) {
+      const end = start + scanSize - 1n > latestBlock ? latestBlock : start + scanSize - 1n;
+      let chunk: any[] = [];
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          chunk = await client.getLogs({
+            address: CONTRACT,
+            event,
+            args: { wallet: wallet as `0x${string}` },
+            fromBlock: start,
+            toBlock: end,
+          });
+          break;
+        } catch (error: any) {
+          if (attempt === 2) throw error;
+          await sleep(300 * (attempt + 1));
+        }
+      }
       contractLogs.push(...chunk);
+      if (start + scanSize <= latestBlock) await sleep(75);
     }
 
     return res.status(200).json({
