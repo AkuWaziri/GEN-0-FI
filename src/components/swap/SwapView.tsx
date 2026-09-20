@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowDownUp, ChevronDown, Loader2, RefreshCw, Wallet } from 'lucide-react';
 import { switchChain } from '@wagmi/core';
-import { useAccount, useChainId } from 'wagmi';
+import { useAccount, useChainId, useWalletClient } from 'wagmi';
 import { wagmiConfig } from '../../config/wagmi';
 import { useWallet } from '../../context/WalletContext';
 
@@ -62,6 +62,7 @@ export const SwapView: React.FC = () => {
   const { address, isConnected, connectWallet } = useWallet();
   const connectedChainId = useChainId();
   const { isConnected: wagmiConnected } = useAccount();
+  const { data: walletClient } = useWalletClient();
 
   const [chains, setChains] = useState<LiFiChain[]>([]);
   const [fromChainId, setFromChainId] = useState(5042);
@@ -79,6 +80,8 @@ export const SwapView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [quote, setQuote] = useState<any>(null);
   const [quoting, setQuoting] = useState(false);
+  const [executing, setExecuting] = useState(false);
+  const [executionHash, setExecutionHash] = useState<string | null>(null);
   const [arcNativeBalance, setArcNativeBalance] = useState<string | null>(null);
 
   const fromBalance = tokenBalanceFor(balances, fromChainId, fromToken);
@@ -245,6 +248,32 @@ export const SwapView: React.FC = () => {
     return () => window.clearTimeout(timer);
   }, [address, fromToken, toToken, amount, fromChainId, toChainId]);
 
+  const executeQuote = async () => {
+    if (!quote?.transactionRequest || !walletClient || !address) return;
+    setExecuting(true);
+    setError(null);
+    setExecutionHash(null);
+    try {
+      if (connectedChainId !== fromChainId) {
+        await switchChain(wagmiConfig, { chainId: fromChainId });
+      }
+      const tx = quote.transactionRequest;
+      const hash = await walletClient.sendTransaction({
+        account: address as `0x${string}`,
+        to: tx.to,
+        data: tx.data,
+        value: tx.value ? BigInt(tx.value) : 0n,
+        chainId: fromChainId,
+      });
+      setExecutionHash(hash);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err || '');
+      setError(/user rejected|user denied|rejected the request|request rejected|4001/i.test(message) ? 'Cancelled' : message || 'The swap or bridge could not be submitted.');
+    } finally {
+      setExecuting(false);
+    }
+  };
+
   const switchFromChain = async () => {
     try {
       await switchChain(wagmiConfig, { chainId: fromChainId });
@@ -337,14 +366,25 @@ export const SwapView: React.FC = () => {
             </div>
 
             <div className="mt-4 flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={requestQuote}
-                disabled={!fromToken || !toToken || !amount || quoting}
-                className="flex-1 rounded-xl bg-blue-500 hover:bg-blue-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-3 transition flex items-center justify-center gap-2"
-              >
-                {quoting && <Loader2 className="w-4 h-4 animate-spin" />}
-                {quoting ? 'Finding route...' : 'Get quote'}
-              </button>
+              {quote?.transactionRequest ? (
+                <button
+                  onClick={executeQuote}
+                  disabled={executing || connectedChainId !== fromChainId}
+                  className="flex-1 rounded-xl bg-blue-500 hover:bg-blue-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-3 transition flex items-center justify-center gap-2"
+                >
+                  {executing && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {executing ? 'Confirm in wallet...' : (fromChainId === toChainId ? 'Swap ' : 'Bridge ') + (fromToken?.symbol || '')}
+                </button>
+              ) : (
+                <button
+                  onClick={requestQuote}
+                  disabled={!fromToken || !toToken || !amount || quoting}
+                  className="flex-1 rounded-xl bg-blue-500 hover:bg-blue-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-3 transition flex items-center justify-center gap-2"
+                >
+                  {quoting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {quoting ? 'Finding route...' : 'Get quote'}
+                </button>
+              )}
               <button
                 onClick={() => window.location.reload()}
                 className="px-4 rounded-xl border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 transition"
@@ -361,6 +401,12 @@ export const SwapView: React.FC = () => {
               >
                 Switch wallet to {fromChain?.name || 'the selected source chain'}
               </button>
+            )}
+
+            {executionHash && (
+              <div className="mt-4 rounded-xl border border-green-500/30 bg-green-500/5 px-4 py-3 text-sm text-green-300 break-all">
+                Submitted: {executionHash}
+              </div>
             )}
 
             {error && (
