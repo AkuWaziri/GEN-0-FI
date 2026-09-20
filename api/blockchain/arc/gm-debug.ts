@@ -1,5 +1,6 @@
 import { createPublicClient, http, parseAbiItem } from 'viem';
 import { applyApiSecurity } from '../../_security.js';
+import { createClient } from '@supabase/supabase-js';
 
 const RPC = process.env.ARC_MAINNET_RPC_URL || 'https://rpc.mainnet.arc.io';
 const CONTRACT = '0xCb98496A4BbF6969bF6c8EfF2694992e819047AC' as `0x${string}`;
@@ -12,6 +13,12 @@ const client = createPublicClient({
 
 const EVENT_TOPIC = '0xdd6c7651c83f9ddcbf3c5ad46a9ab5b9a38a5fffd89a224f364c803b69e1bb25';
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
+const supabase = supabaseUrl && supabaseAnonKey
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null;
 
 export default async function handler(req: any, res: any) {
   if (!applyApiSecurity(req, res)) return;
@@ -74,6 +81,42 @@ export default async function handler(req: any, res: any) {
         };
       });
 
+    // Arc is the source of truth. Repair the Supabase index server-side so
+    // browser RLS/upsert behavior cannot prevent confirmed days from syncing.
+    const syncDays = [...new Set(
+      contractLogs
+        .map((log: any) => log?.args?.day)
+        .filter((day: unknown): day is string => typeof day === 'string')
+    )];
+
+    let syncedDays: string[] = [];
+    let syncError: string | null = null;
+
+    if (supabase && syncDays.length) {
+      const rows = syncDays
+        .map((day) => Number(day))
+        .filter((day) => Number.isSafeInteger(day) && day >= 0)
+        .map((day) => ({
+          wallet_address: wallet,
+          checkin_date: new Date(day * 86400000).toISOString().slice(0, 10),
+          chain_id: 5042,
+        }));
+
+      if (rows.length) {
+        const { error } = await supabase
+          .from('gm_checkins')
+          .insert(rows);
+
+        if (error && error.code !== '23505') {
+          syncError = error.message;
+        } else {
+          syncedDays = rows.map((row) => row.checkin_date);
+        }
+      }
+    } else if (!supabase) {
+      syncError = 'Supabase server variables are not configured.';
+    }
+
     return res.status(200).json({
       wallet,
       contract: CONTRACT,
@@ -85,6 +128,8 @@ export default async function handler(req: any, res: any) {
       pagesChecked,
       logs: contractLogs,
       rawResponseKeys: ['items', 'page'],
+      syncedDays,
+      syncError,
     });
   } catch (error: any) {
     console.error('[Arc GM Debug] error:', error?.message || error);
