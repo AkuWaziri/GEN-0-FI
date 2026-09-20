@@ -120,6 +120,36 @@ export async function indexConfirmedGM(
   return getGMStats(normalized);
 }
 
+export async function indexConfirmedGMDays(
+  walletAddress: string,
+  onchainDays: Array<string | bigint>,
+): Promise<GMStats> {
+  if (!supabase) throw new Error('GM indexing is not configured.');
+
+  const normalized = walletAddress.toLowerCase();
+  const rows = [...new Set(onchainDays.map((day) => day.toString()))]
+    .map((day) => Number(day))
+    .filter((day) => Number.isSafeInteger(day) && day >= 0)
+    .map((day) => ({
+      wallet_address: normalized,
+      checkin_date: new Date(day * 86400000).toISOString().slice(0, 10),
+      chain_id: 5042,
+    }));
+
+  if (rows.length) {
+    const { error } = await supabase
+      .from('gm_checkins')
+      .upsert(rows, {
+        onConflict: 'wallet_address,checkin_date',
+        ignoreDuplicates: true,
+      });
+
+    if (error) throw error;
+  }
+
+  return getGMStats(normalized);
+}
+
 export async function getGMLeaderboard(limit = 20): Promise<GMLeaderboardRow[]> {
   if (!supabase) return [];
 
