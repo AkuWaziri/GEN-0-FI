@@ -207,7 +207,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
             </span>
           </div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
-            Financial Overview
+            Your Wallet
           </h1>
         </div>
       </div>
