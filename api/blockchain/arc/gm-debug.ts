@@ -11,6 +11,7 @@ const client = createPublicClient({
   transport: http(RPC, { timeout: 15000, retryCount: 1 }),
 });
 
+const LAST_CHECK_IN_DAY_ABI = [parseAbiItem('function lastCheckInDay(address) view returns (uint256)')] as const;
 const EVENT_TOPIC = '0xdd6c7651c83f9ddcbf3c5ad46a9ab5b9a38a5fffd89a224f364c803b69e1bb25';
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -30,9 +31,9 @@ export default async function handler(req: any, res: any) {
     const latestBlock = await client.getBlockNumber();
     const lastCheckInDay = await client.readContract({
       address: CONTRACT,
-      abi: [parseAbiItem('function lastCheckInDay(address) view returns (uint256)')],
+      abi: LAST_CHECK_IN_DAY_ABI,
       functionName: 'lastCheckInDay',
-      args: [wallet as `0x${string}`],
+      args: [wallet as `0x${string}`] as const,
     });
 
     const responseItems: any[] = [];
@@ -81,8 +82,6 @@ export default async function handler(req: any, res: any) {
         };
       });
 
-    // Arc is the source of truth. Repair the Supabase index server-side so
-    // browser RLS/upsert behavior cannot prevent confirmed days from syncing.
     const syncDays = [...new Set(
       contractLogs
         .map((log: any) => log?.args?.day)
