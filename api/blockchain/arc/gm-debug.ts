@@ -34,7 +34,7 @@ export default async function handler(req: any, res: any) {
       abi: LAST_CHECK_IN_DAY_ABI,
       functionName: 'lastCheckInDay',
       args: [wallet as `0x${string}`] as const,
-    });
+    } as any) as bigint;
 
     const responseItems: any[] = [];
     const pagesChecked: number[] = [];
