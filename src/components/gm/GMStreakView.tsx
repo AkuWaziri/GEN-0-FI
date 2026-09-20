@@ -108,8 +108,36 @@ export const GMStreakView: React.FC = () => {
           const latestGM = logs.at(-1);
           if (!latestGM?.transactionHash) return;
 
-          const nextStats = await indexConfirmedGM(address, latestGM.transactionHash);
-          setStats(nextStats.checkedInToday ? nextStats : markConfirmedToday(nextStats));
+          // Rebuild the streak from confirmed Arc event days instead of
+          // incrementing whatever Supabase currently happens to report.
+          // This makes day 2 authoritative even when the index is stale.
+          const onchainDays = new Set(
+            logs
+              .map((log) => log.args?.day)
+              .filter((day): day is bigint => typeof day === 'bigint')
+              .map((day) => day.toString()),
+          );
+
+          const todayDay = BigInt(Math.floor(Date.now() / 86400000));
+          let onchainCurrentStreak = 0;
+          let cursor = todayDay;
+          while (onchainDays.has(cursor.toString())) {
+            onchainCurrentStreak += 1;
+            cursor -= 1n;
+          }
+
+          const confirmedStats = await indexConfirmedGM(address, latestGM.transactionHash);
+          const repairedStats: GMStats = {
+            ...confirmedStats,
+            currentStreak: Math.max(confirmedStats.currentStreak, onchainCurrentStreak),
+            longestStreak: Math.max(confirmedStats.longestStreak, onchainCurrentStreak),
+            totalGmDays: Math.max(confirmedStats.totalGmDays, onchainDays.size),
+            points: Math.max(confirmedStats.points, onchainCurrentStreak),
+            checkedInToday: true,
+            lastCheckinDate: new Date(Number(todayDay) * 86400000).toISOString().slice(0, 10),
+          };
+
+          setStats(repairedStats);
           setLeaderboard(await getGMLeaderboard(20));
           setTxHash(latestGM.transactionHash);
         } catch (err) {
