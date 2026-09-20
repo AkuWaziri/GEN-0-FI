@@ -3,7 +3,7 @@ import { Logo } from './Logo';
 import { NetworkBadge } from './NetworkBadge';
 import { AddressBadge } from './AddressBadge';
 import { useWallet } from '../../context/WalletContext';
-import { LayoutDashboard, History, Sparkles, Settings, LogOut, Wallet, Flame, ArrowLeftRight } from 'lucide-react';
+import { LayoutDashboard, History, Settings, LogOut, Wallet, Flame, ArrowLeftRight } from 'lucide-react';
 
 export type TabType = 'overview' | 'ask' | 'swap' | 'gm' | 'activity' | 'settings';
 
@@ -17,8 +17,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
   const { isConnected, address, shortAddress, disconnectWallet } = useWallet();
 
   const navItems = [
-    { id: 'overview' as TabType, label: 'Overview', icon: LayoutDashboard },
-    { id: 'ask' as TabType, label: 'Ask GEN-0', icon: Sparkles, badge: 'AI' },
+    { id: 'overview' as TabType, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'swap' as TabType, label: 'Swap & Bridge', icon: ArrowLeftRight },
     { id: 'gm' as TabType, label: 'GM Streak', icon: Flame },
     { id: 'activity' as TabType, label: 'Activity', icon: History },
@@ -41,7 +40,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
                   <Icon className={`w-4 h-4 shrink-0 transition-colors duration-200 ${isActive ? 'text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.45)]' : 'text-zinc-500 group-hover:text-zinc-300'}`} />
                   <span className="tracking-tight">{item.label}</span>
                 </div>
-                {item.badge && <span className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold ${isActive ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40' : 'bg-zinc-900 text-zinc-400 border border-zinc-700/80'}`}>{item.badge}</span>}
               </button>
             );
           })}
