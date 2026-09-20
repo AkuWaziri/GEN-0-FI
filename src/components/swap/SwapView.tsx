@@ -644,14 +644,14 @@ function TokenPanel(props: {
             Balance:{' '}
             {props.loadingBalance
               ? 'Loading...'
-              : props.balance
-                ? formatBalance(props.balance.amount, props.token?.decimals || 18)
+              : props.token
+                ? tokenWalletBalance(props.token)
                 : '0'}
             {props.token?.symbol ? ` ${props.token.symbol}` : ''}
           </span>
-          {props.balance && props.token && (
+          {props.token && (
             <button
-              onClick={() => props.setAmount(formatBalance(props.balance?.amount, props.token?.decimals || 18))}
+              onClick={() => props.setAmount(tokenWalletBalance(props.token!))}
               className="text-blue-400 hover:text-blue-300"
             >
               MAX
