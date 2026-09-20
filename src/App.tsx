@@ -10,6 +10,7 @@ import { ActivityView } from './components/activity/ActivityView';
 import { AskGen0View } from './components/ask/AskGen0View';
 import { GMStreakView } from './components/gm/GMStreakView';
 import { SettingsView } from './components/settings/SettingsView';
+import { SwapView } from './components/swap/SwapView';
 import { ConnectWalletModal } from './components/wallet/ConnectWalletModal';
 import { WrongNetworkView } from './components/wallet/WrongNetworkView';
 import { WelcomeOnboarding } from './components/wallet/WelcomeOnboarding';
@@ -41,7 +42,7 @@ const AppContent: React.FC = () => {
     );
   }
 
-  if (!isCorrectNetwork) return <WrongNetworkView />;
+  if (!isCorrectNetwork && activeTab !== 'swap') return <WrongNetworkView />;
 
   return (
     <div className="min-h-screen bg-[#090a0c] text-zinc-100 flex flex-col md:flex-row antialiased selection:bg-white selection:text-black">
@@ -53,6 +54,7 @@ const AppContent: React.FC = () => {
           <div>
             {activeTab === 'overview' && <OverviewView onSelectTab={setActiveTab} onOpenConnect={() => setIsIdentityModalOpen(true)} />}
             {activeTab === 'ask' && <AskGen0View />}
+            {activeTab === 'swap' && <SwapView />}
             {activeTab === 'gm' && <GMStreakView />}
             {activeTab === 'activity' && <ActivityView />}
             {activeTab === 'settings' && <SettingsView />}
