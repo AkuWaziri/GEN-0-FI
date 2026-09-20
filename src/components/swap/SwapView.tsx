@@ -228,11 +228,9 @@ export const SwapView: React.FC = () => {
         fromAddress: address,
         toAddress: address,
         fromAmount: rawAmount,
-        order: 'CHEAPEST',
         integrator: 'GEN-0FI',
-        fee: '0.005',
       });
-      const data = await fetchJson(`/api/lifi/quote?${params.toString()}`);
+      const data = await fetchJson(`${API}/quote?${params.toString()}`);
       setQuote(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No LI.FI route is available for this selection.');
@@ -249,12 +247,6 @@ export const SwapView: React.FC = () => {
     const timer = window.setTimeout(() => { requestQuote(); }, 450);
     return () => window.clearTimeout(timer);
   }, [address, fromToken, toToken, amount, fromChainId, toChainId]);
-
-  const gen0fiFeeAmount = useMemo(() => {
-    if (!amount || !fromToken || Number(amount) <= 0) return '0';
-    const fee = Number(amount) * 0.005;
-    return fee.toLocaleString('en-US', { maximumFractionDigits: 8 });
-  }, [amount, fromToken]);
 
   const executeQuote = async () => {
     if (!quote?.transactionRequest || !walletClient || !address) return;
@@ -435,19 +427,8 @@ export const SwapView: React.FC = () => {
                     {formatBalance(quote.estimate?.toAmount, toToken?.decimals || 18)} {toToken?.symbol}
                   </span>
                 </div>
-                <div className="mt-3 pt-3 border-t border-blue-500/10 space-y-2 text-sm">
-                  <div className="flex justify-between gap-4">
-                    <span className="text-zinc-400">GEN-0FI fee (0.5%)</span>
-                    <span className="text-white font-medium">
-                      {gen0fiFeeAmount} {fromToken?.symbol || ''}
-                    </span>
-                  </div>
-                  <div className="text-xs text-zinc-500">
-                    The fee is included in the LI.FI transaction and collected through GEN-0FI's registered LI.FI integration.
-                  </div>
-                </div>
                 <div className="mt-2 text-xs text-zinc-500">
-                  Route: {quote.toolDetails?.name || quote.tool || 'LI.FI'} · Cheapest
+                  Route: {quote.toolDetails?.name || quote.tool || 'LI.FI'}
                 </div>
               </div>
             )}
