@@ -5,7 +5,7 @@ import React, {
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { useAccount, useChainId, useSwitchChain } from 'wagmi';
+import { useAccount, useChainId, usePublicClient, useSwitchChain, useWalletClient } from 'wagmi';
 
 import { useWallet } from '../../context/WalletContext';
 
@@ -307,6 +307,20 @@ export const SwapView: React.FC = () => {
 
   const { switchChainAsync } =
     useSwitchChain();
+
+  const { data: walletClient } =
+    useWalletClient();
+
+  const publicClient =
+    usePublicClient({
+      chainId: fromChainId,
+    });
+
+  const [executing, setExecuting] =
+    useState(false);
+
+  const [executionHash, setExecutionHash] =
+    useState<string | null>(null);
 
   const [chains, setChains] =
     useState<LiFiChain[]>([]);
@@ -978,7 +992,9 @@ export const SwapView: React.FC = () => {
               amountInBaseUnits,
             fromAddress: address,
             toAddress: address,
-            order: 'RECOMMENDED',
+            order: 'CHEAPEST',
+            slippage: '0.005',
+            maxPriceImpact: '0.03',
           });
 
         const data =
@@ -1048,6 +1064,105 @@ export const SwapView: React.FC = () => {
         amount &&
         Number(amount) > 0,
     );
+
+  const executeQuote =
+    async () => {
+      if (!quote?.transactionRequest) {
+        setError('This route is not ready for execution. Request a fresh quote.');
+        return;
+      }
+
+      if (!walletClient || !address) {
+        setError('Connect your wallet before starting the route.');
+        return;
+      }
+
+      if (connectedChainId !== fromChainId) {
+        try {
+          await switchChainAsync({ chainId: fromChainId });
+          setError('Wallet switched. Click the route button again to continue.');
+        } catch (err) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : 'Unable to switch to the source chain.',
+          );
+        }
+        return;
+      }
+
+      try {
+        setExecuting(true);
+        setExecutionHash(null);
+        setError(null);
+
+        const approvalAddress = quote?.estimate?.approvalAddress;
+        const isNative =
+          !fromToken ||
+          normalizeAddress(fromToken.address) === normalizeAddress(NATIVE) ||
+          normalizeAddress(fromToken.address) ===
+            '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+
+        if (approvalAddress && fromToken && !isNative) {
+          const approvalHash = await walletClient.writeContract({
+            address: fromToken.address as `0x${string}`,
+            abi: [{
+              type: 'function',
+              name: 'approve',
+              stateMutability: 'nonpayable',
+              inputs: [
+                { name: 'spender', type: 'address' },
+                { name: 'amount', type: 'uint256' },
+              ],
+              outputs: [{ name: '', type: 'bool' }],
+            }],
+            functionName: 'approve',
+            args: [
+              approvalAddress as `0x${string}`,
+              BigInt(quote?.estimate?.fromAmount || '0'),
+            ],
+            account: walletClient.account,
+            chain: walletClient.chain,
+          });
+
+          if (publicClient) {
+            await publicClient.waitForTransactionReceipt({
+              hash: approvalHash,
+            });
+          }
+        }
+
+        const tx = quote.transactionRequest;
+        if (!tx.to) {
+          throw new Error('LI.FI returned no transaction target for this route.');
+        }
+
+        const txHash = await walletClient.sendTransaction({
+          account: walletClient.account,
+          to: tx.to as `0x${string}`,
+          data: tx.data ? (tx.data as `0x${string}`) : undefined,
+          value: tx.value ? BigInt(tx.value) : undefined,
+          gas: tx.gasLimit ? BigInt(tx.gasLimit) : undefined,
+          gasPrice: tx.gasPrice ? BigInt(tx.gasPrice) : undefined,
+          maxFeePerGas: tx.maxFeePerGas ? BigInt(tx.maxFeePerGas) : undefined,
+          maxPriorityFeePerGas: tx.maxPriorityFeePerGas
+            ? BigInt(tx.maxPriorityFeePerGas)
+            : undefined,
+          nonce: tx.nonce != null ? Number(tx.nonce) : undefined,
+        });
+
+        setExecutionHash(txHash);
+        setError('Transaction submitted. Your bridge/swap is now processing.');
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'The route could not be submitted.',
+        );
+      } finally {
+        setExecuting(false);
+      }
+    };
 
   return (
     <div
@@ -1297,6 +1412,9 @@ export const SwapView: React.FC = () => {
                 fromToken={fromToken}
                 toToken={toToken}
                 warmWhite={warmWhite}
+                onExecute={executeQuote}
+                executing={executing}
+                executionHash={executionHash}
               />
             )}
 
@@ -2097,6 +2215,9 @@ type QuoteCardProps = {
   fromToken: LiFiToken | null;
   toToken: LiFiToken | null;
   warmWhite: boolean;
+  onExecute: () => void;
+  executing: boolean;
+  executionHash: string | null;
 };
 
 function QuoteCard({
@@ -2104,6 +2225,9 @@ function QuoteCard({
   fromToken,
   toToken,
   warmWhite,
+  onExecute,
+  executing,
+  executionHash,
 }: QuoteCardProps) {
   const estimate =
     quote?.estimate || {};
@@ -2122,8 +2246,35 @@ function QuoteCard({
 
   const tool =
     quote?.toolDetails?.name ||
+    quote?.action?.toolDetails?.name ||
+    quote?.includedSteps?.[0]?.toolDetails?.name ||
+    quote?.includedSteps?.[0]?.tool ||
     quote?.tool ||
     'LI.FI route';
+
+  const inputUsd =
+    Number(inputAmount || 0) *
+    Number(quote?.action?.fromToken?.priceUSD || fromToken?.priceUSD || 0);
+
+  const outputUsd =
+    Number(outputAmount || 0) *
+    Number(quote?.action?.toToken?.priceUSD || toToken?.priceUSD || 0);
+
+  const effectiveLoss =
+    inputUsd > 0 && outputUsd >= 0
+      ? Math.max(0, 1 - outputUsd / inputUsd)
+      : null;
+
+  const sameStableAsset =
+    fromToken?.symbol === toToken?.symbol &&
+    ['USDC', 'USDT', 'DAI', 'USDE'].includes(
+      String(fromToken?.symbol || '').toUpperCase(),
+    );
+
+  const routeLooksBad =
+    sameStableAsset &&
+    effectiveLoss !== null &&
+    effectiveLoss > 0.05;
 
   const executionDuration =
     estimate.executionDuration
@@ -2254,6 +2405,56 @@ function QuoteCard({
         </div>
       </div>
 
+      {effectiveLoss !== null && (
+        <div
+          className={
+            routeLooksBad
+              ? warmWhite
+                ? 'mt-4 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700'
+                : 'mt-4 rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-2 text-xs text-red-300'
+              : warmWhite
+                ? 'mt-4 rounded-lg border border-[#d1c1a8] bg-[#eee3d2] px-3 py-2 text-xs text-[#665d51]'
+                : 'mt-4 rounded-lg border border-zinc-800 bg-[#0d0f13] px-3 py-2 text-xs text-zinc-400'
+          }
+        >
+          {routeLooksBad
+            ? 'This route loses more than 5% of USD value. Increase the amount or refresh for a better route.'
+            : `Estimated value difference: ${(effectiveLoss * 100).toFixed(2)}%`}
+        </div>
+      )}
+
+      {executionHash ? (
+        <div
+          className={
+            warmWhite
+              ? 'mt-4 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-700'
+              : 'mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-300'
+          }
+        >
+          Transaction submitted: {executionHash.slice(0, 10)}…{executionHash.slice(-8)}
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={onExecute}
+          disabled={executing || routeLooksBad || !quote?.transactionRequest}
+          className={
+            warmWhite
+              ? 'mt-4 w-full rounded-xl bg-[#2f6fed] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#245fc8] disabled:cursor-not-allowed disabled:opacity-40'
+              : 'mt-4 w-full rounded-xl bg-blue-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-40'
+          }
+        >
+          {executing
+            ? 'Preparing transaction...'
+            : routeLooksBad
+              ? 'Route not economical'
+              : fromToken?.symbol === toToken?.symbol &&
+                  fromToken?.chainId !== toToken?.chainId
+                ? `Bridge ${fromToken?.symbol}`
+                : `Swap & Bridge ${fromToken?.symbol} → ${toToken?.symbol}`}
+        </button>
+      )}
+
       <div
         className={
           warmWhite
@@ -2261,8 +2462,7 @@ function QuoteCard({
             : 'mt-4 rounded-lg border border-zinc-800 bg-[#0d0f13] px-3 py-2 text-xs text-zinc-400'
         }
       >
-        Quote only. No transaction has been
-        submitted.
+        Quote generated by LI.FI. Review the route, amount and fees before signing.
       </div>
     </div>
   );
