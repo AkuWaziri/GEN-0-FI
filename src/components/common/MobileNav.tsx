@@ -1,15 +1,14 @@
 import React from 'react';
 import { TabType } from './Sidebar';
-import { LayoutDashboard, History, Sparkles, Settings, Flame, ArrowLeftRight } from 'lucide-react';
+import { LayoutDashboard, History, Settings, Flame, ArrowLeftRight } from 'lucide-react';
 
 interface MobileNavProps { activeTab: TabType; onSelectTab: (tab: TabType) => void; }
 
 export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, onSelectTab }) => {
   const navItems = [
-    { id: 'overview' as TabType, label: 'Overview', icon: LayoutDashboard },
-    { id: 'ask' as TabType, label: 'Ask', icon: Sparkles },
+    { id: 'overview' as TabType, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'swap' as TabType, label: 'Swap', icon: ArrowLeftRight },
-    { id: 'gm' as TabType, label: 'GM', icon: Flame },
+    { id: 'gm' as TabType, label: 'GM Streak', icon: Flame },
     { id: 'activity' as TabType, label: 'Activity', icon: History },
     { id: 'settings' as TabType, label: 'Settings', icon: Settings },
   ];
