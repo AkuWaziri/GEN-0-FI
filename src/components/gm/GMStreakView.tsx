@@ -96,7 +96,10 @@ export const GMStreakView: React.FC = () => {
       void (async () => {
         try {
           const latestBlock = await receiptClient.getBlockNumber();
-          const fromBlock = latestBlock > 100000n ? latestBlock - 100000n : 0n;
+          // Arc produces roughly two blocks per second, so 500k blocks gives us
+          // several days of history. The previous 100k window could miss a GM
+          // from earlier in the day, leaving today's confirmed GM unindexed.
+          const fromBlock = latestBlock > 500000n ? latestBlock - 500000n : 0n;
           const logs = await receiptClient.getLogs({
             address: GM_CONTRACT_ADDRESS as `0x${string}`,
             event: GM_CONTRACT_ABI[2],
