@@ -6,7 +6,6 @@ import { ArrowLeftRight, ShieldCheck, Zap, Route } from 'lucide-react';
 export const SwapView: React.FC = () => {
   const widgetConfig = useMemo<WidgetConfig>(() => ({
     providers: [EthereumProvider()],
-    integrator: 'GEN-0FI',
     appearance: 'dark',
     variant: 'wide',
     hiddenUI: ['appearance', 'language'],
@@ -56,7 +55,7 @@ export const SwapView: React.FC = () => {
         </div>
 
         <div className="rounded-2xl overflow-hidden min-h-[620px] bg-[#0d0f12] border border-zinc-800">
-          <LiFiWidget config={widgetConfig} />
+          <LiFiWidget integrator="GEN-0FI" config={widgetConfig} />
         </div>
 
         <p className="text-[10px] text-zinc-500 text-center font-mono">
