@@ -88,6 +88,7 @@ export const GMStreakView: React.FC = () => {
       if (lastCheckInDay !== todayDay) return false;
 
       // Flip the UI immediately from confirmed onchain state.
+      setOnchainConfirmedToday(true);
       setStats((current) => markConfirmedToday(current));
 
       // Repair the Supabase index in the background. A slow/failing index
@@ -108,7 +109,7 @@ export const GMStreakView: React.FC = () => {
           if (!latestGM?.transactionHash) return;
 
           const nextStats = await indexConfirmedGM(address, latestGM.transactionHash);
-          setStats(nextStats);
+          setStats(nextStats.checkedInToday ? nextStats : markConfirmedToday(nextStats));
           setLeaderboard(await getGMLeaderboard(20));
           setTxHash(latestGM.transactionHash);
         } catch (err) {
@@ -157,6 +158,7 @@ export const GMStreakView: React.FC = () => {
 
       // Confirmed onchain: update the UI immediately.
       setTxHash(pendingHash);
+      setOnchainConfirmedToday(true);
       setStats((current) => markConfirmedToday(current));
       window.localStorage.removeItem(PENDING_GM_TX_KEY);
       setCheckingIn(false);
@@ -165,7 +167,7 @@ export const GMStreakView: React.FC = () => {
       void (async () => {
         try {
           const nextStats = await indexConfirmedGM(address, pendingHash);
-          setStats(nextStats);
+          setStats(nextStats.checkedInToday ? nextStats : markConfirmedToday(nextStats));
           setLeaderboard(await getGMLeaderboard(20));
         } catch (err) {
           console.warn('Pending GM index repair is still waiting:', err);
@@ -241,6 +243,7 @@ export const GMStreakView: React.FC = () => {
 
       // The transaction is now confirmed on Arc. Reflect that immediately.
       // Do not wait for Supabase to finish indexing.
+      setOnchainConfirmedToday(true);
       setStats((current) => markConfirmedToday(current));
       setCheckingIn(false);
 
@@ -248,7 +251,7 @@ export const GMStreakView: React.FC = () => {
       void (async () => {
         try {
           const nextStats = await indexConfirmedGM(address, hash);
-          setStats(nextStats);
+          setStats(nextStats.checkedInToday ? nextStats : markConfirmedToday(nextStats));
           setLeaderboard(await getGMLeaderboard(20));
           window.localStorage.removeItem(PENDING_GM_TX_KEY);
         } catch (err) {
@@ -260,6 +263,7 @@ export const GMStreakView: React.FC = () => {
       const message = String(err?.shortMessage || err?.message || '');
       if (/already checked in today/i.test(message)) {
         // Even a rejected duplicate confirms the contract's daily state.
+        setOnchainConfirmedToday(true);
         setStats((current) => markConfirmedToday(current));
         setError('You already checked in today.');
       } else if (/user rejected|user denied|rejected the request/i.test(message)) {
