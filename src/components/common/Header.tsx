@@ -15,6 +15,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onOpenConnect }) => {
       case 'overview': return 'Overview';
       case 'activity': return 'Activity';
       case 'ask': return 'Ask GEN-0';
+      case 'swap': return 'Swap & Bridge';
       case 'gm': return 'GM Streak';
       case 'settings': return 'Settings';
       default: return 'Dashboard';
