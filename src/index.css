@@ -1844,3 +1844,178 @@ html.brown .animate-pulse {
 html.brown .bg-black\/80 {
   background-color: rgba(59, 40, 28, 0.55) !important;
 }
+
+
+/* =============================================================
+   LIGHT CHOCOLATE BROWN MODE: FINAL CONTRAST SYSTEM
+   ============================================================= */
+html.brown,
+html.brown body,
+html.brown #root {
+  background-color: #ead9c3 !important;
+  color: #2f2118 !important;
+}
+
+html.brown main,
+html.brown header,
+html.brown footer,
+html.brown nav,
+html.brown aside,
+html.brown section,
+html.brown article {
+  color: #2f2118 !important;
+}
+
+/* Light chocolate canvas and clearly separated surfaces */
+html.brown [class*="bg-[#090a0c]"],
+html.brown [class*="bg-[#0f1012]"],
+html.brown [class*="bg-[#07080a]"],
+html.brown [class*="bg-[#000000]"],
+html.brown [class*="bg-[#08090b]"],
+html.brown [class*="bg-[#0d0f12]"],
+html.brown [class*="bg-[#0b0d10]"],
+html.brown [class*="bg-[#0c0e12]"],
+html.brown [class*="bg-[#0d0f13]"],
+html.brown [class*="bg-[#0d0f14]"],
+html.brown [class*="bg-[#0c0d10]"],
+html.brown [class*="bg-[#101216]"],
+html.brown [class*="bg-[#111317]"],
+html.brown [class*="bg-[#111418]"],
+html.brown [class*="bg-[#131519]"],
+html.brown [class*="bg-[#14161a]"],
+html.brown [class*="bg-[#14161d]"],
+html.brown [class*="bg-[#151720]"],
+html.brown [class*="bg-[#16181d]"],
+html.brown [class*="bg-[#0e1014]"],
+html.brown [class*="bg-[#090b0e]"],
+html.brown [class*="bg-[#08090c]"],
+html.brown [class*="bg-[#12141a]"],
+html.brown [class*="bg-[#12151b]"],
+html.brown [class*="bg-[#13161c]"],
+html.brown [class*="bg-[#1a1d24]"],
+html.brown [class*="bg-[#050608]"],
+html.brown .bg-zinc-950,
+html.brown .bg-zinc-900 {
+  background-color: #f3e7d5 !important;
+  color: #2f2118 !important;
+  border-color: #cdb697 !important;
+}
+
+html.brown .bg-zinc-800,
+html.brown .bg-zinc-700,
+html.brown .bg-zinc-600 {
+  background-color: #e4cfb2 !important;
+  color: #2f2118 !important;
+  border-color: #c2a47f !important;
+}
+
+html.brown .hover\\:bg-zinc-800:hover,
+html.brown .hover\\:bg-zinc-900:hover,
+html.brown .hover\\:bg-zinc-700:hover,
+html.brown .hover\\:bg-zinc-800\\/40:hover,
+html.brown .hover\\:bg-zinc-800\\/50:hover,
+html.brown .hover\\:bg-zinc-800\\/80:hover {
+  background-color: #dcc39f !important;
+}
+
+/* Header, sidebar and bottom navigation */
+html.brown #desktop-sidebar,
+html.brown #main-app-header,
+html.brown #mobile-bottom-nav {
+  background-color: #e2ccb0 !important;
+  color: #2f2118 !important;
+  border-color: #c4a67f !important;
+}
+
+/* High-contrast typography */
+html.brown .text-white,
+html.brown .text-zinc-100,
+html.brown .text-zinc-200 {
+  color: #2f2118 !important;
+}
+
+html.brown .text-zinc-300 { color: #49372a !important; }
+html.brown .text-zinc-400 { color: #604b39 !important; }
+html.brown .text-zinc-500 { color: #705b47 !important; }
+html.brown .text-zinc-600 { color: #594433 !important; }
+
+html.brown .hover\\:text-white:hover,
+html.brown .hover\\:text-zinc-200:hover,
+html.brown .hover\\:text-zinc-300:hover {
+  color: #21150f !important;
+}
+
+/* Every information control remains readable */
+html.brown input,
+html.brown textarea,
+html.brown select {
+  background-color: #f7eddf !important;
+  color: #2f2118 !important;
+  border-color: #bea17c !important;
+}
+
+html.brown input::placeholder,
+html.brown textarea::placeholder {
+  color: #806b56 !important;
+}
+
+html.brown input:focus,
+html.brown textarea:focus,
+html.brown select:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16) !important;
+}
+
+/* Keep blue as the primary action language */
+html.brown .bg-blue-500,
+html.brown .bg-blue-600 {
+  color: #ffffff !important;
+}
+
+html.brown .text-blue-300,
+html.brown .text-blue-400 {
+  color: #245fbd !important;
+}
+
+html.brown .text-emerald-400 { color: #08744f !important; }
+html.brown .text-amber-400 { color: #8b5e12 !important; }
+html.brown .text-red-400 { color: #b93832 !important; }
+html.brown .text-orange-400 { color: #a34e13 !important; }
+html.brown .text-yellow-400 { color: #8b5e12 !important; }
+html.brown .text-purple-400 { color: #703c8c !important; }
+
+/* Active tabs and selected controls */
+html.brown .glow-blue-tab,
+html.brown [role="tab"][aria-selected="true"] {
+  background-color: rgba(59, 130, 246, 0.12) !important;
+  color: #245fbd !important;
+  border-color: rgba(59, 130, 246, 0.35) !important;
+}
+
+/* Light chocolate card depth */
+html.brown .glow-blue-card {
+  background-color: #f3e7d5 !important;
+  border-color: #cdb697 !important;
+  box-shadow: 0 8px 24px -10px rgba(75, 45, 23, 0.22), 0 0 18px rgba(59, 130, 246, 0.05) !important;
+}
+
+html.brown .glow-blue-card-hover:hover {
+  border-color: #a98a65 !important;
+  box-shadow: 0 12px 30px -10px rgba(75, 45, 23, 0.24), 0 0 16px rgba(59, 130, 246, 0.08) !important;
+}
+
+/* Logo and compact controls */
+html.brown #gen0-brand-logo svg path,
+html.brown #gen0-brand-logo .project-logo-mark {
+  fill: #2f2118 !important;
+  color: #2f2118 !important;
+}
+
+html.brown .animate-pulse {
+  background-color: #dfc9aa !important;
+  border-color: #c2a47f !important;
+}
+
+html.brown ::-webkit-scrollbar-track { background: #ead9c3 !important; }
+html.brown ::-webkit-scrollbar-thumb { background: #b99a73 !important; }
+html.brown ::-webkit-scrollbar-thumb:hover { background: #987952 !important; }
