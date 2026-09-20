@@ -107,6 +107,14 @@ export const AskGen0View: React.FC = () => {
   const [activeModel, setActiveModel] = useState<string>('gemini-3.1-pro-preview');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const quickQuestions = [
+    'What happened today?',
+    'How much did I receive?',
+    'Where did my money go?',
+    'Show my biggest transactions',
+    'How much did I spend on fees?',
+  ];
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -330,6 +338,25 @@ export const AskGen0View: React.FC = () => {
 
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Quick Questions */}
+      {messages.length === 1 && !isGenerating && (
+        <div className="space-y-2">
+          <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Try asking</div>
+          <div className="flex flex-wrap gap-2">
+            {quickQuestions.map((question) => (
+              <button
+                key={question}
+                type="button"
+                onClick={() => handleSendMessage(question)}
+                className="px-3 py-2 rounded-lg bg-[#0d0f12] hover:bg-[#131519] border border-zinc-800 hover:border-blue-500/35 text-xs text-zinc-300 hover:text-white transition-all cursor-pointer"
+              >
+                {question}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Input Box */}
       <form
