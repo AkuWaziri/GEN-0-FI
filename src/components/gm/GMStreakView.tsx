@@ -49,7 +49,8 @@ export const GMStreakView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [checkingIn, setCheckingIn] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);\n  const [onchainConfirmedToday, setOnchainConfirmedToday] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [onchainConfirmedToday, setOnchainConfirmedToday] = useState(false);
 
   const load = async () => {
     if (!address) return;
