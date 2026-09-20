@@ -105,9 +105,12 @@ export default async function handler(req: any, res: any) {
       if (rows.length) {
         const { error } = await supabase
           .from('gm_checkins')
-          .insert(rows);
+          .upsert(rows, {
+            onConflict: 'wallet_address,checkin_date',
+            ignoreDuplicates: true,
+          });
 
-        if (error && error.code !== '23505') {
+        if (error) {
           syncError = error.message;
         } else {
           syncedDays = rows.map((row) => row.checkin_date);
