@@ -297,7 +297,7 @@ export const SwapView: React.FC = () => {
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Swap & Bridge</h1>
           <p className="text-sm text-zinc-400 mt-1">
-            Move supported assets across chains through LI.FI routing.
+            Move supported assets across chains through LI.FI cheapest routing.
           </p>
         </div>
 
