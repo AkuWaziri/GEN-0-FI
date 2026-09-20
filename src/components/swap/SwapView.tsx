@@ -368,12 +368,16 @@ export const SwapView: React.FC = () => {
             <div className="mt-4 flex flex-col sm:flex-row gap-3">
               {quote?.transactionRequest ? (
                 <button
-                  onClick={executeQuote}
-                  disabled={executing || connectedChainId !== fromChainId}
-                  className="flex-1 rounded-xl bg-blue-500 hover:bg-blue-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-3 transition flex items-center justify-center gap-2"
+                  onClick={connectedChainId !== fromChainId ? switchFromChain : executeQuote}
+                  disabled={executing}
+                  className="flex-1 rounded-xl bg-blue-500 hover:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 transition flex items-center justify-center gap-2"
                 >
                   {executing && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {executing ? 'Confirm in wallet...' : (fromChainId === toChainId ? 'Swap ' : 'Bridge ') + (fromToken?.symbol || '')}
+                  {executing
+                    ? 'Confirm in wallet...'
+                    : connectedChainId !== fromChainId
+                      ? 'Switch wallet to ' + (fromChain?.name || 'source chain')
+                      : (fromChainId === toChainId ? 'Swap ' : 'Bridge ') + (fromToken?.symbol || '')}
                 </button>
               ) : (
                 <button
