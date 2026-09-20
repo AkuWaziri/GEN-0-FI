@@ -369,6 +369,9 @@ export const SwapView: React.FC = () => {
       null,
     );
 
+  const [arcNativeBalance, setArcNativeBalance] =
+    useState<bigint | null>(null);
+
   const [amount, setAmount] =
     useState('');
 
@@ -882,6 +885,38 @@ export const SwapView: React.FC = () => {
       cancelled = true;
     };
   }, [address, refreshKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (
+      !address ||
+      fromChainId !== ARC_MAINNET_ID ||
+      !publicClient
+    ) {
+      setArcNativeBalance(null);
+      return;
+    }
+
+    publicClient
+      .getBalance({
+        address: address as `0x${string}`,
+      })
+      .then(balance => {
+        if (!cancelled) {
+          setArcNativeBalance(balance);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setArcNativeBalance(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [address, fromChainId, publicClient, refreshKey]);
 
   const fromChain = useMemo(
     () =>
@@ -2011,12 +2046,19 @@ function TokenPanel({
       : null;
 
   const displayBalance =
-    balance?.amount
+    fromChainId === ARC_MAINNET_ID &&
+    token?.symbol?.toUpperCase() === 'USDC' &&
+    arcNativeBalance !== null
       ? formatBalance(
-          balance.amount,
-          token?.decimals || 18,
+          arcNativeBalance.toString(),
+          18,
         )
-      : '0';
+      : balance?.amount
+        ? formatBalance(
+            balance.amount,
+            token?.decimals || 18,
+          )
+        : '0';
 
   return (
     <>
