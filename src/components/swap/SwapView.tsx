@@ -6,9 +6,10 @@ import { ArrowLeftRight, ShieldCheck, Zap, Route } from 'lucide-react';
 export const SwapView: React.FC = () => {
   const widgetConfig = useMemo<WidgetConfig>(() => ({
     providers: [EthereumProvider()],
+    integrator: 'GEN-0FI',
     appearance: 'dark',
-    variant: 'compact',
-    hiddenUI: ['appearance', 'language', 'walletMenu', 'toAddress'],
+    variant: 'wide',
+    hiddenUI: ['appearance', 'language'],
     theme: {
       palette: {
         primary: { main: '#3b82f6' },
@@ -22,14 +23,13 @@ export const SwapView: React.FC = () => {
         border: '1px solid rgba(63, 63, 70, 0.8)',
         borderRadius: '18px',
         boxShadow: '0 0 30px -10px rgba(59, 130, 246, 0.18)',
-        maxHeight: 760,
       },
     },
   }), []);
 
   return (
     <div className="w-full p-4 sm:p-6 lg:p-8 space-y-5 animate-in fade-in duration-200">
-      <div className="max-w-3xl mx-auto space-y-4">
+      <div className="max-w-4xl mx-auto space-y-4">
         <div className="text-center space-y-2">
           <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/25 text-blue-400">
             <ArrowLeftRight className="w-5 h-5" />
@@ -55,8 +55,8 @@ export const SwapView: React.FC = () => {
           </div>
         </div>
 
-        <div className="rounded-2xl overflow-hidden">
-          <LiFiWidget integrator="GEN-0FI" config={widgetConfig} />
+        <div className="rounded-2xl overflow-hidden min-h-[620px] bg-[#0d0f12] border border-zinc-800">
+          <LiFiWidget config={widgetConfig} />
         </div>
 
         <p className="text-[10px] text-zinc-500 text-center font-mono">
