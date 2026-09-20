@@ -1,13 +1,23 @@
 import React, { useMemo } from 'react';
 import { LiFiWidget, WidgetConfig } from '@lifi/widget';
 import { EthereumProvider } from '@lifi/widget-provider-ethereum';
+import { getWalletClient, switchChain } from '@wagmi/core';
+import { wagmiConfig } from '../../config/wagmi';
 import { ArrowLeftRight } from 'lucide-react';
 
 export const SwapView: React.FC = () => {
   const widgetConfig = useMemo<WidgetConfig>(() => ({
     appearance: 'dark',
     variant: 'wide',
-    providers: [EthereumProvider()],
+    providers: [
+      EthereumProvider({
+        getWalletClient: () => getWalletClient(wagmiConfig),
+        switchChain: async (chainId) => {
+          const chain = await switchChain(wagmiConfig, { chainId });
+          return getWalletClient(wagmiConfig, { chainId: chain.id });
+        },
+      }),
+    ],
     defaultUI: {
       layout: 'cards',
     },
