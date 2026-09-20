@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-export type ThemeMode = 'dark' | 'white';
+export type ThemeMode = 'dark' | 'brown';
 
 interface ThemeContextType {
   theme: ThemeMode;
@@ -18,34 +18,33 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [theme, setThemeState] = useState<ThemeMode>(() => {
     if (typeof window !== 'undefined') {
       const explicitChoice = localStorage.getItem('gen0_theme_selection');
-      if (explicitChoice === 'dark' || explicitChoice === 'white') {
+      if (explicitChoice === 'dark' || explicitChoice === 'brown') {
         return explicitChoice;
       }
-      // Default to White mode
-      return 'white';
+      // Default to Dark mode
+      return 'dark';
     }
     return 'white';
   });
 
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === 'white') {
-      root.classList.add('white');
-      root.classList.add('light'); // Keep legacy selectors compatible
+    if (theme === 'brown') {
+      root.classList.add('brown');
       root.classList.remove('dark');
       root.classList.remove('grey');
     } else {
       root.classList.add('dark');
       root.classList.remove('grey');
-      root.classList.remove('white');
-      root.classList.remove('light');
+      root.classList.remove('brown');
+t      
     }
     localStorage.setItem('gen0_theme_selection', theme);
     localStorage.setItem('gen0_theme', theme);
   }, [theme]);
 
   const toggleTheme = () => {
-    setThemeState((prev) => (prev === 'dark' ? 'white' : 'dark'));
+    setThemeState((prev) => (prev === 'dark' ? 'brown' : 'dark'));
   };
 
   const setTheme = (newTheme: ThemeMode) => {
