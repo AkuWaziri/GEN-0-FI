@@ -1,11 +1,16 @@
 import React, { useMemo } from 'react';
 import { LiFiWidget, WidgetConfig } from '@lifi/widget';
+import { EthereumProvider } from '@lifi/widget-provider-ethereum';
 import { ArrowLeftRight } from 'lucide-react';
 
 export const SwapView: React.FC = () => {
   const widgetConfig = useMemo<WidgetConfig>(() => ({
     appearance: 'dark',
     variant: 'wide',
+    providers: [EthereumProvider()],
+    defaultUI: {
+      layout: 'cards',
+    },
     theme: {
       palette: {
         primary: { main: '#3b82f6' },
@@ -32,7 +37,6 @@ export const SwapView: React.FC = () => {
         height: 760,
       },
     },
-    hiddenUI: ['appearance', 'language'],
   }), []);
 
   return (
