@@ -507,9 +507,9 @@ function TokenPanel(props: {
     };
   }, [openMenu]);
 
-  const warmWhite = typeof document !== 'undefined' && document.documentElement.classList.contains('white');
+  const warmWhite = typeof document !== 'undefined' && document.documentElement.classList.contains('brown');
   const menuClass = warmWhite
-    ? 'border-[#bfae93] bg-[#ded1bc] text-[#2b2925]'
+    ? 'border-[#b58a63] bg-[#4a3020] text-[#f6eadf]'
     : 'border-zinc-600 bg-[#181a1f] text-white';
 
   const tokenWalletBalance = (token: LiFiToken) => {
@@ -536,14 +536,14 @@ function TokenPanel(props: {
           }}
           role="listbox"
         >
-          <div className={warmWhite ? 'sticky top-0 p-2 bg-[#ded1bc]' : 'sticky top-0 p-2 bg-[#181a1f]'}>
+          <div className={warmWhite ? 'sticky top-0 p-2 bg-[#4a3020]' : 'sticky top-0 p-2 bg-[#181a1f]'}>
             <input
               autoFocus
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={openMenu === 'chain' ? 'Search chains...' : 'Search coins...'}
               className={warmWhite
-                ? 'w-full rounded-lg border border-[#bfae93] bg-[#eee5d7] px-3 py-2 text-sm text-[#2b2925] outline-none placeholder:text-[#8b8173]'
+                ? 'w-full rounded-lg border border-[#b58a63] bg-[#6a4730] px-3 py-2 text-sm text-[#f6eadf] outline-none placeholder:text-[#d0b59e]'
                 : 'w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500'}
             />
           </div>
@@ -558,11 +558,11 @@ function TokenPanel(props: {
                   setOpenMenu(null);
                 }}
                 className={warmWhite
-                  ? 'w-full text-left px-3 py-3 text-sm text-[#2b2925] hover:bg-[#cbb99d] transition'
+                  ? 'w-full text-left px-3 py-3 text-sm text-[#f6eadf] hover:bg-[#6a4730] transition'
                   : 'w-full text-left px-3 py-3 text-sm text-white hover:bg-zinc-800 transition'}
               >
                 <span className="block truncate">{chain.name}</span>
-                <span className={warmWhite ? 'text-xs text-[#71695d]' : 'text-xs text-zinc-500'}>Chain ID {chain.id}</span>
+                <span className={warmWhite ? 'text-xs text-[#d0b59e]' : 'text-xs text-zinc-500'}>Chain ID {chain.id}</span>
               </button>
             ))
           ) : (
@@ -592,7 +592,7 @@ function TokenPanel(props: {
             ))
           )}
           {((openMenu === 'chain' && visibleChains.length === 0) || (openMenu === 'token' && visibleTokens.length === 0)) && (
-            <div className={warmWhite ? 'px-4 py-5 text-sm text-[#71695d]' : 'px-4 py-5 text-sm text-zinc-400'}>
+            <div className={warmWhite ? 'px-4 py-5 text-sm text-[#d0b59e]' : 'px-4 py-5 text-sm text-zinc-400'}>
               {props.loading ? 'Loading...' : search ? 'No matches found' : 'Nothing available'}
             </div>
           )}
