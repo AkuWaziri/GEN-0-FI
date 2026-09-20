@@ -125,7 +125,10 @@ export const SwapView: React.FC = () => {
     fetchJson(`${API}/tokens?chains=${fromChainId}&chainTypes=EVM`)
       .then((data) => {
         if (cancelled) return;
-        const list = Array.isArray(data) ? data : data[String(fromChainId)] || [];
+        const tokenMap = data?.tokens || data || {};
+        const list = Array.isArray(data)
+          ? data
+          : tokenMap[String(fromChainId)] || [];
         const filtered = list.filter((t: LiFiToken) => t.address && t.symbol);
         setFromTokens(filtered);
         setFromToken(filtered.find((t: LiFiToken) => t.coinKey === 'USDC') || filtered[0] || null);
@@ -146,7 +149,10 @@ export const SwapView: React.FC = () => {
     fetchJson(`${API}/tokens?chains=${toChainId}&chainTypes=EVM`)
       .then((data) => {
         if (cancelled) return;
-        const list = Array.isArray(data) ? data : data[String(toChainId)] || [];
+        const tokenMap = data?.tokens || data || {};
+        const list = Array.isArray(data)
+          ? data
+          : tokenMap[String(toChainId)] || [];
         const filtered = list.filter((t: LiFiToken) => t.address && t.symbol);
         setToTokens(filtered);
         setToToken(filtered.find((t: LiFiToken) => t.coinKey === 'USDC') || filtered[0] || null);
