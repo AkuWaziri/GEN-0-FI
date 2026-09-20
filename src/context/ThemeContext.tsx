@@ -24,7 +24,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (explicitChoice === 'white') {
         return 'brown';
       }
-      // Default to Dark mode
       return 'dark';
     }
     return 'dark';
@@ -40,7 +39,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       root.classList.add('dark');
       root.classList.remove('grey');
       root.classList.remove('brown');
-    }
     }
     localStorage.setItem('gen0_theme_selection', theme);
     localStorage.setItem('gen0_theme', theme);
