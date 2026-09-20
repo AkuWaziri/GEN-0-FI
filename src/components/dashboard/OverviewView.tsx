@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useWallet } from '../../context/WalletContext';
 import { Skeleton } from '../common/Skeleton';
 import { TabType } from '../common/Sidebar';
+import { AskGen0View } from '../ask/AskGen0View';
 import {
   Sparkles,
   Code2,
@@ -212,7 +213,8 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
         </div>
       </div>
 
-      {/* Main Balance Card - Prominent 58.0364 USDC Display */}
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.55fr)_minmax(280px,0.75fr)] gap-4 sm:gap-5">
+
       <div className="p-6 sm:p-7 rounded-2xl bg-[#0d0f12] bg-[radial-gradient(ellipse_at_top_left,rgba(59,130,246,0.08),transparent_65%)] border border-blue-500/20 glow-blue-card relative overflow-hidden">
         {/* Soft diffused background blue ambient halo */}
         <div className="absolute -right-12 -top-12 w-72 h-72 bg-blue-500/[0.07] rounded-full blur-3xl pointer-events-none" />
@@ -256,6 +258,43 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
               <span>{isRefreshing ? 'Syncing...' : 'Sync Live Data'}</span>
             </button>
+          </div>
+        </div>
+      </div>
+
+
+        <div
+          id="section-ai-wallet-summary"
+          className="p-5 rounded-2xl bg-[#0d0f12] bg-[radial-gradient(ellipse_at_top_right,rgba(59,130,246,0.07),transparent_72%)] border border-blue-500/20 glow-blue-card relative overflow-hidden flex flex-col justify-between"
+        >
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-7 h-7 rounded-lg bg-blue-500/15 border border-blue-500/35 flex items-center justify-center text-blue-400">
+                <Sparkles className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-white">AI Intelligence</h2>
+                <p className="text-[10px] text-zinc-500 font-mono">Live wallet context</p>
+              </div>
+            </div>
+            {isAiLoading ? (
+              <div className="space-y-2 py-2">
+                <Skeleton className="h-3.5 w-full" />
+                <Skeleton className="h-3.5 w-5/6" />
+                <Skeleton className="h-3.5 w-4/6" />
+              </div>
+            ) : (
+              <p className="text-xs text-zinc-300 leading-relaxed">
+                {(aiSummary?.summary ||
+                  (walletSummary?.historyStatus === 'incomplete' && verifiedReceivedDisplay === 'Incomplete scan'
+                    ? `Wallet verifiably holds ${activeBalanceUSDC} USDC on Arc across ${totalTransactions} transaction(s). Historical inbound funding is outside the recent indexed dataset.`
+                    : `Connected to Arc with ${activeBalanceUSDC} USDC across ${totalTransactions} transaction(s). Received ${verifiedReceivedDisplay} USDC, sent ${verifiedSentDisplay} USDC, gas ${verifiedGasSpentDisplay} USDC.`)).replace(/\*/g, '')}
+              </p>
+            )}
+          </div>
+          <div className="pt-4 mt-4 border-t border-zinc-800/80 flex items-center justify-between gap-2">
+            <span className="text-[10px] text-zinc-500 font-mono">Grounded on live Arc state</span>
+            <span className="text-[10px] text-zinc-400 font-semibold">Gemini AI</span>
           </div>
         </div>
       </div>
@@ -434,71 +473,15 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
         </div>
       </div>
 
-      {/* AI Summary Card - Synchronized with live Arc state */}
-      <div
-        id="section-ai-wallet-summary"
-        className="p-5 sm:p-6 rounded-xl bg-[#0d0f12] bg-[radial-gradient(ellipse_at_top_right,rgba(59,130,246,0.06),transparent_70%)] border border-blue-500/25 shadow-[0_0_24px_-6px_rgba(59,130,246,0.14)] relative overflow-hidden"
-      >
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-blue-500/15 border border-blue-500/35 flex items-center justify-center text-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.3)]">
-              <Sparkles className="w-3.5 h-3.5" />
-            </div>
-            <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">AI Intelligence Summary</h2>
+      <section id="section-ask-gen0" className="space-y-3">
+        <div className="flex items-center justify-between px-1">
+          <div>
+            <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">Ask GEN-0</h2>
+            <p className="text-xs text-zinc-500">Ask about your live wallet and onchain activity.</p>
           </div>
-
-          <button
-            onClick={() => onSelectTab('ask')}
-            className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 font-semibold cursor-pointer py-1 px-2 rounded-lg hover:bg-blue-500/10 border border-transparent hover:border-blue-500/30 transition-all shadow-none hover:shadow-[0_0_12px_rgba(59,130,246,0.2)]"
-          >
-            <span>Ask GEN-0</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
         </div>
-
-        {isAiLoading ? (
-          <div className="space-y-2 py-1">
-            <Skeleton className="h-4 w-5/6" />
-            <Skeleton className="h-4 w-4/6" />
-            <Skeleton className="h-4 w-3/6" />
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-normal">
-              {(aiSummary?.summary ||
-                (walletSummary?.historyStatus === 'incomplete' && verifiedReceivedDisplay === 'Incomplete scan'
-                  ? `Wallet verifiably holds ${activeBalanceUSDC} USDC on Arc across ${totalTransactions} transaction(s). Historical inbound funding occurred outside the scanned explorer dataset, so lifetime incoming transfer volume cannot be fully determined from recent logs.`
-                  : `Connected to Arc with ${activeBalanceUSDC} USDC across ${totalTransactions} transaction(s). Verified inbound: ${verifiedReceivedDisplay} USDC, outbound: ${verifiedSentDisplay} USDC, gas spent: ${verifiedGasSpentDisplay} USDC.`)).replace(/\*/g, '')}
-            </p>
-
-            {aiSummary?.keyObservations && aiSummary.keyObservations.length > 0 && (
-              <div className="pt-2.5 border-t border-zinc-800/80 space-y-1.5">
-                {aiSummary.keyObservations.map((obs, idx) => (
-                  <div key={idx} className="flex items-start gap-2 text-xs text-zinc-400">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.6)] shrink-0 mt-1.5" />
-                    <span>{obs.replace(/\*/g, '')}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {walletSummary?.historyStatus === 'incomplete' && verifiedReceivedDisplay === 'Incomplete scan' && (
-              <div className="pt-2 flex items-center gap-2 text-[11px] text-amber-400/90 font-mono">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                <span>Explorer scan is partial: inbound funding occurred outside recent indexed blocks. Live balance is authoritative.</span>
-              </div>
-            )}
-
-            <div className="pt-1.5 text-[10px] text-zinc-500 flex items-center justify-between font-mono">
-              <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.8)]" />
-                Grounded on live Arc blockchain state ({activeBalanceUSDC} USDC)
-              </span>
-              <span className="text-zinc-400 font-medium">Gemini AI Engine</span>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+        <AskGen0View />
+      </section>
+   </div>
   );
 };
