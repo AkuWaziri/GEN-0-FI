@@ -91,67 +91,30 @@ export const GMStreakView: React.FC = () => {
       setOnchainConfirmedToday(true);
       setStats((current) => markConfirmedToday(current));
 
-      // Repair the Supabase index in the background. A slow/failing index
-      // must not keep the button vivid or leave the UI in a syncing state.
+      // Repair the Supabase index from the server-side ArcScan log reader.
+      // Do not use browser eth_getLogs: Arc RPC log-range limits can reject it.
       void (async () => {
         try {
-          const latestBlock = await receiptClient.getBlockNumber();
-          // Arcscan limits log-range queries. Scan in small deterministic
-          // chunks instead of relying on one large eth_getLogs request.
-          const scanFrom = latestBlock > 500000n ? latestBlock - 500000n : 0n;
-          const chunkSize = 20000n;
-          const logs = [];
-          for (let fromBlock = scanFrom; fromBlock <= latestBlock; fromBlock += chunkSize + 1n) {
-            const toBlock = fromBlock + chunkSize > latestBlock
-              ? latestBlock
-              : fromBlock + chunkSize;
-            const chunkLogs = await receiptClient.getLogs({
-              address: GM_CONTRACT_ADDRESS as `0x${string}`,
-              event: GM_CONTRACT_ABI[2],
-              args: { wallet: address as `0x${string}` },
-              fromBlock,
-              toBlock,
-            });
-            logs.push(...chunkLogs);
-          }
+          const response = await fetch(`/api/blockchain/arc/gm-debug?address=${address}`, {
+            headers: { accept: 'application/json' },
+          });
+          if (!response.ok) throw new Error(`GM reconciliation HTTP ${response.status}`);
 
-          const latestGM = logs.at(-1);
-          if (!latestGM?.transactionHash) return;
+          const body = await response.json();
+          const onchainDays = (Array.isArray(body?.logs) ? body.logs : [])
+            .map((log: any) => log?.args?.day)
+            .filter((day: unknown): day is string => typeof day === 'string');
 
-          // Rebuild the streak from confirmed Arc event days instead of
-          // incrementing whatever Supabase currently happens to report.
-          // This makes day 2 authoritative even when the index is stale.
-          const onchainDays = new Set(
-            logs
-              .map((log) => log.args?.day)
-              .filter((day): day is bigint => typeof day === 'bigint')
-              .map((day) => day.toString()),
-          );
+          if (!onchainDays.length) throw new Error('No confirmed GM event days returned.');
 
-          const todayDay = BigInt(Math.floor(Date.now() / 86400000));
-          let onchainCurrentStreak = 0;
-          let cursor = todayDay;
-          while (onchainDays.has(cursor.toString())) {
-            onchainCurrentStreak += 1;
-            cursor -= 1n;
-          }
-
-          const confirmedStats = await indexConfirmedGM(address, latestGM.transactionHash);
-          const repairedStats: GMStats = {
-            ...confirmedStats,
-            currentStreak: Math.max(confirmedStats.currentStreak, onchainCurrentStreak),
-            longestStreak: Math.max(confirmedStats.longestStreak, onchainCurrentStreak),
-            totalGmDays: Math.max(confirmedStats.totalGmDays, onchainDays.size),
-            points: Math.max(confirmedStats.points, onchainCurrentStreak),
-            checkedInToday: true,
-            lastCheckinDate: new Date(Number(todayDay) * 86400000).toISOString().slice(0, 10),
-          };
-
+          const repairedStats = await indexConfirmedGMDays(address, onchainDays);
           setStats(repairedStats);
           setLeaderboard(await getGMLeaderboard(20));
-          setTxHash(latestGM.transactionHash);
+
+          const latestLog = body.logs[body.logs.length - 1];
+          if (latestLog?.transactionHash) setTxHash(latestLog.transactionHash);
         } catch (err) {
-          console.warn('GM index repair is still waiting:', err);
+          console.warn('GM index reconciliation is still waiting:', err);
         }
       })();
 
