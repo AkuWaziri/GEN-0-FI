@@ -21,6 +21,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (explicitChoice === 'dark' || explicitChoice === 'brown') {
         return explicitChoice;
       }
+      if (explicitChoice === 'white') {
+        return 'brown';
+      }
       // Default to Dark mode
       return 'dark';
     }
