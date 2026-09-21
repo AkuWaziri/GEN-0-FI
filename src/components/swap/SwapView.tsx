@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowDownUp, ChevronDown, Loader2, RefreshCw, Wallet } from 'lucide-react';
 import { getPublicClient, switchChain } from '@wagmi/core';
+import { encodeFunctionData } from 'viem';
 import { useAccount, useChainId, useWalletClient } from 'wagmi';
 import { wagmiConfig } from '../../config/wagmi';
 import { useWallet } from '../../context/WalletContext';
@@ -293,12 +294,16 @@ export const SwapView: React.FC = () => {
 
           if (allowance < rawAmount) {
             setError('Approval required. Confirm the token approval in your wallet.');
-            const approvalHash = await walletClient.writeContract({
-              account: address as `0x${string}`,
-              address: fromToken.address as `0x${string}`,
+            const approvalData = encodeFunctionData({
               abi: ERC20_ABI,
               functionName: 'approve',
               args: [approvalAddress as `0x${string}`, rawAmount],
+            });
+            const approvalHash = await walletClient.sendTransaction({
+              account: address as `0x${string}`,
+              to: fromToken.address as `0x${string}`,
+              data: approvalData,
+              value: 0n,
               chainId: fromChainId,
             });
             await publicClient.waitForTransactionReceipt({ hash: approvalHash });
