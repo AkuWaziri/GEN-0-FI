@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowDownUp, ChevronDown, Loader2, RefreshCw, Wallet } from 'lucide-react';
-import { switchChain } from '@wagmi/core';
+import { getPublicClient, switchChain } from '@wagmi/core';
 import { useAccount, useChainId, useWalletClient } from 'wagmi';
 import { wagmiConfig } from '../../config/wagmi';
 import { useWallet } from '../../context/WalletContext';
+import { recordConfirmedAction } from '../../services/points/pointsService';
 
 type LiFiChain = {
   id: number;
@@ -268,6 +269,18 @@ export const SwapView: React.FC = () => {
         chainId: fromChainId,
       });
       setExecutionHash(hash);
+
+      // Award points only after the source transaction is confirmed onchain.
+      // The tx hash is unique in Supabase, so retries cannot double-award.
+      const publicClient = getPublicClient(wagmiConfig, { chainId: fromChainId });
+      if (!publicClient) throw new Error('Arc transaction confirmation client is unavailable.');
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (receipt.status !== 'success') {
+        throw new Error('The transaction reverted. No points were awarded.');
+      }
+
+      const action = fromChainId === toChainId ? 'swap' : 'bridge';
+      await recordConfirmedAction(address, hash, action);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err || '');
       setError(/user rejected|user denied|rejected the request|request rejected|4001/i.test(message) ? 'Cancelled' : message || 'The swap or bridge could not be submitted.');
