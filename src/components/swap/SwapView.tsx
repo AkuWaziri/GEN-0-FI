@@ -91,6 +91,37 @@ function getDirectPublicClient(chainId: number, chain?: LiFiChain) {
   });
 }
 
+function cleanSwapError(error: unknown, context: 'balance' | 'allowance' | 'gas' | 'transaction' = 'transaction') {
+  const message = error instanceof Error ? error.message : String(error || '');
+  const lower = message.toLowerCase();
+
+  if (/user rejected|user denied|rejected the request|request rejected|4001/.test(lower)) {
+    return 'Cancelled';
+  }
+
+  if (context === 'balance') {
+    return 'Unable to verify your token balance right now. Please try again.';
+  }
+
+  if (context === 'allowance') {
+    return 'Unable to verify token approval right now. Please try again.';
+  }
+
+  if (context === 'gas') {
+    return 'Unable to verify network gas balance right now. Please try again.';
+  }
+
+  if (/insufficient funds|insufficient balance|exceeds balance|not enough funds|gas required exceeds allowance|intrinsic gas too low/.test(lower)) {
+    return 'Insufficient funds for this transaction.';
+  }
+
+  if (/failed to fetch|http request failed|rpc|network request/.test(lower)) {
+    return 'Network check failed. Please try again.';
+  }
+
+  return message || 'The swap or bridge could not be completed.';
+}
+
 function tokenBalanceFor(
   balances: Record<string, BalanceToken[]> | null,
   chainId: number,
@@ -307,16 +338,73 @@ export const SwapView: React.FC = () => {
       }
 
       const publicClient = getDirectPublicClient(fromChainId, fromChain);
+      const required = BigInt(quote.estimate.fromAmount || '0');
+
+      // Preflight the real source balance before touching allowance or requesting a signature.
+      // This keeps low-balance attempts in the UI instead of exposing raw RPC errors.
+      if (fromToken && required > 0n) {
+        if (fromToken.address.toLowerCase() !== NATIVE) {
+          const balanceItem = tokenBalanceFor(balances, fromChainId, fromToken);
+          if (balanceItem?.amount && BigInt(balanceItem.amount) < required) {
+            throw new Error(`Insufficient ${fromToken.symbol} balance for this ${fromChainId === toChainId ? 'swap' : 'bridge'}.`);
+          }
+
+          if (!balanceItem?.amount) {
+            try {
+              const onchainBalance = await publicClient.readContract({
+                address: fromToken.address as `0x${string}`,
+                abi: [{ type: 'function', name: 'balanceOf', stateMutability: 'view', inputs: [{ name: 'account', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] }] as const,
+                functionName: 'balanceOf',
+                args: [address as `0x${string}`],
+              });
+              if (onchainBalance < required) {
+                throw new Error(`Insufficient ${fromToken.symbol} balance for this ${fromChainId === toChainId ? 'swap' : 'bridge'}.`);
+              }
+            } catch (balanceError) {
+              if (balanceError instanceof Error && /^Insufficient /.test(balanceError.message)) throw balanceError;
+              throw new Error(cleanSwapError(balanceError, 'balance'));
+            }
+          }
+        } else {
+          try {
+            const nativeBalance = await publicClient.getBalance({ address: address as `0x${string}` });
+            if (nativeBalance < required) {
+              throw new Error(`Insufficient ${fromToken.symbol} balance for this ${fromChainId === toChainId ? 'swap' : 'bridge'}.`);
+            }
+          } catch (balanceError) {
+            if (balanceError instanceof Error && /^Insufficient /.test(balanceError.message)) throw balanceError;
+            throw new Error(cleanSwapError(balanceError, 'balance'));
+          }
+        }
+      }
+
+      // Native gas is required for ERC-20 approvals and source-chain transactions.
+      // We only display a clean warning here. No transaction is submitted by this check.
+      if (fromToken && fromToken.address.toLowerCase() !== NATIVE) {
+        try {
+          const nativeBalance = await publicClient.getBalance({ address: address as `0x${string}` });
+          if (nativeBalance === 0n) {
+            throw new Error(`Insufficient native gas balance on ${fromChain?.name || 'the source chain'}.`);
+          }
+        } catch (gasError) {
+          if (gasError instanceof Error && /^Insufficient native gas/.test(gasError.message)) throw gasError;
+          throw new Error(cleanSwapError(gasError, 'gas'));
+        }
+      }
 
       const approvalAddress = quote?.estimate?.approvalAddress;
       if (fromToken && fromToken.address.toLowerCase() !== NATIVE && approvalAddress && quote?.estimate?.fromAmount) {
-        const allowance = await publicClient.readContract({
-          address: fromToken.address as `0x${string}`,
-          abi: ERC20_APPROVE_ABI,
-          functionName: 'allowance',
-          args: [address as `0x${string}`, approvalAddress as `0x${string}`],
-        });
-        const required = BigInt(quote.estimate.fromAmount);
+        let allowance: bigint;
+        try {
+          allowance = await publicClient.readContract({
+            address: fromToken.address as `0x${string}`,
+            abi: ERC20_APPROVE_ABI,
+            functionName: 'allowance',
+            args: [address as `0x${string}`, approvalAddress as `0x${string}`],
+          });
+        } catch (allowanceError) {
+          throw new Error(cleanSwapError(allowanceError, 'allowance'));
+        }
         if (allowance < required) {
           const approvalData = encodeFunctionData({
             abi: ERC20_APPROVE_ABI,
@@ -356,7 +444,7 @@ export const SwapView: React.FC = () => {
       await recordConfirmedAction(address, hash, action);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err || '');
-      setError(/user rejected|user denied|rejected the request|request rejected|4001/i.test(message) ? 'Cancelled' : message || 'The swap or bridge could not be submitted.');
+      setError(message || cleanSwapError(err));
     } finally {
       setExecuting(false);
     }
