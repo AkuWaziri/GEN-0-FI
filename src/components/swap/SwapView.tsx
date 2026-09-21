@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowDownUp, ChevronDown, Loader2, RefreshCw, Wallet } from 'lucide-react';
-import { getPublicClient, switchChain } from '@wagmi/core';
+import { getPublicClient, getWalletClient, switchChain } from '@wagmi/core';
 import { useAccount, useChainId, useWalletClient } from 'wagmi';
 import { wagmiConfig } from '../../config/wagmi';
 import { useWallet } from '../../context/WalletContext';
@@ -252,7 +252,7 @@ export const SwapView: React.FC = () => {
   }, [address, fromToken, toToken, amount, fromChainId, toChainId]);
 
   const executeQuote = async () => {
-    if (!quote?.transactionRequest || !walletClient || !address) return;
+    if (!quote?.transactionRequest || !address) return;
     setExecuting(true);
     setError(null);
     setExecutionHash(null);
@@ -260,11 +260,23 @@ export const SwapView: React.FC = () => {
       if (connectedChainId !== fromChainId) {
         await switchChain(wagmiConfig, { chainId: fromChainId });
       }
+      // Fetch the live wallet client after the chain is ready. The hook client can be
+      // stale/undefined with injected or WalletConnect sessions, which can leave the
+      // UI in "Confirm in wallet..." without ever opening the wallet prompt.
+      const client = await getWalletClient(wagmiConfig, { chainId: fromChainId });
+      if (!client) {
+        throw new Error('Wallet connection is not ready. Reconnect your wallet and try again.');
+      }
+
       const tx = quote.transactionRequest;
-      const hash = await walletClient.sendTransaction({
+      if (!tx.to || !tx.data) {
+        throw new Error('LI.FI returned an incomplete transaction request. Please refresh the quote.');
+      }
+
+      const hash = await client.sendTransaction({
         account: address as `0x${string}`,
-        to: tx.to,
-        data: tx.data,
+        to: tx.to as `0x${string}`,
+        data: tx.data as `0x${string}`,
         value: tx.value ? BigInt(tx.value) : 0n,
         chainId: fromChainId,
       });
