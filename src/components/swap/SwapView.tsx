@@ -156,7 +156,9 @@ export const SwapView: React.FC = () => {
   const [quote, setQuote] = useState<any>(null);
   const [quoting, setQuoting] = useState(false);
   const [executing, setExecuting] = useState(false);
+  const [executionStage, setExecutionStage] = useState<'wallet' | 'confirming' | null>(null);
   const [executionHash, setExecutionHash] = useState<string | null>(null);
+  const [executionConfirmed, setExecutionConfirmed] = useState(false);
   const [arcNativeBalance, setArcNativeBalance] = useState<string | null>(null);
 
   const fromBalance = tokenBalanceFor(balances, fromChainId, fromToken);
@@ -327,6 +329,8 @@ export const SwapView: React.FC = () => {
   const executeQuote = async () => {
     if (!quote?.transactionRequest || !walletClient || !address) return;
     setExecuting(true);
+    setExecutionStage('wallet');
+    setExecutionConfirmed(false);
     setError(null);
     setExecutionHash(null);
     try {
@@ -418,6 +422,7 @@ export const SwapView: React.FC = () => {
             value: 0n,
             chainId: fromChainId,
           });
+          setExecutionStage('confirming');
           const approvalReceipt = await publicClient.waitForTransactionReceipt({ hash: approvalHash });
           if (approvalReceipt.status !== 'success') throw new Error('Token approval failed. No swap or bridge transaction was submitted.');
         }
@@ -432,20 +437,32 @@ export const SwapView: React.FC = () => {
         chainId: fromChainId,
       });
       setExecutionHash(hash);
+      setExecutionStage('confirming');
 
-      // Award points only after the source transaction is confirmed onchain.
-      // The tx hash is unique in Supabase, so retries cannot double-award.
+      // Wait for the actual source-chain receipt before declaring success.
+      // Viem documents waitForTransactionReceipt as the confirmation step after
+      // sendTransaction returns the hash. citeturn0search0
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       if (receipt.status !== 'success') {
         throw new Error('The transaction reverted. No points were awarded.');
       }
 
+      // The onchain transaction is now confirmed. Do not keep the UI in
+      // "Confirm in wallet" while the separate points sync is running.
+      setExecutionConfirmed(true);
+      setExecutionStage(null);
+      setExecuting(false);
+
+      // Points are secondary bookkeeping. A slow Supabase request must never
+      // make an already-confirmed blockchain transaction look pending.
       const action = fromChainId === toChainId ? 'swap' : 'bridge';
-      await recordConfirmedAction(address, hash, action);
+      recordConfirmedAction(address, hash, action).catch(() => {
+        // The transaction remains confirmed even if points sync is temporarily unavailable.
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err || '');
       setError(message || cleanSwapError(err));
-    } finally {
+      setExecutionStage(null);
       setExecuting(false);
     }
   };
@@ -550,8 +567,12 @@ export const SwapView: React.FC = () => {
                 >
                   {executing && <Loader2 className="w-4 h-4 animate-spin" />}
                   {executing
-                    ? 'Confirm in wallet...'
-                    : connectedChainId !== fromChainId
+                    ? executionStage === 'confirming'
+                      ? 'Confirming onchain...'
+                      : 'Confirm in wallet...'
+                    : executionConfirmed
+                      ? 'Confirmed'
+                      : connectedChainId !== fromChainId
                       ? 'Switch wallet to ' + (fromChain?.name || 'source chain')
                       : (fromChainId === toChainId ? 'Swap ' : 'Bridge ') + (fromToken?.symbol || '')}
                 </button>
@@ -585,7 +606,7 @@ export const SwapView: React.FC = () => {
 
             {executionHash && (
               <div className="mt-4 rounded-xl border border-green-500/30 bg-green-500/5 px-4 py-3 text-sm text-green-300 break-all">
-                Submitted: {executionHash}
+                {executionConfirmed ? 'Confirmed onchain: ' : 'Submitted: '}{executionHash}
               </div>
             )}
 
