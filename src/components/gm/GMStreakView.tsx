@@ -40,7 +40,9 @@ export const GMStreakView: React.FC = () => {
   const { address, isCorrectNetwork } = useWallet();
   const receiptClient = createPublicClient({
     chain: arcChain,
-    transport: http('https://rpc.arc-scan.org'),
+    // Use Arc Mainnet directly. ArcScan is for explorer/indexing only and
+    // must not be the browser's source of truth for transaction confirmation.
+    transport: http('https://rpc.mainnet.arc.io', { timeout: 15000, retryCount: 2 }),
   });
   const { writeContractAsync } = useWriteContract();
 
@@ -71,12 +73,10 @@ export const GMStreakView: React.FC = () => {
     }
   };
 
-  const syncOnchainGM = async () => {
+  const reconcileConfirmedToday = async (confirmedHash?: string) => {
     if (!address || !isGMContractConfigured) return false;
 
     try {
-      // Arc is authoritative for today's GM. Supabase must never control
-      // whether the button is enabled.
       const todayDay = BigInt(Math.floor(Date.now() / 86400000));
       const lastCheckInDay = await receiptClient.readContract({
         address: GM_CONTRACT_ADDRESS as `0x${string}`,
@@ -87,32 +87,20 @@ export const GMStreakView: React.FC = () => {
 
       if (lastCheckInDay !== todayDay) return false;
 
-      // Flip the UI immediately from confirmed onchain state.
       setOnchainConfirmedToday(true);
+      if (confirmedHash) {
+        setTxHash(confirmedHash);
+        window.localStorage.removeItem(PENDING_GM_TX_KEY);
+      }
       setStats((current) => markConfirmedToday(current));
 
-      // Repair the Supabase index from the server-side ArcScan log reader.
-      // Do not use browser eth_getLogs: Arc RPC log-range limits can reject it.
+      // The contract state is authoritative. Repair the Supabase index from
+      // that state even if ArcScan log indexing is delayed or unavailable.
       void (async () => {
         try {
-          const response = await fetch(`/api/blockchain/arc/gm-debug?address=${address}`, {
-            headers: { accept: 'application/json' },
-          });
-          if (!response.ok) throw new Error(`GM reconciliation HTTP ${response.status}`);
-
-          const body = await response.json();
-          const onchainDays = (Array.isArray(body?.logs) ? body.logs : [])
-            .map((log: any) => log?.args?.day)
-            .filter((day: unknown): day is string => typeof day === 'string');
-
-          if (!onchainDays.length) throw new Error('No confirmed GM event days returned.');
-
-          const repairedStats = await indexConfirmedGMDays(address, onchainDays);
+          const repairedStats = await indexConfirmedGMDays(address, [lastCheckInDay]);
           setStats(repairedStats);
           setLeaderboard(await getGMLeaderboard(20));
-
-          const latestLog = body.logs[body.logs.length - 1];
-          if (latestLog?.transactionHash) setTxHash(latestLog.transactionHash);
         } catch (err) {
           console.warn('GM index reconciliation is still waiting:', err);
         }
@@ -120,9 +108,21 @@ export const GMStreakView: React.FC = () => {
 
       return true;
     } catch (err) {
-      console.warn('Onchain GM sync is still waiting:', err);
+      console.warn('Onchain GM reconciliation is still waiting:', err);
       return false;
     }
+  };
+
+  const syncOnchainGM = async () => {
+    if (!address || !isGMContractConfigured) return false;
+
+    const confirmed = await reconcileConfirmedToday();
+    if (!confirmed) return false;
+
+    // If Supabase has not indexed the transaction yet, the UI is still
+    // considered confirmed because Arc Mainnet already says the wallet
+    // checked in today.
+    return true;
   };
 
   const recoverPendingGM = async () => {
@@ -153,18 +153,19 @@ export const GMStreakView: React.FC = () => {
       });
 
       if (receipt.status !== 'success') {
+        // A failed receipt is not a user cancellation, but always re-check
+        // the contract before deciding what the UI should display.
+        if (await reconcileConfirmedToday(pendingHash)) return;
         window.localStorage.removeItem(PENDING_GM_TX_KEY);
         return;
       }
 
-      // Confirmed onchain: update the UI immediately.
       setTxHash(pendingHash);
       setOnchainConfirmedToday(true);
       setStats((current) => markConfirmedToday(current));
       window.localStorage.removeItem(PENDING_GM_TX_KEY);
       setCheckingIn(false);
 
-      // Index asynchronously so Supabase latency cannot block the confirmed UI.
       void (async () => {
         try {
           const nextStats = await indexConfirmedGM(address, pendingHash);
@@ -175,6 +176,12 @@ export const GMStreakView: React.FC = () => {
         }
       })();
     } catch (err) {
+      // RPC lookup/timeout must never be treated as wallet cancellation.
+      // The contract state can still prove whether the GM succeeded.
+      if (await reconcileConfirmedToday(pendingHash)) {
+        setCheckingIn(false);
+        return;
+      }
       console.warn('Pending GM recovery is still waiting:', err);
     }
   };
@@ -199,7 +206,6 @@ export const GMStreakView: React.FC = () => {
   const handleCheckIn = async () => {
     if (!address || checkingIn) return;
 
-    // Check Arc directly before opening the wallet.
     if (await syncOnchainGM()) {
       setError('You already checked in today.');
       return;
@@ -231,24 +237,31 @@ export const GMStreakView: React.FC = () => {
       setTxHash(hash);
       window.localStorage.setItem(PENDING_GM_TX_KEY, hash);
 
-      const receipt = await receiptClient.waitForTransactionReceipt({
-        hash,
-        confirmations: 1,
-        pollingInterval: 1000,
-        timeout: 60000,
-      });
+      try {
+        const receipt = await receiptClient.waitForTransactionReceipt({
+          hash,
+          confirmations: 1,
+          pollingInterval: 1000,
+          timeout: 60000,
+        });
 
-      if (receipt.status !== 'success') {
-        throw new Error('GM transaction reverted.');
+        if (receipt.status !== 'success') {
+          throw new Error('GM transaction reverted.');
+        }
+      } catch (receiptError) {
+        // A confirmation RPC timeout is not the same as a cancelled wallet
+        // request. Check the actual Arc contract state before showing an error.
+        if (await reconcileConfirmedToday(hash)) {
+          setCheckingIn(false);
+          return;
+        }
+        throw receiptError;
       }
 
-      // The transaction is now confirmed on Arc. Reflect that immediately.
-      // Do not wait for Supabase to finish indexing.
       setOnchainConfirmedToday(true);
       setStats((current) => markConfirmedToday(current));
       setCheckingIn(false);
 
-      // Supabase is only an index/cache. Repair it in the background.
       void (async () => {
         try {
           const nextStats = await indexConfirmedGM(address, hash);
@@ -262,8 +275,16 @@ export const GMStreakView: React.FC = () => {
     } catch (err: any) {
       console.error('GM check-in failed:', err);
       const message = String(err?.shortMessage || err?.message || '');
+
+      // Before classifying any error, ask Arc Mainnet whether today's GM
+      // actually exists. This prevents a confirmed transaction from being
+      // displayed as cancelled/failed because a receipt call timed out.
+      if (await reconcileConfirmedToday(txHash || undefined)) {
+        setError(null);
+        return;
+      }
+
       if (/already checked in today/i.test(message)) {
-        // Even a rejected duplicate confirms the contract's daily state.
         setOnchainConfirmedToday(true);
         setStats((current) => markConfirmedToday(current));
         setError('You already checked in today.');
