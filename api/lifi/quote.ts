@@ -1,8 +1,8 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { applyApiSecurity } from '../../_security.js';
 
 const LIFI_API = 'https://li.quest/v1';
 const DEFAULT_INTEGRATOR = 'GEN-0FI';
-const DEFAULT_FEE = '0.003';
+const DEFAULT_FEE = '0.005';
 
 function getFee(): number {
   const raw = process.env.GEN0FI_LIFI_FEE || DEFAULT_FEE;
@@ -15,7 +15,8 @@ function isValidEvmAddress(value: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(value);
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
+  if (!applyApiSecurity(req, res)) return;
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
     return res.status(405).json({ error: 'Method not allowed' });
