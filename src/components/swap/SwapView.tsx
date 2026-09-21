@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowDownUp, ChevronDown, Loader2, RefreshCw, Wallet } from 'lucide-react';
-import { encodeFunctionData } from 'viem';
-import { getPublicClient, switchChain } from '@wagmi/core';
+import { createPublicClient, encodeFunctionData, formatUnits, http, parseUnits } from 'viem';
+import { switchChain } from '@wagmi/core';
 import { useAccount, useChainId, useWalletClient } from 'wagmi';
 import { wagmiConfig } from '../../config/wagmi';
 import { useWallet } from '../../context/WalletContext';
@@ -15,6 +15,7 @@ type LiFiChain = {
   chainType?: string;
   nativeToken?: LiFiToken;
   logoURI?: string;
+  metamask?: { rpcUrls?: string[]; blockExplorerUrls?: string[] };
 };
 
 type LiFiToken = {
@@ -45,14 +46,32 @@ function quoteIsExecutable(quote: any) {
 function formatBalance(amount: string | undefined, decimals: number) {
   if (!amount) return '0';
   try {
-    const value = Number(amount) / 10 ** decimals;
-    if (!Number.isFinite(value)) return '0';
-    return value.toLocaleString('en-US', {
-      maximumFractionDigits: 6,
-    });
+    const formatted = formatUnits(BigInt(amount), decimals);
+    const [whole, fraction = ''] = formatted.split('.');
+    const trimmedFraction = fraction.slice(0, 6).replace(/0+$/, '');
+    return Number(whole).toLocaleString('en-US') + (trimmedFraction ? '.' + trimmedFraction : '');
   } catch {
     return '0';
   }
+}
+
+function getDirectRpcUrl(chainId: number, chain?: LiFiChain) {
+  if (chainId === 5042) return 'https://rpc.mainnet.arc.io';
+  const candidates = chain?.metamask?.rpcUrls || [];
+  const safe = candidates.find((url) => {
+    try {
+      const host = new URL(url).hostname.toLowerCase();
+      return !host.includes('walletconnect') && !host.includes('reown');
+    } catch {
+      return false;
+    }
+  });
+  if (!safe) throw new Error('No direct public RPC is configured for the selected source chain.');
+  return safe;
+}
+
+function getDirectPublicClient(chainId: number, chain?: LiFiChain) {
+  return createPublicClient({ transport: http(getDirectRpcUrl(chainId, chain)) });
 }
 
 function tokenBalanceFor(
@@ -227,7 +246,7 @@ export const SwapView: React.FC = () => {
     setQuote(null);
     setError(null);
     try {
-      const rawAmount = BigInt(Math.floor(Number(amount) * 10 ** fromToken.decimals)).toString();
+      const rawAmount = parseUnits(amount, fromToken.decimals).toString();
       const params = new URLSearchParams({
         fromChain: String(fromChainId),
         toChain: String(toChainId),
@@ -270,8 +289,7 @@ export const SwapView: React.FC = () => {
         throw new Error('LI.FI returned an incomplete route. Refresh the quote before submitting.');
       }
 
-      const publicClient = getPublicClient(wagmiConfig, { chainId: fromChainId });
-      if (!publicClient) throw new Error('Arc transaction confirmation client is unavailable.');
+      const publicClient = getDirectPublicClient(fromChainId, fromChain);
 
       const approvalAddress = quote?.estimate?.approvalAddress;
       if (fromToken && fromToken.address.toLowerCase() !== NATIVE && approvalAddress && quote?.estimate?.fromAmount) {
