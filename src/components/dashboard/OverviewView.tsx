@@ -449,7 +449,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
         </div>
       </button>
 
-      {/* Wallet Holdings */
+      {/* Wallet Holdings */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
         {/* Fungible token holdings */}
         <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 glow-blue-card-hover flex flex-col justify-between shadow-sm group">
