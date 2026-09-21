@@ -2530,3 +2530,59 @@ html.grey ::-webkit-scrollbar-thumb {
 html.grey ::-webkit-scrollbar-thumb:hover {
   background: #3b5d83 !important;
 }
+
+
+/* Coin selector readability: match the clearer Chain selector treatment */
+html.grey [role="listbox"],
+html.grey [data-radix-select-content],
+html.grey [data-radix-popper-content-wrapper] > [role="listbox"] {
+  background: rgba(13, 21, 32, 0.97) !important;
+  color: #edf4ff !important;
+  border: 1px solid rgba(122, 162, 214, 0.22) !important;
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.045) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+html.grey [role="option"],
+html.grey [data-radix-select-item] {
+  background: transparent !important;
+  color: #edf4ff !important;
+}
+
+html.grey [role="option"] *,
+html.grey [data-radix-select-item] * {
+  color: inherit !important;
+}
+
+html.grey [role="option"]:hover,
+html.grey [role="option"][data-highlighted],
+html.grey [data-radix-select-item]:hover,
+html.grey [data-radix-select-item][data-highlighted] {
+  background: rgba(59, 130, 246, 0.16) !important;
+  color: #ffffff !important;
+}
+
+html.grey [role="option"][aria-selected="true"],
+html.grey [data-radix-select-item][data-state="checked"] {
+  background: rgba(59, 130, 246, 0.12) !important;
+  color: #dbeafe !important;
+}
+
+html.grey [role="option"][aria-selected="true"] *,
+html.grey [data-radix-select-item][data-state="checked"] * {
+  color: inherit !important;
+}
+
+/* Coin icon/name/symbol hierarchy */
+html.grey [role="option"] .text-white,
+html.grey [data-radix-select-item] .text-white {
+  color: #f5f9ff !important;
+}
+
+html.grey [role="option"] .text-zinc-400,
+html.grey [data-radix-select-item] .text-zinc-400 {
+  color: #9fb0c4 !important;
+}
