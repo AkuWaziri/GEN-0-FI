@@ -2586,3 +2586,106 @@ html.grey [role="option"] .text-zinc-400,
 html.grey [data-radix-select-item] .text-zinc-400 {
   color: #9fb0c4 !important;
 }
+
+
+/* Premium SaaS glow refinement */
+html:not(.grey) {
+  --saas-glow-primary: rgba(91, 141, 255, 0.16);
+  --saas-glow-soft: rgba(91, 141, 255, 0.09);
+  --saas-glow-warm: rgba(184, 138, 91, 0.10);
+}
+
+html.grey {
+  --saas-glow-primary: rgba(73, 151, 255, 0.20);
+  --saas-glow-soft: rgba(73, 151, 255, 0.10);
+  --saas-glow-warm: rgba(102, 171, 255, 0.08);
+}
+
+/* Keep the glow atmospheric, not neon */
+html:not(.grey) body::before,
+html.grey body::before {
+  content: "";
+  position: fixed;
+  inset: -18%;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 16% 12%, var(--saas-glow-primary), transparent 28%),
+    radial-gradient(circle at 84% 18%, var(--saas-glow-soft), transparent 24%),
+    radial-gradient(circle at 52% 92%, var(--saas-glow-warm), transparent 30%);
+  filter: blur(34px);
+  opacity: .9;
+}
+
+/* Shared premium glass edge treatment */
+html:not(.grey) #desktop-sidebar,
+html:not(.grey) #main-app-header,
+html:not(.grey) #mobile-bottom-nav,
+html.grey #desktop-sidebar,
+html.grey #main-app-header,
+html.grey #mobile-bottom-nav {
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.14),
+    0 0 34px var(--saas-glow-soft),
+    inset 0 1px 0 rgba(255,255,255,.10);
+}
+
+/* Cards: soft depth + restrained halo */
+html:not(.grey) .glow-blue-card,
+html.grey .glow-blue-card {
+  box-shadow:
+    0 14px 38px rgba(0,0,0,.14),
+    0 0 28px var(--saas-glow-soft),
+    inset 0 1px 0 rgba(255,255,255,.08);
+  transition: box-shadow .22s ease, border-color .22s ease, transform .22s ease;
+}
+
+html:not(.grey) .glow-blue-card:hover,
+html.grey .glow-blue-card:hover {
+  box-shadow:
+    0 18px 44px rgba(0,0,0,.17),
+    0 0 38px var(--saas-glow-primary),
+    inset 0 1px 0 rgba(255,255,255,.12);
+}
+
+/* Buttons and active controls get a focused glow, not a permanent neon aura */
+html:not(.grey) button:hover,
+html.grey button:hover {
+  filter: drop-shadow(0 0 10px var(--saas-glow-soft));
+}
+
+html:not(.grey) [role="tab"][aria-selected="true"],
+html.grey [role="tab"][aria-selected="true"] {
+  box-shadow:
+    0 0 20px var(--saas-glow-soft),
+    inset 0 1px 0 rgba(255,255,255,.10);
+}
+
+/* Inputs/selects stay crisp while gaining subtle focus depth */
+html:not(.grey) input:focus,
+html:not(.grey) select:focus,
+html:not(.grey) textarea:focus,
+html.grey input:focus,
+html.grey select:focus,
+html.grey textarea:focus {
+  box-shadow:
+    0 0 0 3px rgba(73,151,255,.08),
+    0 0 20px var(--saas-glow-soft);
+}
+
+/* Primary blue actions */
+html:not(.grey) .bg-blue-600:hover,
+html:not(.grey) .bg-blue-500:hover,
+html.grey .bg-blue-600:hover,
+html.grey .bg-blue-500:hover {
+  box-shadow:
+    0 8px 24px rgba(37,99,235,.18),
+    0 0 24px var(--saas-glow-primary);
+}
+
+/* Avoid glow stacking on disabled controls */
+html:not(.grey) button:disabled,
+html.grey button:disabled {
+  filter: none !important;
+  box-shadow: none !important;
+}
