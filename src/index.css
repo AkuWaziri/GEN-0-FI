@@ -2274,3 +2274,259 @@ html.brown .animate-pulse {
   background: rgba(88, 65, 47, 0.55) !important;
   border-color: rgba(224, 202, 174, 0.12) !important;
 }
+
+
+/* =============================================================
+   DARK MODE: BLUE GLASS / PREMIUM MIDNIGHT SYSTEM
+   Final visual layer for the graphite dark theme.
+   ============================================================= */
+
+html.grey,
+html.grey body,
+html.grey #root {
+  color-scheme: dark;
+  background:
+    radial-gradient(circle at 92% 4%, rgba(59, 130, 246, 0.13), transparent 30%),
+    radial-gradient(circle at 8% 34%, rgba(37, 99, 235, 0.08), transparent 34%),
+    linear-gradient(145deg, #0b1018 0%, #0d1119 52%, #0a0e15 100%) !important;
+  color: #edf4ff !important;
+}
+
+html.grey body {
+  min-height: 100vh;
+  background-attachment: fixed;
+}
+
+html.grey #root {
+  min-height: 100vh;
+  background: transparent !important;
+}
+
+/* App chrome: translucent midnight glass */
+html.grey #desktop-sidebar,
+html.grey #main-app-header,
+html.grey #mobile-bottom-nav {
+  background: rgba(12, 18, 28, 0.76) !important;
+  color: #edf4ff !important;
+  border-color: rgba(122, 162, 214, 0.16) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 18px 55px rgba(0, 0, 0, 0.28);
+}
+
+/* Existing dark surfaces become layered blue-black glass */
+html.grey [class*="bg-[#090a0c]"],
+html.grey [class*="bg-[#0f1012]"],
+html.grey [class*="bg-[#07080a]"],
+html.grey [class*="bg-[#000000]"],
+html.grey [class*="bg-[#08090b]"],
+html.grey [class*="bg-[#0d0f12]"],
+html.grey [class*="bg-[#0b0d10]"],
+html.grey [class*="bg-[#0c0e12]"],
+html.grey [class*="bg-[#0d0f13]"],
+html.grey [class*="bg-[#0d0f14]"],
+html.grey [class*="bg-[#0c0d10]"],
+html.grey [class*="bg-[#101216]"],
+html.grey [class*="bg-[#111317]"],
+html.grey [class*="bg-[#111418]"],
+html.grey [class*="bg-[#131519]"],
+html.grey [class*="bg-[#14161a]"],
+html.grey [class*="bg-[#14161d]"],
+html.grey [class*="bg-[#151720]"],
+html.grey [class*="bg-[#16181d]"],
+html.grey [class*="bg-[#0e1014]"],
+html.grey [class*="bg-[#090b0e]"],
+html.grey [class*="bg-[#08090c]"],
+html.grey [class*="bg-[#12141a]"],
+html.grey [class*="bg-[#12151b]"],
+html.grey [class*="bg-[#13161c]"],
+html.grey [class*="bg-[#1a1d24]"],
+html.grey [class*="bg-[#050608]"],
+html.grey .bg-zinc-950,
+html.grey .bg-zinc-900 {
+  background: rgba(18, 27, 40, 0.68) !important;
+  color: #edf4ff !important;
+  border-color: rgba(122, 162, 214, 0.15) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Secondary surfaces */
+html.grey .bg-zinc-800,
+html.grey .bg-zinc-700,
+html.grey .bg-zinc-600 {
+  background: rgba(30, 43, 61, 0.68) !important;
+  color: #edf4ff !important;
+  border-color: rgba(122, 162, 214, 0.2) !important;
+}
+
+html.grey .hover\\:bg-zinc-800:hover,
+html.grey .hover\\:bg-zinc-900:hover,
+html.grey .hover\\:bg-zinc-700:hover,
+html.grey .hover\\:bg-zinc-800\\/40:hover,
+html.grey .hover\\:bg-zinc-800\\/50:hover,
+html.grey .hover\\:bg-zinc-800\\/80:hover,
+html.grey .hover\\:bg-zinc-800\\/90:hover {
+  background: rgba(42, 62, 88, 0.72) !important;
+}
+
+/* Premium cards */
+html.grey .glow-blue-card {
+  background: rgba(15, 24, 37, 0.62) !important;
+  border-color: rgba(102, 153, 219, 0.2) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 20px 55px rgba(0, 0, 0, 0.28),
+    0 0 28px rgba(37, 99, 235, 0.055) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+html.grey .glow-blue-card-hover:hover {
+  border-color: rgba(96, 165, 250, 0.34) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 24px 65px rgba(0, 0, 0, 0.34),
+    0 0 24px rgba(37, 99, 235, 0.1) !important;
+}
+
+/* Typography */
+html.grey .text-white,
+html.grey .text-zinc-100,
+html.grey .text-zinc-200 {
+  color: #edf4ff !important;
+}
+
+html.grey .text-zinc-300 { color: #c8d5e6 !important; }
+html.grey .text-zinc-400 { color: #98aabd !important; }
+html.grey .text-zinc-500 { color: #72849a !important; }
+html.grey .text-zinc-600 { color: #5d6f84 !important; }
+
+html.grey .hover\\:text-white:hover,
+html.grey .hover\\:text-zinc-200:hover,
+html.grey .hover\\:text-zinc-300:hover {
+  color: #ffffff !important;
+}
+
+/* Inputs */
+html.grey input,
+html.grey textarea,
+html.grey select {
+  background: rgba(15, 24, 37, 0.78) !important;
+  color: #edf4ff !important;
+  border-color: rgba(122, 162, 214, 0.2) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+html.grey input::placeholder,
+html.grey textarea::placeholder {
+  color: #71849a !important;
+}
+
+html.grey input:focus,
+html.grey textarea:focus,
+html.grey select:focus {
+  border-color: rgba(96, 165, 250, 0.72) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.14) !important;
+}
+
+/* Blue glass tabs */
+html.grey .glow-blue-tab,
+html.grey [role="tab"][aria-selected="true"] {
+  position: relative;
+  background: linear-gradient(
+    180deg,
+    rgba(59, 130, 246, 0.19) 0%,
+    rgba(37, 99, 235, 0.09) 100%
+  ) !important;
+  color: #a9ccfa !important;
+  border-color: rgba(96, 165, 250, 0.38) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(191, 219, 254, 0.12),
+    0 0 20px rgba(59, 130, 246, 0.1) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+html.grey .glow-blue-tab:hover,
+html.grey [role="tab"]:hover {
+  background: rgba(59, 130, 246, 0.13) !important;
+  border-color: rgba(96, 165, 250, 0.3) !important;
+}
+
+/* Blue active indicators and controls */
+html.grey .glow-blue-indicator {
+  box-shadow:
+    0 0 8px 1px rgba(96, 165, 250, 0.62),
+    0 0 18px 3px rgba(59, 130, 246, 0.22);
+}
+
+html.grey .glow-blue-wallet {
+  background: rgba(37, 99, 235, 0.1) !important;
+  border-color: rgba(96, 165, 250, 0.34) !important;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
+}
+
+/* Primary buttons: clean blue, not neon */
+html.grey .bg-blue-500,
+html.grey .bg-blue-600 {
+  color: #ffffff !important;
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.18);
+}
+
+html.grey .bg-white.text-black,
+html.grey button.bg-white.text-black,
+html.grey a.bg-white.text-black {
+  background: linear-gradient(180deg, #edf4ff 0%, #d8e7f8 100%) !important;
+  color: #101923 !important;
+  border-color: rgba(255, 255, 255, 0.72) !important;
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+}
+
+html.grey .bg-white.text-black *,
+html.grey button.bg-white.text-black *,
+html.grey a.bg-white.text-black * {
+  color: #101923 !important;
+}
+
+html.grey .bg-white.text-black:hover,
+html.grey button.bg-white.text-black:hover,
+html.grey a.bg-white.text-black:hover {
+  background: linear-gradient(180deg, #ffffff 0%, #e3effc 100%) !important;
+}
+
+/* Semantic status colors, softened to fit the system */
+html.grey .text-blue-300,
+html.grey .text-blue-400 { color: #8eb8f0 !important; }
+html.grey .text-emerald-400 { color: #55c99a !important; }
+html.grey .text-amber-400,
+html.grey .text-yellow-400 { color: #e8b96a !important; }
+html.grey .text-red-400 { color: #f08b80 !important; }
+html.grey .text-orange-400 { color: #f0a36a !important; }
+html.grey .text-purple-400 { color: #c99be7 !important; }
+
+/* Modal depth and loading states */
+html.grey .bg-black\\/80 {
+  background: rgba(3, 7, 13, 0.78) !important;
+}
+
+html.grey .animate-pulse {
+  background: rgba(31, 46, 65, 0.62) !important;
+  border-color: rgba(122, 162, 214, 0.12) !important;
+}
+
+html.grey ::-webkit-scrollbar-track {
+  background: #0b1018 !important;
+}
+
+html.grey ::-webkit-scrollbar-thumb {
+  background: #263b55 !important;
+}
+
+html.grey ::-webkit-scrollbar-thumb:hover {
+  background: #3b5d83 !important;
+}
