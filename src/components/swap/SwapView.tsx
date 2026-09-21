@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowDownUp, ChevronDown, Loader2, RefreshCw, Wallet } from 'lucide-react';
-import { createPublicClient, encodeFunctionData, formatUnits, http, parseUnits } from 'viem';
+import { createPublicClient, encodeFunctionData, fallback, formatUnits, http, parseUnits } from 'viem';
 import { switchChain } from '@wagmi/core';
 import { useAccount, useChainId, useWalletClient } from 'wagmi';
 import { wagmiConfig } from '../../config/wagmi';
@@ -55,10 +55,10 @@ function formatBalance(amount: string | undefined, decimals: number) {
   }
 }
 
-function getDirectRpcUrl(chainId: number, chain?: LiFiChain) {
-  if (chainId === 5042) return 'https://rpc.mainnet.arc.io';
-  const candidates = chain?.metamask?.rpcUrls || [];
-  const safe = candidates.find((url) => {
+function getDirectRpcUrls(chainId: number, chain?: LiFiChain) {
+  if (chainId === 5042) return ['https://rpc.mainnet.arc.io'];
+
+  const configured = (chain?.metamask?.rpcUrls || []).filter((url) => {
     try {
       const host = new URL(url).hostname.toLowerCase();
       return !host.includes('walletconnect') && !host.includes('reown');
@@ -66,12 +66,29 @@ function getDirectRpcUrl(chainId: number, chain?: LiFiChain) {
       return false;
     }
   });
-  if (!safe) throw new Error('No direct public RPC is configured for the selected source chain.');
-  return safe;
+
+  // Arbitrum's arb1 endpoint can intermittently reject eth_call requests.
+  // Keep it as a candidate only if LI.FI provides it, then fail over to
+  // independent public endpoints instead of surfacing a raw RPC error.
+  if (chainId === 42161) {
+    return Array.from(new Set([
+      ...configured,
+      'https://arbitrum-one-rpc.publicnode.com',
+      'https://arbitrum.llamarpc.com',
+    ]));
+  }
+
+  if (configured.length === 0) {
+    throw new Error('No direct public RPC is configured for the selected source chain.');
+  }
+  return configured;
 }
 
 function getDirectPublicClient(chainId: number, chain?: LiFiChain) {
-  return createPublicClient({ transport: http(getDirectRpcUrl(chainId, chain)) });
+  const urls = getDirectRpcUrls(chainId, chain);
+  return createPublicClient({
+    transport: fallback(urls.map((url) => http(url, { timeout: 10_000 }))),
+  });
 }
 
 function tokenBalanceFor(
