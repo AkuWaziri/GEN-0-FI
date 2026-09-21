@@ -3,7 +3,7 @@ import { Logo } from './Logo';
 import { NetworkBadge } from './NetworkBadge';
 import { AddressBadge } from './AddressBadge';
 import { useWallet } from '../../context/WalletContext';
-import { LayoutDashboard, History, Settings, LogOut, Wallet, Flame, ArrowLeftRight, Trophy } from 'lucide-react';
+import { LayoutDashboard, History, Settings, Wallet, ArrowLeftRight, Trophy } from 'lucide-react';
 
 export type TabType = 'overview' | 'ask' | 'swap' | 'gm' | 'activity' | 'points' | 'settings';
 
@@ -19,7 +19,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
   const navItems = [
     { id: 'overview' as TabType, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'swap' as TabType, label: 'Swap & Bridge', icon: ArrowLeftRight },
-    { id: 'gm' as TabType, label: 'GM Streak', icon: Flame },
     { id: 'points' as TabType, label: 'Leaderboard', icon: Trophy },
     { id: 'activity' as TabType, label: 'Activity', icon: History },
     { id: 'settings' as TabType, label: 'Settings', icon: Settings },
@@ -51,7 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
           <div className="p-2.5 rounded-xl bg-[#0e1014] border border-zinc-800/90">
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-mono">Your Wallet</span>
-              <button onClick={disconnectWallet} className="text-zinc-400 hover:text-white transition-colors p-1 rounded hover:bg-zinc-800 cursor-pointer" title="Disconnect wallet" aria-label="Disconnect wallet"><LogOut className="w-3 h-3" /></button>
+              <button onClick={disconnectWallet} className="text-zinc-400 hover:text-white transition-colors p-1 rounded hover:bg-zinc-800 cursor-pointer" title="Disconnect wallet" aria-label="Disconnect wallet"><span className="sr-only">Disconnect</span>×</button>
             </div>
             <AddressBadge address={address} shortAddress={shortAddress} onClick={onOpenConnect} />
           </div>
