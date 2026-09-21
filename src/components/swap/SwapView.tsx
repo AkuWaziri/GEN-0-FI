@@ -36,11 +36,6 @@ const API = 'https://li.quest/v1';
 const QUOTE_API = '/api/lifi/quote';
 const NATIVE = '0x0000000000000000000000000000000000000000';
 
-const ERC20_ABI: any = [
-  { type: 'function', name: 'allowance', stateMutability: 'view', inputs: [{ name: 'owner', type: 'address' }, { name: 'spender', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] },
-  { type: 'function', name: 'approve', stateMutability: 'nonpayable', inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }] },
-] as const;
-
 function isNativeToken(token: LiFiToken | null) {
   return !token || token.address.toLowerCase() === NATIVE;
 }
@@ -275,51 +270,32 @@ export const SwapView: React.FC = () => {
         await switchChain(wagmiConfig, { chainId: fromChainId });
       }
 
-      const publicClient: any = getPublicClient(wagmiConfig, { chainId: fromChainId });
+      const publicClient = getPublicClient(wagmiConfig, { chainId: fromChainId });
       if (!publicClient) throw new Error('Source-chain confirmation client is unavailable.');
 
       const tx = quote.transactionRequest;
       const rawAmount = BigInt(Math.floor(Number(amount) * 10 ** fromToken.decimals));
+      const approvalAddress = quote?.estimate?.approvalAddress;
 
-      if (!isNativeToken(fromToken)) {
-        const approvalAddress = quote?.estimate?.approvalAddress;
-        if (approvalAddress && /^0x[a-fA-F0-9]{40}$/.test(approvalAddress)) {
-          const allowance = BigInt(await publicClient.readContract({
-            address: fromToken.address as `0x${string}`,
-            abi: ERC20_ABI,
-            functionName: 'allowance',
-            args: [address as `0x${string}`, approvalAddress as `0x${string}`],
-          }) as bigint);
+      // LI.FI requires an ERC-20 allowance before spending a token.
+      // Keep this explicit: the user must approve it in the wallet before the swap.
+      if (!isNativeToken(fromToken) && approvalAddress && /^0x[a-fA-F0-9]{40}$/.test(approvalAddress)) {
+        setError('Token approval required. Confirm the approval in your wallet.');
+        const approvalData = (
+          '0x095ea7b3' +
+          approvalAddress.slice(2).padStart(64, '0') +
+          rawAmount.toString(16).padStart(64, '0')
+        ) as `0x${string}`;
 
-          if (allowance < rawAmount) {
-            setError('Approval required. Confirm the token approval in your wallet.');
-            const approvalData = (
-              '0x095ea7b3' +
-              approvalAddress.slice(2).padStart(64, '0') +
-              rawAmount.toString(16).padStart(64, '0')
-            ) as `0x${string}`;
-            const approvalHash = await walletClient.sendTransaction({
-              account: address as `0x${string}`,
-              to: fromToken.address as `0x${string}`,
-              data: approvalData,
-              value: 0n,
-              chainId: fromChainId,
-            });
-            await publicClient.waitForTransactionReceipt({ hash: approvalHash });
-            setError(null);
-          }
-        }
-      }
-
-      try {
-        await publicClient.call({
+        const approvalHash = await walletClient.sendTransaction({
           account: address as `0x${string}`,
-          to: tx.to,
-          data: tx.data,
-          value: tx.value ? BigInt(tx.value) : 0n,
+          to: fromToken.address as `0x${string}`,
+          data: approvalData,
+          value: 0n,
+          chainId: fromChainId,
         });
-      } catch {
-        throw new Error('LI.FI could not simulate this route on the selected chain. No swap or bridge was submitted.');
+        await publicClient.waitForTransactionReceipt({ hash: approvalHash });
+        setError(null);
       }
 
       const hash = await walletClient.sendTransaction({
