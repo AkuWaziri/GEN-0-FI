@@ -440,8 +440,7 @@ export const SwapView: React.FC = () => {
       setExecutionStage('confirming');
 
       // Wait for the actual source-chain receipt before declaring success.
-      // Viem documents waitForTransactionReceipt as the confirmation step after
-      // sendTransaction returns the hash. citeturn0search0
+      // Wait for the source-chain receipt before declaring the transaction confirmed.
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       if (receipt.status !== 'success') {
         throw new Error('The transaction reverted. No points were awarded.');
