@@ -252,10 +252,7 @@ export const SwapView: React.FC = () => {
   }, [address, fromToken, toToken, amount, fromChainId, toChainId]);
 
   const executeQuote = async () => {
-    if (!quote?.transactionRequest || !address || !walletClient) {
-      if (!walletClient) setError('Wallet transaction session is not ready. Reconnect the wallet and try again.');
-      return;
-    }
+    if (!quote?.transactionRequest || !walletClient || !address) return;
     setExecuting(true);
     setError(null);
     setExecutionHash(null);
@@ -264,16 +261,10 @@ export const SwapView: React.FC = () => {
         await switchChain(wagmiConfig, { chainId: fromChainId });
       }
       const tx = quote.transactionRequest;
-      if (!tx.to || !tx.data) {
-        throw new Error('LI.FI returned an incomplete transaction request. Please refresh the quote.');
-      }
-
-      // Submit through the active connected wallet client.
-      // This keeps the signing request inside the current Reown/AppKit session.
       const hash = await walletClient.sendTransaction({
         account: address as `0x${string}`,
-        to: tx.to as `0x${string}`,
-        data: tx.data as `0x${string}`,
+        to: tx.to,
+        data: tx.data,
         value: tx.value ? BigInt(tx.value) : 0n,
         chainId: fromChainId,
       });
