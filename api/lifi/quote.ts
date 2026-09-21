@@ -3,6 +3,7 @@ import { applyApiSecurity } from '../../_security.js';
 const LIFI_API = 'https://li.quest/v1';
 const DEFAULT_INTEGRATOR = 'GEN-0FI';
 const DEFAULT_FEE = '0.005';
+const GEN0FI_FEE_WALLET = '0x5Bce25397eEfbc76f6479e6838c00a5115dbEA4c';
 
 function getFee(): number {
   const raw = process.env.GEN0FI_LIFI_FEE || DEFAULT_FEE;
@@ -23,13 +24,7 @@ export default async function handler(req: any, res: any) {
   }
   try {
     const fee = getFee();
-    const feeWallet = process.env.GEN0FI_FEE_WALLET || '';
-    if (!isValidEvmAddress(feeWallet)) {
-      return res.status(503).json({
-        error: 'GEN-0FI fee collection is not configured.',
-        message: 'Set GEN0FI_FEE_WALLET to the treasury wallet configured for the GEN-0FI LI.FI integration.',
-      });
-    }
+    const feeWallet = GEN0FI_FEE_WALLET;
     const query = new URLSearchParams();
     for (const [key, value] of Object.entries(req.query)) {
       if (typeof value === 'string') query.set(key, value);
