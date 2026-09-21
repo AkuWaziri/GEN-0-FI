@@ -14,7 +14,7 @@ export const ProjectLogoMark: React.FC<{ className?: string }> = ({ className = 
       <path
         d="M 12 18 H 54 A 32 32 0 0 1 86 50 A 32 32 0 0 1 54 82 H 12 A 6 6 0 0 1 6 76 V 24 A 6 6 0 0 1 12 18 Z"
         fill="currentColor"
-        className={`fill-current project-logo-mark transition-colors ${theme === 'white' ? 'text-zinc-950' : 'text-white'}`}
+        className={`fill-current project-logo-mark transition-colors ${theme === 'white' ? 'text-[#f5ead8]' : 'text-white'}`}
       />
     </svg>
   );
@@ -34,8 +34,8 @@ export const Logo: React.FC<LogoProps> = ({ size = 'md', showText = true, classN
       </div>
       {showText && (
         <div className="flex flex-col leading-none">
-          <div className={`tracking-tight flex items-center gap-1.5 ${isWhite ? 'text-zinc-950' : 'text-white'} ${textSizeClass}`}>
-            <span className={`font-extrabold tracking-tight ${isWhite ? 'text-zinc-950' : 'text-white'}`}>GEN-0</span>
+          <div className={`tracking-tight flex items-center gap-1.5 ${isWhite ? 'text-[#f5ead8]' : 'text-white'} ${textSizeClass}`}>
+            <span className={`font-extrabold tracking-tight ${isWhite ? 'text-[#f5ead8]' : 'text-white'}`}>GEN-0</span>
             <span className="text-blue-400 font-bold font-mono text-[12px] px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/30">FI</span>
           </div>
         </div>
