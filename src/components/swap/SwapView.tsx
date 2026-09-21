@@ -36,6 +36,19 @@ const API = 'https://li.quest/v1';
 const QUOTE_API = '/api/lifi/quote';
 const NATIVE = '0x0000000000000000000000000000000000000000';
 
+const ERC20_ABI = [
+  { type: 'function', name: 'allowance', stateMutability: 'view', inputs: [{ name: 'owner', type: 'address' }, { name: 'spender', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] },
+  { type: 'function', name: 'approve', stateMutability: 'nonpayable', inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }] },
+] as const;
+
+function isNativeToken(token: LiFiToken | null) {
+  return !token || token.address.toLowerCase() === NATIVE;
+}
+
+function quoteIsExecutable(quote: any) {
+  return Boolean(quote?.transactionRequest?.to && quote?.transactionRequest?.data && quote?.estimate?.toAmount && quote?.estimate?.toAmountMin);
+}
+
 function formatBalance(amount: string | undefined, decimals: number) {
   if (!amount) return '0';
   try {
@@ -234,6 +247,7 @@ export const SwapView: React.FC = () => {
         integrator: 'gen-0fi',
       });
       const data = await fetchJson(`${QUOTE_API}?${params.toString()}`);
+      if (!quoteIsExecutable(data)) throw new Error('LI.FI returned an incomplete or unsimulated route. No transaction is available to submit.');
       setQuote(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No LI.FI route is available for this selection.');
@@ -252,7 +266,7 @@ export const SwapView: React.FC = () => {
   }, [address, fromToken, toToken, amount, fromChainId, toChainId]);
 
   const executeQuote = async () => {
-    if (!quote?.transactionRequest || !walletClient || !address) return;
+    if (!quoteIsExecutable(quote) || !walletClient || !address || !fromToken) return;
     setExecuting(true);
     setError(null);
     setExecutionHash(null);
@@ -260,7 +274,50 @@ export const SwapView: React.FC = () => {
       if (connectedChainId !== fromChainId) {
         await switchChain(wagmiConfig, { chainId: fromChainId });
       }
+
+      const publicClient = getPublicClient(wagmiConfig, { chainId: fromChainId });
+      if (!publicClient) throw new Error('Source-chain confirmation client is unavailable.');
+
       const tx = quote.transactionRequest;
+      const rawAmount = BigInt(Math.floor(Number(amount) * 10 ** fromToken.decimals));
+
+      if (!isNativeToken(fromToken)) {
+        const approvalAddress = quote?.estimate?.approvalAddress;
+        if (approvalAddress && /^0x[a-fA-F0-9]{40}$/.test(approvalAddress)) {
+          const allowance = await publicClient.readContract({
+            address: fromToken.address as `0x${string}`,
+            abi: ERC20_ABI,
+            functionName: 'allowance',
+            args: [address as `0x${string}`, approvalAddress as `0x${string}`],
+          });
+
+          if (allowance < rawAmount) {
+            setError('Approval required. Confirm the token approval in your wallet.');
+            const approvalHash = await walletClient.writeContract({
+              account: address as `0x${string}`,
+              address: fromToken.address as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: 'approve',
+              args: [approvalAddress as `0x${string}`, rawAmount],
+              chainId: fromChainId,
+            });
+            await publicClient.waitForTransactionReceipt({ hash: approvalHash });
+            setError(null);
+          }
+        }
+      }
+
+      try {
+        await publicClient.call({
+          account: address as `0x${string}`,
+          to: tx.to,
+          data: tx.data,
+          value: tx.value ? BigInt(tx.value) : 0n,
+        });
+      } catch {
+        throw new Error('LI.FI could not simulate this route on the selected chain. No swap or bridge was submitted.');
+      }
+
       const hash = await walletClient.sendTransaction({
         account: address as `0x${string}`,
         to: tx.to,
@@ -269,11 +326,8 @@ export const SwapView: React.FC = () => {
         chainId: fromChainId,
       });
       setExecutionHash(hash);
+      setError(null);
 
-      // Award points only after the source transaction is confirmed onchain.
-      // The tx hash is unique in Supabase, so retries cannot double-award.
-      const publicClient = getPublicClient(wagmiConfig, { chainId: fromChainId });
-      if (!publicClient) throw new Error('Arc transaction confirmation client is unavailable.');
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       if (receipt.status !== 'success') {
         throw new Error('The transaction reverted. No points were awarded.');
@@ -283,7 +337,11 @@ export const SwapView: React.FC = () => {
       await recordConfirmedAction(address, hash, action);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err || '');
-      setError(/user rejected|user denied|rejected the request|request rejected|4001/i.test(message) ? 'Cancelled' : message || 'The swap or bridge could not be submitted.');
+      setError(
+        /user rejected|user denied|rejected the request|request rejected|4001/i.test(message)
+          ? 'Cancelled'
+          : message || 'The swap or bridge could not be submitted.',
+      );
     } finally {
       setExecuting(false);
     }
@@ -381,7 +439,7 @@ export const SwapView: React.FC = () => {
             </div>
 
             <div className="mt-4 flex flex-col sm:flex-row gap-3">
-              {quote?.transactionRequest ? (
+              {quoteIsExecutable(quote) ? (
                 <button
                   onClick={connectedChainId !== fromChainId ? switchFromChain : executeQuote}
                   disabled={executing}
