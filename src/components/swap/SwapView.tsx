@@ -431,9 +431,7 @@ export const SwapView: React.FC = () => {
                 </div>
                 <div className="mt-2 text-xs text-zinc-500">
                   Route: {quote.toolDetails?.name || quote.tool || 'LI.FI'}
-                  {quote.gen0fiFee?.percent !== undefined && (
-                    <> · GEN-0FI fee: {quote.gen0fiFee.percent}%</>
-                  )}
+
                 </div>
               </div>
             )}
