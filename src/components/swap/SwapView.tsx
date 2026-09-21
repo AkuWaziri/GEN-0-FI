@@ -516,8 +516,8 @@ function TokenPanel(props: {
 
   const warmWhite = typeof document !== 'undefined' && document.documentElement.classList.contains('brown');
   const menuClass = warmWhite
-    ? 'border-[#b58a63] bg-[#4a3020] text-[#f6eadf]'
-    : 'border-zinc-600 bg-[#181a1f] text-white';
+    ? 'border-[#b58a63] bg-[#2f2118] text-[#fff7ef]'
+    : 'border-blue-400/30 bg-[#0f1724] text-white';
 
   const tokenWalletBalance = (token: LiFiToken) => {
     if (props.chainId === 5042 && token.symbol?.toUpperCase() === 'USDC' && props.arcNativeBalance !== null) return formatBalance(props.arcNativeBalance, 18);
@@ -603,7 +603,7 @@ function TokenPanel(props: {
           }}
           role="listbox"
         >
-          <div className={warmWhite ? 'sticky top-0 p-2 bg-[#4a3020]' : 'sticky top-0 p-2 bg-[#181a1f]'}>
+          <div className={warmWhite ? 'sticky top-0 p-2 bg-[#2f2118]' : 'sticky top-0 p-2 bg-[#0f1724]'}>
             <input
               autoFocus
               value={search}
@@ -647,7 +647,7 @@ function TokenPanel(props: {
               {lookingUpToken && <div className={warmWhite ? 'px-4 py-2 text-xs text-[#d0b59e]' : 'px-4 py-2 text-xs text-zinc-400'}>Looking up contract on LI.FI...</div>}
               {lookupError && <div className="px-4 py-2 text-xs text-red-300">{lookupError}</div>}
               {visibleTokens.map((token) => (
-                <button key={token.address} type="button" onClick={() => { props.setToken(token); setSearch(''); setOpenMenu(null); }} className={warmWhite ? 'w-full flex items-center justify-between px-3 py-3 text-sm text-[#2b2925] hover:bg-[#cbb99d] transition' : 'w-full flex items-center justify-between px-3 py-3 text-sm text-white hover:bg-zinc-800 transition'}>
+                <button key={token.address} type="button" onClick={() => { props.setToken(token); setSearch(''); setOpenMenu(null); }} className={warmWhite ? 'w-full flex items-center justify-between px-3 py-3 text-sm text-[#fff7ef] hover:bg-[#4a3224] transition' : 'w-full flex items-center justify-between px-3 py-3 text-sm text-white hover:bg-[#18283d] transition'}>
                   <span className="flex items-center gap-2 min-w-0">{token.logoURI && <img src={token.logoURI} alt="" className="w-6 h-6 rounded-full shrink-0" />}<span className="truncate">{token.symbol}</span></span>
                   {token.priceUSD && <span className={warmWhite ? 'text-xs text-[#71695d] ml-3' : 'text-xs text-zinc-500 ml-3'}>${Number(token.priceUSD).toLocaleString()}</span>}
                 </button>
@@ -655,7 +655,7 @@ function TokenPanel(props: {
             </>
           )}
           {((openMenu === 'chain' && visibleChains.length === 0) || (openMenu === 'token' && visibleTokens.length === 0)) && (
-            <div className={warmWhite ? 'px-4 py-5 text-sm text-[#d0b59e]' : 'px-4 py-5 text-sm text-zinc-400'}>
+            <div className={warmWhite ? 'px-4 py-5 text-sm text-[#dbc6b4]' : 'px-4 py-5 text-sm text-zinc-400'}>
               {props.loading ? 'Loading...' : search ? 'No matches found' : 'Nothing available'}
             </div>
           )}
