@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowDownUp, ChevronDown, Loader2, RefreshCw, Wallet } from 'lucide-react';
 import { getPublicClient, switchChain } from '@wagmi/core';
-import { useAccount, useChainId, useSendTransaction } from 'wagmi';
+import { useAccount, useChainId, useWalletClient } from 'wagmi';
 import { wagmiConfig } from '../../config/wagmi';
 import { useWallet } from '../../context/WalletContext';
 import { recordConfirmedAction } from '../../services/points/pointsService';
@@ -64,7 +64,7 @@ export const SwapView: React.FC = () => {
   const { address, isConnected, connectWallet } = useWallet();
   const connectedChainId = useChainId();
   const { isConnected: wagmiConnected } = useAccount();
-  const { sendTransactionAsync } = useSendTransaction();
+  const { data: walletClient } = useWalletClient();
 
   const [chains, setChains] = useState<LiFiChain[]>([]);
   const [fromChainId, setFromChainId] = useState(5042);
@@ -252,7 +252,10 @@ export const SwapView: React.FC = () => {
   }, [address, fromToken, toToken, amount, fromChainId, toChainId]);
 
   const executeQuote = async () => {
-    if (!quote?.transactionRequest || !address) return;
+    if (!quote?.transactionRequest || !address || !walletClient) {
+      if (!walletClient) setError('Wallet transaction session is not ready. Reconnect the wallet and try again.');
+      return;
+    }
     setExecuting(true);
     setError(null);
     setExecutionHash(null);
@@ -265,12 +268,14 @@ export const SwapView: React.FC = () => {
         throw new Error('LI.FI returned an incomplete transaction request. Please refresh the quote.');
       }
 
-      // Use the active Wagmi connector directly. This keeps the request
-      // inside the connected Reown/AppKit wallet session and opens its prompt.
-      const hash = await sendTransactionAsync({
+      // Submit through the active connected wallet client.
+      // This keeps the signing request inside the current Reown/AppKit session.
+      const hash = await walletClient.sendTransaction({
+        account: address as `0x${string}`,
         to: tx.to as `0x${string}`,
         data: tx.data as `0x${string}`,
         value: tx.value ? BigInt(tx.value) : 0n,
+        chainId: fromChainId,
       });
       setExecutionHash(hash);
 
