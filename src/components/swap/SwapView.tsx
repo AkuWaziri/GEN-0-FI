@@ -285,12 +285,12 @@ export const SwapView: React.FC = () => {
       if (!isNativeToken(fromToken)) {
         const approvalAddress = quote?.estimate?.approvalAddress;
         if (approvalAddress && /^0x[a-fA-F0-9]{40}$/.test(approvalAddress)) {
-          const allowance = await publicClient.readContract({
+          const allowance = BigInt(await publicClient.readContract({
             address: fromToken.address as `0x${string}`,
             abi: ERC20_ABI,
             functionName: 'allowance',
             args: [address as `0x${string}`, approvalAddress as `0x${string}`],
-          });
+          }) as bigint);
 
           if (allowance < rawAmount) {
             setError('Approval required. Confirm the token approval in your wallet.');
