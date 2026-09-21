@@ -229,6 +229,7 @@ export const SwapView: React.FC = () => {
         fromAddress: address,
         toAddress: address,
         fromAmount: rawAmount,
+        order: 'CHEAPEST',
         integrator: 'GEN-0FI',
       });
       const data = await fetchJson(`${QUOTE_API}?${params.toString()}`);
