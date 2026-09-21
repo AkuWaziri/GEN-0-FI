@@ -1,4 +1,4 @@
-import { applyApiSecurity } from '../../_security.js';
+import { applyApiSecurity } from '../_security.js';
 
 const LIFI_API = 'https://li.quest/v1';
 const DEFAULT_INTEGRATOR = 'GEN-0FI';
