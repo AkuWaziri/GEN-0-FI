@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowDownUp, ChevronDown, Loader2, RefreshCw, Wallet } from 'lucide-react';
 import { getPublicClient, getWalletClient, switchChain } from '@wagmi/core';
-import { useAccount, useChainId, useWalletClient } from 'wagmi';
+import { useAccount, useChainId } from 'wagmi';
 import { wagmiConfig } from '../../config/wagmi';
 import { useWallet } from '../../context/WalletContext';
 import { recordConfirmedAction } from '../../services/points/pointsService';
@@ -64,7 +64,6 @@ export const SwapView: React.FC = () => {
   const { address, isConnected, connectWallet } = useWallet();
   const connectedChainId = useChainId();
   const { isConnected: wagmiConnected } = useAccount();
-  const { data: walletClient } = useWalletClient();
 
   const [chains, setChains] = useState<LiFiChain[]>([]);
   const [fromChainId, setFromChainId] = useState(5042);
