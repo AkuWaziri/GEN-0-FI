@@ -312,8 +312,6 @@ export const SwapView: React.FC = () => {
 
       // Award points only after the source transaction is confirmed onchain.
       // The tx hash is unique in Supabase, so retries cannot double-award.
-      const publicClient = getPublicClient(wagmiConfig, { chainId: fromChainId });
-      if (!publicClient) throw new Error('Arc transaction confirmation client is unavailable.');
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       if (receipt.status !== 'success') {
         throw new Error('The transaction reverted. No points were awarded.');
