@@ -1,7 +1,7 @@
 import { applyApiSecurity } from '../_security.js';
 
 const LIFI_API = 'https://li.quest/v1';
-const DEFAULT_INTEGRATOR = 'GEN-0FI';
+const DEFAULT_INTEGRATOR = 'gen-0fi';
 const DEFAULT_FEE = '0.0025';
 const GEN0FI_FEE_WALLET = '0x5Bce25397eEfbc76f6479e6838c00a5115dbEA4c';
 
@@ -16,8 +16,6 @@ function getFee(): number {
 
 export default async function handler(req: any, res: any) {
   try {
-    // Keep security handling inside the route guard so a rejected/malformed
-    // request becomes a normal HTTP response instead of a Vercel invocation failure.
     if (!applyApiSecurity(req, res)) return;
 
     if (req.method !== 'GET') {
