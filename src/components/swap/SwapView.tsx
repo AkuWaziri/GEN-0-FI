@@ -36,15 +36,6 @@ const API = 'https://li.quest/v1';
 const QUOTE_API = '/api/lifi/quote';
 const NATIVE = '0x0000000000000000000000000000000000000000';
 
-function quoteIsExecutable(quote: any) {
-  return Boolean(
-    quote?.transactionRequest?.to &&
-    quote?.transactionRequest?.data &&
-    quote?.estimate?.toAmount &&
-    quote?.estimate?.toAmountMin,
-  );
-}
-
 function formatBalance(amount: string | undefined, decimals: number) {
   if (!amount) return '0';
   try {
@@ -243,7 +234,6 @@ export const SwapView: React.FC = () => {
         integrator: 'gen-0fi',
       });
       const data = await fetchJson(`${QUOTE_API}?${params.toString()}`);
-      if (!quoteIsExecutable(data)) throw new Error('LI.FI returned an incomplete route. No transaction is available to submit.');
       setQuote(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No LI.FI route is available for this selection.');
@@ -391,7 +381,7 @@ export const SwapView: React.FC = () => {
             </div>
 
             <div className="mt-4 flex flex-col sm:flex-row gap-3">
-              {quoteIsExecutable(quote) ? (
+              {quote?.transactionRequest ? (
                 <button
                   onClick={connectedChainId !== fromChainId ? switchFromChain : executeQuote}
                   disabled={executing}
