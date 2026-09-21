@@ -36,7 +36,7 @@ const API = 'https://li.quest/v1';
 const QUOTE_API = '/api/lifi/quote';
 const NATIVE = '0x0000000000000000000000000000000000000000';
 
-const ERC20_ABI = [
+const ERC20_ABI: any = [
   { type: 'function', name: 'allowance', stateMutability: 'view', inputs: [{ name: 'owner', type: 'address' }, { name: 'spender', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] },
   { type: 'function', name: 'approve', stateMutability: 'nonpayable', inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }] },
 ] as const;
@@ -275,7 +275,7 @@ export const SwapView: React.FC = () => {
         await switchChain(wagmiConfig, { chainId: fromChainId });
       }
 
-      const publicClient = getPublicClient(wagmiConfig, { chainId: fromChainId });
+      const publicClient: any = getPublicClient(wagmiConfig, { chainId: fromChainId });
       if (!publicClient) throw new Error('Source-chain confirmation client is unavailable.');
 
       const tx = quote.transactionRequest;
