@@ -36,12 +36,13 @@ const API = 'https://li.quest/v1';
 const QUOTE_API = '/api/lifi/quote';
 const NATIVE = '0x0000000000000000000000000000000000000000';
 
-function isNativeToken(token: LiFiToken | null) {
-  return !token || token.address.toLowerCase() === NATIVE;
-}
-
 function quoteIsExecutable(quote: any) {
-  return Boolean(quote?.transactionRequest?.to && quote?.transactionRequest?.data && quote?.estimate?.toAmount && quote?.estimate?.toAmountMin);
+  return Boolean(
+    quote?.transactionRequest?.to &&
+    quote?.transactionRequest?.data &&
+    quote?.estimate?.toAmount &&
+    quote?.estimate?.toAmountMin,
+  );
 }
 
 function formatBalance(amount: string | undefined, decimals: number) {
@@ -242,7 +243,7 @@ export const SwapView: React.FC = () => {
         integrator: 'gen-0fi',
       });
       const data = await fetchJson(`${QUOTE_API}?${params.toString()}`);
-      if (!quoteIsExecutable(data)) throw new Error('LI.FI returned an incomplete or unsimulated route. No transaction is available to submit.');
+      if (!quoteIsExecutable(data)) throw new Error('LI.FI returned an incomplete route. No transaction is available to submit.');
       setQuote(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No LI.FI route is available for this selection.');
@@ -261,7 +262,7 @@ export const SwapView: React.FC = () => {
   }, [address, fromToken, toToken, amount, fromChainId, toChainId]);
 
   const executeQuote = async () => {
-    if (!quoteIsExecutable(quote) || !walletClient || !address || !fromToken) return;
+    if (!quote?.transactionRequest || !walletClient || !address) return;
     setExecuting(true);
     setError(null);
     setExecutionHash(null);
@@ -269,35 +270,7 @@ export const SwapView: React.FC = () => {
       if (connectedChainId !== fromChainId) {
         await switchChain(wagmiConfig, { chainId: fromChainId });
       }
-
-      const publicClient = getPublicClient(wagmiConfig, { chainId: fromChainId });
-      if (!publicClient) throw new Error('Source-chain confirmation client is unavailable.');
-
       const tx = quote.transactionRequest;
-      const rawAmount = BigInt(Math.floor(Number(amount) * 10 ** fromToken.decimals));
-      const approvalAddress = quote?.estimate?.approvalAddress;
-
-      // LI.FI requires an ERC-20 allowance before spending a token.
-      // Keep this explicit: the user must approve it in the wallet before the swap.
-      if (!isNativeToken(fromToken) && approvalAddress && /^0x[a-fA-F0-9]{40}$/.test(approvalAddress)) {
-        setError('Token approval required. Confirm the approval in your wallet.');
-        const approvalData = (
-          '0x095ea7b3' +
-          approvalAddress.slice(2).padStart(64, '0') +
-          rawAmount.toString(16).padStart(64, '0')
-        ) as `0x${string}`;
-
-        const approvalHash = await walletClient.sendTransaction({
-          account: address as `0x${string}`,
-          to: fromToken.address as `0x${string}`,
-          data: approvalData,
-          value: 0n,
-          chainId: fromChainId,
-        });
-        await publicClient.waitForTransactionReceipt({ hash: approvalHash });
-        setError(null);
-      }
-
       const hash = await walletClient.sendTransaction({
         account: address as `0x${string}`,
         to: tx.to,
@@ -306,8 +279,11 @@ export const SwapView: React.FC = () => {
         chainId: fromChainId,
       });
       setExecutionHash(hash);
-      setError(null);
 
+      // Award points only after the source transaction is confirmed onchain.
+      // The tx hash is unique in Supabase, so retries cannot double-award.
+      const publicClient = getPublicClient(wagmiConfig, { chainId: fromChainId });
+      if (!publicClient) throw new Error('Arc transaction confirmation client is unavailable.');
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       if (receipt.status !== 'success') {
         throw new Error('The transaction reverted. No points were awarded.');
@@ -317,11 +293,7 @@ export const SwapView: React.FC = () => {
       await recordConfirmedAction(address, hash, action);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err || '');
-      setError(
-        /user rejected|user denied|rejected the request|request rejected|4001/i.test(message)
-          ? 'Cancelled'
-          : message || 'The swap or bridge could not be submitted.',
-      );
+      setError(/user rejected|user denied|rejected the request|request rejected|4001/i.test(message) ? 'Cancelled' : message || 'The swap or bridge could not be submitted.');
     } finally {
       setExecuting(false);
     }
