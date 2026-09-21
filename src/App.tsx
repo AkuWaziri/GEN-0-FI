@@ -10,6 +10,7 @@ import { ActivityView } from './components/activity/ActivityView';
 import { AskGen0View } from './components/ask/AskGen0View';
 import { GMStreakView } from './components/gm/GMStreakView';
 import { SettingsView } from './components/settings/SettingsView';
+import { PointsLeaderboardView } from './components/points/PointsLeaderboardView';
 import { SwapView } from './components/swap/SwapView';
 import { ConnectWalletModal } from './components/wallet/ConnectWalletModal';
 import { WrongNetworkView } from './components/wallet/WrongNetworkView';
@@ -57,6 +58,7 @@ const AppContent: React.FC = () => {
             {activeTab === 'swap' && <SwapView />}
             {activeTab === 'gm' && <GMStreakView />}
             {activeTab === 'activity' && <ActivityView />}
+            {activeTab === 'points' && <PointsLeaderboardView />}
             {activeTab === 'settings' && <SettingsView />}
           </div>
           {activeTab !== 'ask' && <Footer />}
