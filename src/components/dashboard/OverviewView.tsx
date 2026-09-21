@@ -426,7 +426,30 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
         </div>
       </div>
 
-      {/* Wallet Holdings */}
+      {/* GM Streak */}
+      <button
+        type="button"
+        id="dashboard-gm-streak"
+        onClick={() => onSelectTab('gm')}
+        className="w-full text-left p-5 sm:p-6 rounded-2xl bg-[#0d0f12] bg-[radial-gradient(ellipse_at_top_right,rgba(59,130,246,0.10),transparent_70%)] border border-blue-500/20 glow-blue-card-hover transition-all group cursor-pointer"
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-center">
+              <Flame className="w-5 h-5 text-blue-400" />
+            </div>
+            <div>
+              <h2 className="text-sm sm:text-base font-bold text-white">GM Streak</h2>
+              <p className="text-xs text-zinc-500 mt-0.5">Check in daily, protect your streak, earn points.</p>
+            </div>
+          </div>
+          <div className="shrink-0 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-400/20 text-[11px] font-semibold text-blue-300 group-hover:bg-blue-500/15 transition-colors">
+            Open GM Streak →
+          </div>
+        </div>
+      </button>
+
+      {/* Wallet Holdings */
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
         {/* Fungible token holdings */}
         <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 glow-blue-card-hover flex flex-col justify-between shadow-sm group">
