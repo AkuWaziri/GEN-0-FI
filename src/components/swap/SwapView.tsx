@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowDownUp, ChevronDown, Loader2, RefreshCw, Wallet } from 'lucide-react';
+import { encodeFunctionData } from 'viem';
 import { getPublicClient, switchChain } from '@wagmi/core';
 import { useAccount, useChainId, useWalletClient } from 'wagmi';
 import { wagmiConfig } from '../../config/wagmi';
@@ -35,6 +36,11 @@ type BalanceToken = LiFiToken & {
 const API = 'https://li.quest/v1';
 const QUOTE_API = '/api/lifi/quote';
 const NATIVE = '0x0000000000000000000000000000000000000000';
+const ERC20_APPROVE_ABI = [{ type: 'function', name: 'approve', stateMutability: 'nonpayable', inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }] }, { type: 'function', name: 'allowance', stateMutability: 'view', inputs: [{ name: 'owner', type: 'address' }, { name: 'spender', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] }] as const;
+
+function quoteIsExecutable(quote: any) {
+  return Boolean(quote?.transactionRequest?.to && quote?.transactionRequest?.data && quote?.estimate?.toAmount && quote?.estimate?.toAmountMin);
+}
 
 function formatBalance(amount: string | undefined, decimals: number) {
   if (!amount) return '0';
@@ -260,6 +266,40 @@ export const SwapView: React.FC = () => {
       if (connectedChainId !== fromChainId) {
         await switchChain(wagmiConfig, { chainId: fromChainId });
       }
+      if (!quoteIsExecutable(quote)) {
+        throw new Error('LI.FI returned an incomplete route. Refresh the quote before submitting.');
+      }
+
+      const publicClient = getPublicClient(wagmiConfig, { chainId: fromChainId });
+      if (!publicClient) throw new Error('Arc transaction confirmation client is unavailable.');
+
+      const approvalAddress = quote?.estimate?.approvalAddress;
+      if (fromToken && fromToken.address.toLowerCase() !== NATIVE && approvalAddress && quote?.estimate?.fromAmount) {
+        const allowance = await publicClient.readContract({
+          address: fromToken.address as `0x${string}`,
+          abi: ERC20_APPROVE_ABI,
+          functionName: 'allowance',
+          args: [address as `0x${string}`, approvalAddress as `0x${string}`],
+        });
+        const required = BigInt(quote.estimate.fromAmount);
+        if (allowance < required) {
+          const approvalData = encodeFunctionData({
+            abi: ERC20_APPROVE_ABI,
+            functionName: 'approve',
+            args: [approvalAddress as `0x${string}`, required],
+          });
+          const approvalHash = await walletClient.sendTransaction({
+            account: address as `0x${string}`,
+            to: fromToken.address as `0x${string}`,
+            data: approvalData,
+            value: 0n,
+            chainId: fromChainId,
+          });
+          const approvalReceipt = await publicClient.waitForTransactionReceipt({ hash: approvalHash });
+          if (approvalReceipt.status !== 'success') throw new Error('Token approval failed. No swap or bridge transaction was submitted.');
+        }
+      }
+
       const tx = quote.transactionRequest;
       const hash = await walletClient.sendTransaction({
         account: address as `0x${string}`,
@@ -381,7 +421,7 @@ export const SwapView: React.FC = () => {
             </div>
 
             <div className="mt-4 flex flex-col sm:flex-row gap-3">
-              {quote?.transactionRequest ? (
+              {quoteIsExecutable(quote) ? (
                 <button
                   onClick={connectedChainId !== fromChainId ? switchFromChain : executeQuote}
                   disabled={executing}
