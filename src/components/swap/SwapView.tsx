@@ -32,6 +32,7 @@ type BalanceToken = LiFiToken & {
 };
 
 const API = 'https://li.quest/v1';
+const QUOTE_API = '/api/lifi/quote';
 const NATIVE = '0x0000000000000000000000000000000000000000';
 
 function formatBalance(amount: string | undefined, decimals: number) {
@@ -230,7 +231,7 @@ export const SwapView: React.FC = () => {
         fromAmount: rawAmount,
         integrator: 'GEN-0FI',
       });
-      const data = await fetchJson(`${API}/quote?${params.toString()}`);
+      const data = await fetchJson(`${QUOTE_API}?${params.toString()}`);
       setQuote(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No LI.FI route is available for this selection.');
@@ -429,6 +430,9 @@ export const SwapView: React.FC = () => {
                 </div>
                 <div className="mt-2 text-xs text-zinc-500">
                   Route: {quote.toolDetails?.name || quote.tool || 'LI.FI'}
+                  {quote.gen0fiFee?.percent !== undefined && (
+                    <> · GEN-0FI fee: {quote.gen0fiFee.percent}%</>
+                  )}
                 </div>
               </div>
             )}
