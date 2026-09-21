@@ -230,7 +230,7 @@ export const SwapView: React.FC = () => {
         toAddress: address,
         fromAmount: rawAmount,
         order: 'CHEAPEST',
-        integrator: 'GEN-0FI',
+        integrator: 'gen-0fi',
       });
       const data = await fetchJson(`${QUOTE_API}?${params.toString()}`);
       setQuote(data);
@@ -467,6 +467,10 @@ function TokenPanel(props: {
   const chainTriggerRef = useRef<HTMLButtonElement | null>(null);
   const tokenTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [search, setSearch] = useState('');
+  const [customTokens, setCustomTokens] = useState<LiFiToken[]>([]);
+  const [lookupToken, setLookupToken] = useState<LiFiToken | null>(null);
+  const [lookingUpToken, setLookingUpToken] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
 
   const openDropdown = (type: 'chain' | 'token') => {
     if (openMenu === type) {
@@ -523,8 +527,68 @@ function TokenPanel(props: {
     return item?.amount ? formatBalance(item.amount, token.decimals || 18) : '0';
   };
 
+  const allTokens = useMemo(() => {
+    const seen = new Set<string>();
+    return [...customTokens, ...props.tokens].filter((token) => {
+      const key = token.address.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [customTokens, props.tokens]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('gen0fi:lifi:customTokens:' + props.chainId);
+      const saved = raw ? JSON.parse(raw) : [];
+      setCustomTokens(Array.isArray(saved) ? saved : []);
+    } catch {
+      setCustomTokens([]);
+    }
+    setLookupToken(null);
+    setLookupError(null);
+  }, [props.chainId]);
+
+  useEffect(() => {
+    const value = search.trim();
+    if (!/^0x[a-fA-F0-9]{40}$/.test(value) || openMenu !== 'token') {
+      setLookupToken(null);
+      setLookupError(null);
+      setLookingUpToken(false);
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setLookingUpToken(true);
+      setLookupError(null);
+      try {
+        const token = await fetchJson(API + '/token?chain=' + props.chainId + '&token=' + encodeURIComponent(value));
+        if (!cancelled) setLookupToken(token);
+      } catch (err) {
+        if (!cancelled) {
+          setLookupToken(null);
+          setLookupError(err instanceof Error ? 'Token not found by LI.FI on this chain.' : 'Token lookup failed.');
+        }
+      } finally {
+        if (!cancelled) setLookingUpToken(false);
+      }
+    }, 350);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [search, openMenu, props.chainId]);
+
+  const addTokenToList = (token: LiFiToken) => {
+    const next = [...customTokens.filter((item) => item.address.toLowerCase() !== token.address.toLowerCase()), token];
+    setCustomTokens(next);
+    try {
+      localStorage.setItem('gen0fi:lifi:customTokens:' + props.chainId, JSON.stringify(next));
+    } catch {}
+  };
+
   const visibleChains = props.chains.filter((chain) => chain.name.toLowerCase().includes(search.toLowerCase()));
-  const visibleTokens = props.tokens.filter((token) =>
+  const visibleTokens = allTokens.filter((token) =>
     `${token.symbol} ${token.name || ''}`.toLowerCase().includes(search.toLowerCase()),
   );
 
@@ -546,7 +610,7 @@ function TokenPanel(props: {
               autoFocus
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={openMenu === 'chain' ? 'Search chains...' : 'Search coins...'}
+              placeholder={openMenu === 'chain' ? 'Search chains...' : 'Search token, symbol or contract address...'}
               className={warmWhite
                 ? 'w-full rounded-lg border border-[#b58a63] bg-[#6a4730] px-3 py-2 text-sm text-[#f6eadf] outline-none placeholder:text-[#d0b59e]'
                 : 'w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500'}
@@ -571,30 +635,26 @@ function TokenPanel(props: {
               </button>
             ))
           ) : (
-            visibleTokens.map((token) => (
-              <button
-                key={token.address}
-                type="button"
-                onClick={() => {
-                  props.setToken(token);
-                  setSearch('');
-                  setOpenMenu(null);
-                }}
-                className={warmWhite
-                  ? 'w-full flex items-center justify-between px-3 py-3 text-sm text-[#2b2925] hover:bg-[#cbb99d] transition'
-                  : 'w-full flex items-center justify-between px-3 py-3 text-sm text-white hover:bg-zinc-800 transition'}
-              >
-                <span className="flex items-center gap-2 min-w-0">
-                  {token.logoURI && <img src={token.logoURI} alt="" className="w-6 h-6 rounded-full shrink-0" />}
-                  <span className="truncate">{token.symbol}</span>
-                </span>
-                {token.priceUSD && (
-                  <span className={warmWhite ? 'text-xs text-[#71695d] ml-3' : 'text-xs text-zinc-500 ml-3'}>
-                    ${Number(token.priceUSD).toLocaleString()}
-                  </span>
-                )}
-              </button>
-            ))
+            <>
+              {lookupToken && (
+                <div className={warmWhite ? 'mx-2 my-2 rounded-xl border border-[#b58a63] bg-[#6a4730] p-3' : 'mx-2 my-2 rounded-xl border border-blue-500/30 bg-blue-500/10 p-3'}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    {lookupToken.logoURI && <img src={lookupToken.logoURI} alt="" className="w-8 h-8 rounded-full shrink-0" />}
+                    <div className="min-w-0"><div className={warmWhite ? 'text-sm font-semibold text-[#f6eadf]' : 'text-sm font-semibold text-white'}>{lookupToken.symbol}</div><div className={warmWhite ? 'text-xs text-[#d0b59e] truncate' : 'text-xs text-zinc-400 truncate'}>{lookupToken.name}</div></div>
+                  </div>
+                  <div className={warmWhite ? 'mt-2 text-[10px] text-[#d0b59e] break-all' : 'mt-2 text-[10px] text-zinc-500 break-all'}>{lookupToken.address}</div>
+                  <div className="mt-3 flex gap-2"><button type="button" onClick={() => { props.setToken(lookupToken); setSearch(''); setOpenMenu(null); }} className="flex-1 rounded-lg bg-blue-500 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-400">Use token</button><button type="button" onClick={() => addTokenToList(lookupToken)} className={warmWhite ? 'rounded-lg border border-[#b58a63] px-3 py-2 text-xs font-semibold text-[#f6eadf]' : 'rounded-lg border border-zinc-600 px-3 py-2 text-xs font-semibold text-white'}>Add to list</button></div>
+                </div>
+              )}
+              {lookingUpToken && <div className={warmWhite ? 'px-4 py-2 text-xs text-[#d0b59e]' : 'px-4 py-2 text-xs text-zinc-400'}>Looking up contract on LI.FI...</div>}
+              {lookupError && <div className="px-4 py-2 text-xs text-red-300">{lookupError}</div>}
+              {visibleTokens.map((token) => (
+                <button key={token.address} type="button" onClick={() => { props.setToken(token); setSearch(''); setOpenMenu(null); }} className={warmWhite ? 'w-full flex items-center justify-between px-3 py-3 text-sm text-[#2b2925] hover:bg-[#cbb99d] transition' : 'w-full flex items-center justify-between px-3 py-3 text-sm text-white hover:bg-zinc-800 transition'}>
+                  <span className="flex items-center gap-2 min-w-0">{token.logoURI && <img src={token.logoURI} alt="" className="w-6 h-6 rounded-full shrink-0" />}<span className="truncate">{token.symbol}</span></span>
+                  {token.priceUSD && <span className={warmWhite ? 'text-xs text-[#71695d] ml-3' : 'text-xs text-zinc-500 ml-3'}>${Number(token.priceUSD).toLocaleString()}</span>}
+                </button>
+              ))}
+            </>
           )}
           {((openMenu === 'chain' && visibleChains.length === 0) || (openMenu === 'token' && visibleTokens.length === 0)) && (
             <div className={warmWhite ? 'px-4 py-5 text-sm text-[#d0b59e]' : 'px-4 py-5 text-sm text-zinc-400'}>
