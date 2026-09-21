@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowDownUp, ChevronDown, Loader2, RefreshCw, Wallet } from 'lucide-react';
-import { getPublicClient, getWalletClient, switchChain } from '@wagmi/core';
+import { getPublicClient, sendTransaction, switchChain } from '@wagmi/core';
 import { useAccount, useChainId } from 'wagmi';
 import { wagmiConfig } from '../../config/wagmi';
 import { useWallet } from '../../context/WalletContext';
@@ -259,20 +259,15 @@ export const SwapView: React.FC = () => {
       if (connectedChainId !== fromChainId) {
         await switchChain(wagmiConfig, { chainId: fromChainId });
       }
-      // Fetch the live wallet client after the chain is ready. The hook client can be
-      // stale/undefined with injected or WalletConnect sessions, which can leave the
-      // UI in "Confirm in wallet..." without ever opening the wallet prompt.
-      const client = await getWalletClient(wagmiConfig, { chainId: fromChainId });
-      if (!client) {
-        throw new Error('Wallet connection is not ready. Reconnect your wallet and try again.');
-      }
-
       const tx = quote.transactionRequest;
       if (!tx.to || !tx.data) {
         throw new Error('LI.FI returned an incomplete transaction request. Please refresh the quote.');
       }
 
-      const hash = await client.sendTransaction({
+      // Use Wagmi's transaction action so the active Reown/AppKit connector
+      // handles the wallet request directly. This avoids stale wallet-client
+      // state and preserves the wallet confirmation prompt.
+      const hash = await sendTransaction(wagmiConfig, {
         account: address as `0x${string}`,
         to: tx.to as `0x${string}`,
         data: tx.data as `0x${string}`,
