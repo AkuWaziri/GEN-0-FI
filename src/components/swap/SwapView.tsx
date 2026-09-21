@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowDownUp, ChevronDown, Loader2, RefreshCw, Wallet } from 'lucide-react';
-import { getPublicClient, sendTransaction, switchChain } from '@wagmi/core';
-import { useAccount, useChainId } from 'wagmi';
+import { getPublicClient, switchChain } from '@wagmi/core';
+import { useAccount, useChainId, useSendTransaction } from 'wagmi';
 import { wagmiConfig } from '../../config/wagmi';
 import { useWallet } from '../../context/WalletContext';
 import { recordConfirmedAction } from '../../services/points/pointsService';
@@ -64,6 +64,7 @@ export const SwapView: React.FC = () => {
   const { address, isConnected, connectWallet } = useWallet();
   const connectedChainId = useChainId();
   const { isConnected: wagmiConnected } = useAccount();
+  const { sendTransactionAsync } = useSendTransaction();
 
   const [chains, setChains] = useState<LiFiChain[]>([]);
   const [fromChainId, setFromChainId] = useState(5042);
@@ -264,15 +265,12 @@ export const SwapView: React.FC = () => {
         throw new Error('LI.FI returned an incomplete transaction request. Please refresh the quote.');
       }
 
-      // Use Wagmi's transaction action so the active Reown/AppKit connector
-      // handles the wallet request directly. This avoids stale wallet-client
-      // state and preserves the wallet confirmation prompt.
-      const hash = await sendTransaction(wagmiConfig, {
-        account: address as `0x${string}`,
+      // Use the active Wagmi connector directly. This keeps the request
+      // inside the connected Reown/AppKit wallet session and opens its prompt.
+      const hash = await sendTransactionAsync({
         to: tx.to as `0x${string}`,
         data: tx.data as `0x${string}`,
         value: tx.value ? BigInt(tx.value) : 0n,
-        chainId: fromChainId,
       });
       setExecutionHash(hash);
 
