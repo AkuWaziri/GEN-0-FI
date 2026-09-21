@@ -2689,3 +2689,20 @@ html.grey button:disabled {
   filter: none !important;
   box-shadow: none !important;
 }
+
+
+/* Brown mode brand: milk logo for a softer premium contrast */
+html.brown #gen0-brand-logo svg path,
+html.brown #gen0-brand-logo .project-logo-mark {
+  fill: #f5ead8 !important;
+  color: #f5ead8 !important;
+}
+
+html.brown #gen0-brand-logo {
+  color: #f5ead8 !important;
+}
+
+html.brown #gen0-brand-logo .text-zinc-950,
+html.brown #gen0-brand-logo .text-white {
+  color: #f5ead8 !important;
+}
