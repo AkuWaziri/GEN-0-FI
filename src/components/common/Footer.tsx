@@ -8,14 +8,9 @@ export const Footer: React.FC<{ className?: string }> = ({ className = '' }) => 
       id="gen0-app-footer"
       className={`border-t border-zinc-900/90 py-5 px-4 sm:px-8 lg:px-12 w-full bg-[#000000]/60 backdrop-blur-sm flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono select-none ${className}`}
     >
-      {/* Left side: Copyright & Network */}
-      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 text-zinc-400">
+      {/* Left side: Copyright */}
+      <div className="flex items-center justify-center sm:justify-start text-zinc-400">
         <span className="font-semibold text-zinc-200 tracking-tight">© 2026 GEN-0 FI</span>
-        <span className="text-zinc-600 hidden xs:inline">•</span>
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#111317] border border-zinc-800 text-[11px] text-zinc-300">
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.8)]" />
-          <span>Arc Mainnet</span>
-        </div>
       </div>
 
       {/* Right side: Explorer + Social Links (X & Telegram) */}
