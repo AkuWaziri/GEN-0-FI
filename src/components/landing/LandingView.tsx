@@ -37,9 +37,11 @@ export const LandingView: React.FC<LandingViewProps> = ({ onOpenConnect }) => {
       {/* Hero Section */}
       <main className="w-full px-4 sm:px-6 lg:px-8 py-16 sm:py-24 max-w-4xl mx-auto flex-1 flex flex-col items-center justify-center text-center">
         {/* Eyebrow */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/25 text-[11px] sm:text-xs font-mono font-semibold text-blue-400 tracking-wider uppercase shadow-[0_0_16px_rgba(59,130,246,0.15)]">
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.9)] animate-pulse" />
-          <span>ONCHAIN FINANCE</span>
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-400/35 text-sm sm:text-base font-semibold tracking-[0.12em] uppercase shadow-[0_0_24px_rgba(59,130,246,0.2)]">
+          <span className="w-2 h-2 rounded-full bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,0.95)] animate-pulse" />
+          <span className="bg-gradient-to-r from-blue-300 via-cyan-200 to-blue-400 bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(96,165,250,0.45)]">
+            ONCHAIN FINANCE
+          </span>
         </div>
 
         {/* Headline */}
@@ -55,9 +57,6 @@ export const LandingView: React.FC<LandingViewProps> = ({ onOpenConnect }) => {
 
         {/* Supporting Text */}
         <div className="mt-5 sm:mt-6 space-y-2.5 max-w-2xl">
-          <p className="text-lg sm:text-xl md:text-2xl text-zinc-200 font-medium tracking-tight leading-snug">
-            Easier to Understand, Use and Manage.
-          </p>
           <p className="text-sm sm:text-base md:text-lg text-zinc-400 font-normal tracking-tight leading-relaxed">
             
           </p>
