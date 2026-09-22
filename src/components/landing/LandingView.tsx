@@ -1,7 +1,7 @@
 import React from 'react';
 import { Logo } from '../common/Logo';
 import { Footer } from '../common/Footer';
-import { Wallet } from 'lucide-react';
+import { Wallet, Flame } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
 interface LandingViewProps {
@@ -18,21 +18,23 @@ export const LandingView: React.FC<LandingViewProps> = ({ onOpenConnect, onOpenG
       {/* Top Navbar with Connect Wallet on the right side */}
       <header className={`flex items-center justify-between px-4 sm:px-8 lg:px-12 py-3.5 sm:py-4 border-b w-full backdrop-blur-md sticky top-0 z-30 transition-colors duration-200 ${isWhite ? 'border-zinc-200 bg-white/90' : 'border-zinc-900 bg-[#000000]/90'}`}>
         <Logo size="md" />
-        <div className="flex items-center gap-2.5 sm:gap-3">
-            <button
+        <div className={`flex items-center gap-1 p-1 rounded-2xl border ${isWhite ? 'border-zinc-200 bg-white/80' : 'border-zinc-800 bg-zinc-950/70'}`}>
+          <button
             type="button"
             onClick={onOpenGmStreak}
-            className={`px-2.5 sm:px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors ${isWhite ? 'text-zinc-700 hover:text-black hover:bg-zinc-100' : 'text-zinc-300 hover:text-white hover:bg-white/5'}`}
+            className={`flex items-center gap-1.5 h-9 px-2.5 sm:px-3 rounded-xl text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-colors ${isWhite ? 'text-zinc-700 hover:text-black hover:bg-zinc-100' : 'text-zinc-300 hover:text-white hover:bg-white/5'}`}
           >
-            GM Streak
+            <Flame className="w-3.5 h-3.5 text-blue-400" />
+            <span>GM Streak</span>
           </button>
-            <button
+          <button
             id="btn-navbar-connect-wallet"
             onClick={onOpenConnect}
-            className="flex items-center gap-2 py-2 px-3.5 sm:px-4 rounded-xl bg-white hover:bg-zinc-200 text-xs font-bold text-black glow-blue-cta cursor-pointer transition-all duration-150 shadow-md"
+            className="flex items-center gap-1.5 h-9 px-2.5 sm:px-3 rounded-xl bg-white hover:bg-zinc-200 text-[11px] sm:text-xs font-bold text-black glow-blue-cta cursor-pointer transition-all duration-150 shadow-md whitespace-nowrap"
           >
             <Wallet className="w-3.5 h-3.5" />
-            <span>Connect Wallet</span>
+            <span className="hidden xs:inline sm:inline">Connect Wallet</span>
+            <span className="xs:hidden sm:hidden">Connect</span>
           </button>
         </div>
       </header>
