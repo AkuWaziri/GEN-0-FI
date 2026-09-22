@@ -4,7 +4,6 @@ import { Skeleton } from '../common/Skeleton';
 import { TabType } from '../common/Sidebar';
 import { AskGen0View } from '../ask/AskGen0View';
 import {
-  Sparkles,
   Code2,
   Flame,
   Activity,
@@ -34,8 +33,6 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
     isLoadingData,
     isRefreshing,
     refreshData,
-    aiSummary,
-    isAiLoading,
     switchToArc,
     isDemoMode,
   } = useWallet();
@@ -207,25 +204,23 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
           </div>
         </div>
 
-        <div id="section-ai-wallet-summary" className="p-5 rounded-2xl bg-[#0d0f12] bg-[radial-gradient(ellipse_at_top_right,rgba(59,130,246,0.07),transparent_72%)] border border-blue-500/20 glow-blue-card relative overflow-hidden flex flex-col justify-between">
+        <button type="button" id="section-gm-streak" onClick={() => onSelectTab('gm')} className="text-left p-5 rounded-2xl bg-blue-500/[0.06] bg-[radial-gradient(ellipse_at_top_right,rgba(59,130,246,0.15),transparent_72%)] border border-blue-500/25 glow-blue-card-hover relative overflow-hidden flex flex-col justify-between transition-all group cursor-pointer">
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 rounded-lg bg-blue-500/15 border border-blue-500/35 flex items-center justify-center text-blue-400"><Sparkles className="w-3.5 h-3.5" /></div>
-              <div><h2 className="text-sm font-bold text-white">AI Intelligence</h2><p className="text-[10px] text-zinc-500 font-mono">Live wallet context</p></div>
+              <div className="w-7 h-7 rounded-lg bg-blue-500/15 border border-blue-400/30 flex items-center justify-center text-blue-300"><Flame className="w-3.5 h-3.5" /></div>
+              <div><h2 className="text-sm font-bold text-white">GM Streak</h2><p className="text-[10px] text-blue-300/70 font-mono">Daily check-in</p></div>
             </div>
-            {isAiLoading ? (
-              <div className="space-y-2 py-2"><Skeleton className="h-3.5 w-full" /><Skeleton className="h-3.5 w-5/6" /><Skeleton className="h-3.5 w-4/6" /></div>
-            ) : (
-              <p className="text-xs text-zinc-300 leading-relaxed">
-                {(aiSummary?.summary ||
-                  (walletSummary?.historyStatus === 'incomplete' && verifiedReceivedDisplay === 'Incomplete scan'
-                    ? `Wallet verifiably holds ${activeBalanceUSDC} USDC on Arc across ${totalTransactions} transaction(s). Historical inbound funding is outside the recent indexed dataset.`
-                    : `Connected to Arc with ${activeBalanceUSDC} USDC across ${totalTransactions} transaction(s). Received ${verifiedReceivedDisplay} USDC, sent ${verifiedSentDisplay} USDC, gas ${verifiedGasSpentDisplay} USDC.`)).replace(/\*/g, '')}
-              </p>
-            )}
+            <div className="grid grid-cols-3 gap-2 pt-1">
+              <div><div className="text-lg font-bold text-white font-mono">{gmStats?.currentStreak ?? 0}</div><div className="text-[10px] text-zinc-500">Streak</div></div>
+              <div><div className="text-lg font-bold text-white font-mono">{gmStats?.totalGmDays ?? 0}</div><div className="text-[10px] text-zinc-500">Days</div></div>
+              <div><div className="text-lg font-bold text-white font-mono">{gmStats?.points ?? 0}</div><div className="text-[10px] text-zinc-500">Points</div></div>
+            </div>
           </div>
-          <div className="pt-4 mt-4 border-t border-zinc-800/80 flex items-center justify-between gap-2"><span className="text-[10px] text-zinc-500 font-mono">Grounded on live Arc state</span><span className="text-[10px] text-zinc-400 font-semibold">Gemini AI</span></div>
-        </div>
+          <div className="pt-4 mt-4 border-t border-blue-500/10 flex items-center justify-between gap-2">
+            <span className="text-[10px] text-zinc-500 font-mono">{gmStats?.checkedInToday ? 'Checked in today' : 'Check in today'}</span>
+            <span className="text-[10px] text-blue-300 font-semibold">Open →</span>
+          </div>
+        </button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5 sm:gap-4">
@@ -274,23 +269,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
             <div className="mt-2">{isLoadingData ? <Skeleton className="h-7 w-16" /> : <div className="text-lg sm:text-xl font-bold text-white font-mono">{walletAssets?.nftHoldings ?? '—'}</div>}<div className="text-[11px] text-zinc-500 font-mono mt-1">Indexed NFT holdings</div></div>
           </div>
 
-          <button type="button" id="dashboard-gm-streak" onClick={() => onSelectTab('gm')} className="text-left p-4 sm:p-5 rounded-xl bg-blue-500/[0.06] bg-[radial-gradient(ellipse_at_top_right,rgba(59,130,246,0.13),transparent_72%)] border border-blue-500/25 glow-blue-card-hover transition-all group cursor-pointer">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-400/25 flex items-center justify-center shrink-0"><Flame className="w-4 h-4 text-blue-300" /></div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2"><h3 className="text-sm font-bold text-white">GM Streak</h3><span className="text-[9px] font-mono uppercase tracking-wider text-blue-300/80">Daily</span></div>
-                  <p className="text-[10px] text-zinc-500 mt-0.5 truncate">{gmStats?.checkedInToday ? 'Checked in today' : 'Check in today'}</p>
-                </div>
-              </div>
-              <span className="text-[10px] font-semibold text-blue-300 shrink-0">Open →</span>
-            </div>
-            <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-blue-500/10">
-              <div><div className="text-base font-bold text-white font-mono">{gmStats?.currentStreak ?? 0}</div><div className="text-[9px] text-zinc-500">Streak</div></div>
-              <div><div className="text-base font-bold text-white font-mono">{gmStats?.totalGmDays ?? 0}</div><div className="text-[9px] text-zinc-500">Days</div></div>
-              <div><div className="text-base font-bold text-white font-mono">{gmStats?.points ?? 0}</div><div className="text-[9px] text-zinc-500">Points</div></div>
-            </div>
-          </button>
+
         </div>
       </div>
 
