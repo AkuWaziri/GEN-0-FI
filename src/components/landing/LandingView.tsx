@@ -18,12 +18,7 @@ export const LandingView: React.FC<LandingViewProps> = ({ onOpenConnect }) => {
       <header className={`flex items-center justify-between px-4 sm:px-8 lg:px-12 py-3.5 sm:py-4 border-b w-full backdrop-blur-md sticky top-0 z-30 transition-colors duration-200 ${isWhite ? 'border-zinc-200 bg-white/90' : 'border-zinc-900 bg-[#000000]/90'}`}>
         <Logo size="md" />
         <div className="flex items-center gap-2.5 sm:gap-3">
-          <div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-500/25 text-xs font-mono shadow-[0_0_12px_rgba(59,130,246,0.15)] ${isWhite ? 'bg-blue-50 text-zinc-700' : 'bg-[#111317] text-zinc-300'}`}>
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.8)]" />
-            <span>Arc Mainnet</span>
-          </div>
-
-          <button
+            <button
             id="btn-navbar-connect-wallet"
             onClick={onOpenConnect}
             className="flex items-center gap-2 py-2 px-3.5 sm:px-4 rounded-xl bg-white hover:bg-zinc-200 text-xs font-bold text-black glow-blue-cta cursor-pointer transition-all duration-150 shadow-md"
