@@ -258,7 +258,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
               <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 group-hover:border-blue-500/40 group-hover:text-blue-300 flex items-center justify-center text-zinc-400 transition-colors"><Coins className="w-4 h-4" /></div>
             </div>
             <div className="mt-2">
-              {isLoadingData ? <Skeleton className="h-7 w-16" /> : <div className="text-lg sm:text-xl font-bold text-white font-mono">{'{'}walletAssets?.coinHoldings ?? '—'{'}'}</div>{'}'}
+              {isLoadingData ? <Skeleton className="h-7 w-16" /> : <div className="text-lg sm:text-xl font-bold text-white font-mono">{walletAssets?.coinHoldings ?? '—'}</div>
               <div className="text-[11px] text-zinc-500 font-mono mt-1">Fungible token holdings</div>
             </div>
           </div>
@@ -269,7 +269,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
               <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 group-hover:border-blue-500/40 group-hover:text-blue-300 flex items-center justify-center text-zinc-400 transition-colors"><Gem className="w-4 h-4" /></div>
             </div>
             <div className="mt-2">
-              {isLoadingData ? <Skeleton className="h-7 w-16" /> : <div className="text-lg sm:text-xl font-bold text-white font-mono">{'{'}walletAssets?.nftHoldings ?? '—'{'}'}</div>{'}'}
+              {isLoadingData ? <Skeleton className="h-7 w-16" /> : <div className="text-lg sm:text-xl font-bold text-white font-mono" >{walletAssets?.nftHoldings ?? '—'}</div>
               <div className="text-[11px] text-zinc-500 font-mono mt-1">Indexed NFT holdings</div>
             </div>
           </div>
