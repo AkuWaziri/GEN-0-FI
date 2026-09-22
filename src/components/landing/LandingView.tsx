@@ -6,9 +6,10 @@ import { useTheme } from '../../context/ThemeContext';
 
 interface LandingViewProps {
   onOpenConnect: () => void;
+  onOpenGmStreak: () => void;
 }
 
-export const LandingView: React.FC<LandingViewProps> = ({ onOpenConnect }) => {
+export const LandingView: React.FC<LandingViewProps> = ({ onOpenConnect, onOpenGmStreak }) => {
   const { theme } = useTheme();
   const isWhite = theme === 'white';
 
@@ -18,6 +19,13 @@ export const LandingView: React.FC<LandingViewProps> = ({ onOpenConnect }) => {
       <header className={`flex items-center justify-between px-4 sm:px-8 lg:px-12 py-3.5 sm:py-4 border-b w-full backdrop-blur-md sticky top-0 z-30 transition-colors duration-200 ${isWhite ? 'border-zinc-200 bg-white/90' : 'border-zinc-900 bg-[#000000]/90'}`}>
         <Logo size="md" />
         <div className="flex items-center gap-2.5 sm:gap-3">
+            <button
+            type="button"
+            onClick={onOpenGmStreak}
+            className={`px-2.5 sm:px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors ${isWhite ? 'text-zinc-700 hover:text-black hover:bg-zinc-100' : 'text-zinc-300 hover:text-white hover:bg-white/5'}`}
+          >
+            GM Streak
+          </button>
             <button
             id="btn-navbar-connect-wallet"
             onClick={onOpenConnect}
