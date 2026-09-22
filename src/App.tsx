@@ -22,6 +22,7 @@ import { initGlobalClickSound } from './utils/sound';
 const AppContent: React.FC = () => {
   const { isConnected, address, isCorrectNetwork, showWelcomeOverlay, dismissWelcomeOverlay, connectWallet } = useWallet();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [pendingTab, setPendingTab] = useState<TabType | null>(null);
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
   const [isIdentityModalOpen, setIsIdentityModalOpen] = useState(false);
 
@@ -34,10 +35,17 @@ const AppContent: React.FC = () => {
     connectWallet().catch(() => setIsConnectModalOpen(true));
   };
 
+  useEffect(() => {
+    if (isConnected && address && pendingTab) {
+      setActiveTab(pendingTab);
+      setPendingTab(null);
+    }
+  }, [isConnected, address, pendingTab]);
+
   if (!isConnected || !address) {
     return (
       <>
-        <LandingView onOpenConnect={handleOpenConnect} />
+        <LandingView onOpenConnect={handleOpenConnect} onOpenGmStreak={() => { setPendingTab('gm'); handleOpenConnect(); }} />
         <ConnectWalletModal isOpen={isConnectModalOpen} onClose={() => setIsConnectModalOpen(false)} />
       </>
     );
