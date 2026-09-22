@@ -1,6 +1,5 @@
 import React from 'react';
 import { Logo } from './Logo';
-import { NetworkBadge } from './NetworkBadge';
 import { AddressBadge } from './AddressBadge';
 import { TabType } from './Sidebar';
 import { useWallet } from '../../context/WalletContext';
@@ -40,7 +39,6 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onSelectTab, onOpenCo
         </div>
       </div>
       <div className="flex items-center gap-2 sm:gap-2.5">
-        <div className="hidden sm:block"><NetworkBadge compact={true} /></div>
         {isConnected && address ? <div className="flex items-center"><AddressBadge address={address} shortAddress={shortAddress} onClick={onOpenConnect} /></div> :
           <button id="btn-header-connect" onClick={onOpenConnect} className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg bg-white hover:bg-zinc-200 text-xs font-bold text-black glow-blue-cta cursor-pointer whitespace-nowrap"><Wallet className="w-3.5 h-3.5" /><span>Connect</span></button>}
       </div>
