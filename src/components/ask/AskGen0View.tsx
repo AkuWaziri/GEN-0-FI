@@ -12,7 +12,7 @@ import {
   Bot,
 } from 'lucide-react';
 
-export const AskGen0View: React.FC = () => {
+interface AskGen0ViewProps { embedded?: boolean; }\n\nexport const AskGen0View: React.FC<AskGen0ViewProps> = ({ embedded = false }) => {
   const { address, shortAddress, isConnected, walletSummary, transactions, balanceUSDC } = useWallet();
 
   // Synchronized active balance: uses whichever source holds the live verified balance
@@ -97,7 +97,7 @@ export const AskGen0View: React.FC = () => {
     {
       id: 'welcome',
       role: 'assistant',
-      content: "Hello bro! I'm GEN0 AI, how can I help you today...",
+      content: "I’m GEN-0 AI. I can explain your wallet activity, Arc transactions, fees, holdings, GEN-0FI features, and Arc protocol concepts using verified context.",
       timestamp: Date.now(),
     },
   ]);
@@ -224,7 +224,7 @@ export const AskGen0View: React.FC = () => {
   };
 
   return (
-    <div className="w-full p-4 sm:p-6 lg:p-8 flex flex-col min-h-[calc(100vh-3.5rem)] h-[calc(100dvh-3.5rem)] max-h-[calc(100dvh-3.5rem)] space-y-3 sm:space-y-4 pb-2 sm:pb-4 animate-in fade-in duration-200">
+    <div className={`w-full flex flex-col ${embedded ? 'min-h-[520px] max-h-[680px] space-y-3 p-0' : 'min-h-[calc(100vh-3.5rem)] h-[calc(100dvh-3.5rem)] max-h-[calc(100dvh-3.5rem)] space-y-3 sm:space-y-4 p-4 sm:p-6 lg:p-8 pb-2 sm:pb-4'} animate-in fade-in duration-200`}>
       {/* Header */}
       <div className="flex items-center justify-between pb-2 border-b border-zinc-900">
         <div>
@@ -233,7 +233,7 @@ export const AskGen0View: React.FC = () => {
               <Sparkles className="w-3.5 h-3.5" />
             </div>
             <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
-              Ask GEN-0
+              GEN-0 AI
             </h1>
             <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-[10px] font-mono text-blue-400">
               <Cpu className="w-2.5 h-2.5" />
@@ -255,7 +255,7 @@ export const AskGen0View: React.FC = () => {
       </div>
 
       {/* Chat Messages Timeline */}
-      <div className="flex-1 overflow-y-auto rounded-xl bg-[#0d0f12] border border-zinc-800 p-4 sm:p-5 space-y-3.5 shadow-sm">
+      <div className="flex-1 min-h-0 overflow-y-auto rounded-xl bg-[#0d0f12] border border-zinc-800 p-4 sm:p-5 space-y-3.5 shadow-sm">
         {messages.map((msg) => {
           const isUser = msg.role === 'user';
           return (
@@ -370,7 +370,7 @@ export const AskGen0View: React.FC = () => {
           type="text"
           value={inputPrompt}
           onChange={(e) => setInputPrompt(e.target.value)}
-          placeholder="Ask anything about your Arc wallet, balance, or transactions..."
+          placeholder="Ask GEN-0 AI about your wallet, Arc, transactions, fees, or GEN-0FI..."
           disabled={isGenerating}
           className="w-full min-w-0 pl-3.5 pr-11 py-3 rounded-xl bg-[#0d0f12] border border-zinc-800 focus:border-blue-500/50 glow-blue-focus focus:outline-none text-xs sm:text-sm text-white placeholder:text-zinc-500 shadow-sm transition-all"
         />
