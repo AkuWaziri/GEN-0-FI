@@ -3470,3 +3470,165 @@ html.brown body::after {
     radial-gradient(circle at 50% -10%, rgba(34,211,238,.035), transparent 35%),
     radial-gradient(circle at 100% 100%, rgba(139,92,246,.025), transparent 30%) !important;
 }
+
+
+/* =============================================================
+   GEN-0FI WARM DARK v5
+   Readability pass: eliminate white overlays, washed text,
+   low-contrast controls and translucent surfaces that hide copy.
+   ============================================================= */
+
+html.brown .bg-white,
+html.brown .bg-white\/95,
+html.brown .bg-white\/90,
+html.brown .bg-white\/80,
+html.brown .bg-white\/75,
+html.brown .bg-white\/70,
+html.brown .bg-white\/60,
+html.brown .bg-white\/50,
+html.brown .bg-white\/40,
+html.brown .bg-white\/30,
+html.brown .bg-white\/20,
+html.brown .bg-white\/10 {
+  background-color: #29231f !important;
+  color: #f7f4ee !important;
+  border-color: rgba(205,190,169,.16) !important;
+}
+
+/* Any white surface must become a readable warm-dark surface. */
+html.brown [class*="bg-white"] {
+  background-color: #29231f !important;
+  color: #f7f4ee !important;
+}
+
+/* Restore readable text when white utility classes are used inside
+   controls, cards, badges or navigation. */
+html.brown [class*="bg-white"] .text-black,
+html.brown [class*="bg-white"] .text-gray-900,
+html.brown [class*="bg-white"] .text-zinc-900,
+html.brown [class*="bg-white"] .text-slate-900,
+html.brown [class*="bg-white"] [class*="text-black"] {
+  color: #f7f4ee !important;
+}
+
+html.brown .text-black,
+html.brown .text-gray-900,
+html.brown .text-gray-800,
+html.brown .text-zinc-900,
+html.brown .text-zinc-800,
+html.brown .text-slate-900,
+html.brown .text-slate-800 {
+  color: #f7f4ee !important;
+}
+
+/* Strong readable secondary text. */
+html.brown .text-gray-300,
+html.brown .text-gray-400,
+html.brown .text-gray-500,
+html.brown .text-slate-300,
+html.brown .text-slate-400,
+html.brown .text-slate-500 {
+  color: #cfc5b9 !important;
+}
+
+/* Disabled/muted content remains visible instead of disappearing. */
+html.brown .text-gray-600,
+html.brown .text-slate-600 {
+  color: #9e948a !important;
+}
+
+/* Borders and separators need enough definition against warm glass. */
+html.brown [class*="border-white"] {
+  border-color: rgba(205,190,169,.18) !important;
+}
+
+/* Native selects/options must not inherit a white browser surface. */
+html.brown select,
+html.brown option,
+html.brown optgroup {
+  background-color: #29231f !important;
+  color: #f7f4ee !important;
+}
+
+/* Common popover/portal surfaces: opaque and readable. */
+html.brown [data-radix-popper-content-wrapper],
+html.brown [data-radix-popper-content-wrapper] *,
+html.brown [role="dialog"],
+html.brown [role="alertdialog"],
+html.brown [role="menu"],
+html.brown [role="listbox"],
+html.brown [role="option"],
+html.brown [role="menuitem"] {
+  color: #f7f4ee !important;
+}
+
+html.brown [data-radix-popper-content-wrapper] > *,
+html.brown [role="dialog"],
+html.brown [role="alertdialog"],
+html.brown [role="menu"],
+html.brown [role="listbox"] {
+  background-color: #29231f !important;
+  border-color: rgba(205,190,169,.18) !important;
+}
+
+/* Prevent translucent white layers from washing out content. */
+html.brown [class*="bg-white/"] {
+  background-image: none !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Ensure buttons/links with white utility backgrounds remain legible. */
+html.brown button[class*="bg-white"],
+html.brown a[class*="bg-white"] {
+  background-color: #29231f !important;
+  color: #f7f4ee !important;
+  border-color: rgba(205,190,169,.18) !important;
+}
+
+html.brown button[class*="bg-white"] *,
+html.brown a[class*="bg-white"] * {
+  color: #f7f4ee !important;
+}
+
+/* Preserve vivid semantic states after the global readability reset. */
+html.brown .text-blue-300,
+html.brown .text-blue-400 { color: #60a5fa !important; }
+html.brown .text-cyan-300,
+html.brown .text-cyan-400 { color: #67e8f9 !important; }
+html.brown .text-purple-300,
+html.brown .text-purple-400 { color: #a78bfa !important; }
+html.brown .text-violet-300,
+html.brown .text-violet-400 { color: #a78bfa !important; }
+html.brown .text-lime-300,
+html.brown .text-lime-400 { color: #bef264 !important; }
+html.brown .text-emerald-300,
+html.brown .text-emerald-400 { color: #5eead4 !important; }
+html.brown .text-amber-300,
+html.brown .text-amber-400 { color: #fcd34d !important; }
+html.brown .text-red-300,
+html.brown .text-red-400 { color: #fb7185 !important; }
+
+/* Keep dense data readable. */
+html.brown table,
+html.brown th,
+html.brown td,
+html.brown pre,
+html.brown code {
+  color: #f7f4ee !important;
+}
+
+html.brown .whitespace-pre-wrap,
+html.brown .break-words,
+html.brown .truncate {
+  color: inherit;
+}
+
+/* SVG/icons should never disappear against dark warm surfaces. */
+html.brown svg {
+  color: currentColor;
+}
+
+html.brown .text-muted-foreground {
+  color: #aaa095 !important;
+}
