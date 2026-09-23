@@ -532,997 +532,70 @@ html.light .bg-black\/80 {
    Clean, high-contrast surface system optimized for desktop,
    tablet and mobile layouts.
    ============================================================= */
+/* =============================================================
+   GEN-0FI LIGHT MODE
+   Clean White + Charcoal + Graphite
+   ============================================================= */
+
+html.white {
+  color-scheme: light;
+  --light-bg: #ffffff;
+  --light-surface: #f8fafc;
+  --light-surface-2: #f1f5f9;
+  --light-surface-3: #e2e8f0;
+  --light-ink: #111111;
+  --light-ink-2: #262626;
+  --light-muted: #64748b;
+  --light-border: #e5e7eb;
+  --light-border-strong: #cbd5e1;
+  --light-black: #0a0a0a;
+  --light-blue: #2563eb;
+}
+
 html.white,
 html.white body,
 html.white #root {
-  color-scheme: light;
+  color-scheme: light !important;
   background: #ffffff !important;
-  color: #111827 !important;
+  color: var(--light-ink) !important;
 }
 
 html.white body {
   overflow-x: hidden;
 }
 
-html.white ::-webkit-scrollbar-track {
-  background: #f8fafc;
+/* Clean white canvas with subtle grey hierarchy */
+html.white main {
+  background: #ffffff !important;
 }
 
-html.white ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+html.white header,
+html.white nav,
+html.white aside,
+html.white footer {
+  background: #ffffff !important;
+  color: var(--light-ink) !important;
+  border-color: var(--light-border) !important;
 }
 
-html.white ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+html.white #main-app-header {
+  background: rgba(255,255,255,.96) !important;
+  border-bottom-color: var(--light-border) !important;
+  box-shadow: 0 1px 8px rgba(15,23,42,.04);
 }
 
-/* App canvas, header and navigation */
-html.white .bg-\[\#090a0c\],
-html.white .bg-\[\#0f1012\],
-html.white .bg-\[\#07080a\],
-html.white .bg-\[\#000000\],
-html.white .bg-\[\#08090b\],
-html.white .bg-\[\#08090b\]\/95,
-html.white #desktop-sidebar,
-html.white #main-app-header,
+html.white #desktop-sidebar {
+  background: #fafafa !important;
+  border-right-color: var(--light-border) !important;
+}
+
 html.white #mobile-bottom-nav {
-  background-color: #ffffff !important;
-  color: #111827 !important;
-  border-color: #e5e7eb !important;
+  background: rgba(255,255,255,.97) !important;
+  border-top-color: var(--light-border) !important;
+  box-shadow: 0 -4px 20px rgba(15,23,42,.06);
 }
 
-/* Primary cards and panels */
-html.white .bg-\[\#0d0f12\],
-html.white .bg-\[\#0b0d10\],
-html.white .bg-\[\#0b0d10\]\/95,
-html.white .bg-\[\#0c0e12\],
-html.white .bg-\[\#0d0f13\],
-html.white .bg-\[\#0d0f14\],
-html.white .bg-\[\#0c0d10\],
-html.white .bg-\[\#101216\],
-html.white .bg-\[\#111317\],
-html.white .bg-\[\#111418\],
-html.white .bg-\[\#131519\],
-html.white .bg-\[\#14161a\],
-html.white .bg-\[\#14161d\],
-html.white .bg-\[\#151720\],
-html.white .bg-\[\#16181d\],
-html.white .bg-\[\#0e1014\],
-html.white .bg-\[\#090b0e\],
-html.white .bg-\[\#08090c\],
-html.white .bg-\[\#12141a\],
-html.white .bg-\[\#12151b\],
-html.white .bg-\[\#13161c\],
-html.white .bg-\[\#1a1d24\],
-html.white .bg-\[\#050608\],
-html.white .bg-zinc-950,
-html.white .bg-zinc-900 {
-  background-color: #ffffff !important;
-  color: #111827 !important;
-  border-color: #e5e7eb !important;
-}
-
-html.white .bg-zinc-800 {
-  background-color: #f1f5f9 !important;
-  color: #111827 !important;
-  border-color: #dbe2ea !important;
-}
-
-html.white .hover\:bg-zinc-800:hover,
-html.white .hover\:bg-zinc-800\/40:hover,
-html.white .hover\:bg-zinc-800\/50:hover,
-html.white .hover\:bg-zinc-800\/80:hover,
-html.white .hover\:bg-zinc-800\/90:hover,
-html.white .hover\:bg-zinc-900:hover {
-  background-color: #f1f5f9 !important;
-}
-
-/* Typography: dark ink on white */
-html.white .text-white,
-html.white .text-zinc-100,
-html.white .text-zinc-200 {
-  color: #111827 !important;
-}
-
-html.white .text-zinc-300 {
-  color: #374151 !important;
-}
-
-html.white .text-zinc-400 {
-  color: #6b7280 !important;
-}
-
-html.white .text-zinc-500 {
-  color: #6b7280 !important;
-}
-
-html.white .text-zinc-600 {
-  color: #4b5563 !important;
-}
-
-html.white .hover\:text-white:hover,
-html.white .hover\:text-zinc-200:hover,
-html.white .hover\:text-zinc-300:hover {
-  color: #111827 !important;
-}
-
-/* Borders and separators */
-html.white .border-zinc-900,
-html.white .border-zinc-900\/80,
-html.white .border-zinc-900\/90,
-html.white .border-zinc-800,
-html.white .border-zinc-800\/90,
-html.white .border-zinc-800\/80,
-html.white .border-zinc-800\/50,
-html.white .border-zinc-700,
-html.white .border-zinc-700\/80 {
-  border-color: #e5e7eb !important;
-}
-
-/* Inputs and textareas */
-html.white input,
-html.white textarea {
-  background-color: #ffffff !important;
-  color: #111827 !important;
-  border-color: #d1d5db !important;
-}
-
-html.white input::placeholder,
-html.white textarea::placeholder {
-  color: #9ca3af !important;
-}
-
-html.white input:focus,
-html.white textarea:focus {
-  border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12) !important;
-}
-
-/* Preserve readable blue status accents */
-html.white .text-blue-300 { color: #2563eb !important; }
-html.white .text-blue-400 { color: #2563eb !important; }
-html.white .text-emerald-400 { color: #059669 !important; }
-html.white .text-amber-400 { color: #b45309 !important; }
-html.white .text-red-400 { color: #dc2626 !important; }
-html.white .text-orange-400 { color: #c2410c !important; }
-html.white .text-yellow-400 { color: #a16207 !important; }
-html.white .text-purple-400 { color: #7e22ce !important; }
-
-/* White-mode active controls use blue instead of white-on-white */
-html.white .bg-white.text-black,
-html.white button.bg-white.text-black,
-html.white a.bg-white.text-black {
-  background-color: #2563eb !important;
-  color: #ffffff !important;
-  border-color: #2563eb !important;
-}
-
-html.white .bg-white.text-black *,
-html.white button.bg-white.text-black *,
-html.white a.bg-white.text-black * {
-  color: #ffffff !important;
-}
-
-html.white .bg-white.text-black:hover,
-html.white button.bg-white.text-black:hover,
-html.white a.bg-white.text-black:hover {
-  background-color: #1d4ed8 !important;
-}
-
-/* Chat / activity / table-like dense content */
-html.white .whitespace-pre-wrap {
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-html.white .font-mono {
-  overflow-wrap: anywhere;
-}
-
-html.white a {
-  overflow-wrap: anywhere;
-}
-
-/* Prevent wide data cards from breaking small screens */
-@media (max-width: 767px) {
-  html.white main {
-    min-width: 0;
-  }
-
-  html.white .overflow-x-auto {
-    -webkit-overflow-scrolling: touch;
-  }
-
-  html.white input,
-  html.white textarea,
-  html.white button {
-    max-width: 100%;
-  }
-}
-
-@media (min-width: 768px) {
-  html.white main {
-    min-width: 0;
-  }
-}
-
-/* Respect device safe areas for mobile navigation and chat controls */
-@supports (padding: max(0px)) {
-  html.white #mobile-bottom-nav {
-    padding-bottom: max(0.5rem, env(safe-area-inset-bottom)) !important;
-  }
-}
-
-
-/* =============================================================
-   MILK MODE REFINEMENT
-   ============================================================= */
-html.white,
-html.white body,
-html.white #root {
-  color-scheme: light;
-  background-color: #f7f3e8 !important;
-  color: #1f2937 !important;
-}
-
-/* Make the entire application use a warm milk canvas, not stark white. */
-html.white .bg-\\[\\#090a0c\\],
-html.white .bg-\\[\\#0f1012\\],
-html.white .bg-\\[\\#07080a\\],
-html.white .bg-\\[\\#000000\\],
-html.white .bg-\\[\\#08090b\\],
-html.white .bg-\\[\\#08090b\\]\\/95,
-html.white #desktop-sidebar,
-html.white #main-app-header,
-html.white #mobile-bottom-nav,
-html.white .bg-\\[\\#0d0f12\\],
-html.white .bg-\\[\\#0b0d10\\],
-html.white .bg-\\[\\#0b0d10\\]\\/95,
-html.white .bg-\\[\\#0c0e12\\],
-html.white .bg-\\[\\#0d0f13\\],
-html.white .bg-\\[\\#0d0f14\\],
-html.white .bg-\\[\\#0c0d10\\],
-html.white .bg-\\[\\#101216\\],
-html.white .bg-\\[\\#111317\\],
-html.white .bg-\\[\\#111418\\],
-html.white .bg-\\[\\#131519\\],
-html.white .bg-\\[\\#14161a\\],
-html.white .bg-\\[\\#14161d\\],
-html.white .bg-\\[\\#151720\\],
-html.white .bg-\\[\\#16181d\\],
-html.white .bg-\\[\\#0e1014\\],
-html.white .bg-\\[\\#090b0e\\],
-html.white .bg-\\[\\#08090c\\],
-html.white .bg-\\[\\#12141a\\],
-html.white .bg-\\[\\#12151b\\],
-html.white .bg-\\[\\#13161c\\],
-html.white .bg-\\[\\#1a1d24\\],
-html.white .bg-\\[\\#050608\\],
-html.white .bg-zinc-950,
-html.white .bg-zinc-900 {
-  background-color: #f7f3e8 !important;
-  color: #1f2937 !important;
-  border-color: #ddd7c8 !important;
-}
-
-/* Give cards a very subtle cream separation while keeping the whole UI milk. */
-html.white .bg-zinc-800,
-html.white .bg-zinc-700 {
-  background-color: #eee8d9 !important;
-  color: #1f2937 !important;
-  border-color: #d8d0bf !important;
-}
-
-html.white .hover\\:bg-zinc-800:hover,
-html.white .hover\\:bg-zinc-900:hover,
-html.white .hover\\:bg-zinc-800\\/40:hover,
-html.white .hover\\:bg-zinc-800\\/50:hover,
-html.white .hover\\:bg-zinc-800\\/80:hover,
-html.white .hover\\:bg-zinc-800\\/90:hover {
-  background-color: #e9e2d3 !important;
-}
-
-/* Dark text on milk surfaces so every label and value remains visible. */
-html.white .text-white,
-html.white .text-zinc-100,
-html.white .text-zinc-200 {
-  color: #1f2937 !important;
-}
-
-html.white .text-zinc-300 {
-  color: #374151 !important;
-}
-
-html.white .text-zinc-400,
-html.white .text-zinc-500 {
-  color: #5f636b !important;
-}
-
-html.white .text-zinc-600 {
-  color: #4b5563 !important;
-}
-
-html.white .hover\\:text-white:hover,
-html.white .hover\\:text-zinc-200:hover,
-html.white .hover\\:text-zinc-300:hover {
-  color: #111827 !important;
-}
-
-/* Warm borders and readable inputs. */
-html.white input,
-html.white textarea,
-html.white select {
-  background-color: #fffdf7 !important;
-  color: #1f2937 !important;
-  border-color: #d5cdbb !important;
-}
-
-html.white input::placeholder,
-html.white textarea::placeholder {
-  color: #7b7f86 !important;
-}
-
-html.white input:focus,
-html.white textarea:focus,
-html.white select:focus {
-  border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12) !important;
-}
-
-/* Keep semantic status colors visible against milk. */
-html.white .text-blue-300,
-html.white .text-blue-400 { color: #1d4ed8 !important; }
-html.white .text-emerald-400 { color: #047857 !important; }
-html.white .text-amber-400 { color: #a16207 !important; }
-html.white .text-red-400 { color: #b91c1c !important; }
-html.white .text-orange-400 { color: #c2410c !important; }
-html.white .text-yellow-400 { color: #854d0e !important; }
-html.white .text-purple-400 { color: #7e22ce !important; }
-
-/* Data-heavy areas: long hashes, addresses and AI responses must remain readable. */
-html.white .whitespace-pre-wrap,
-html.white .font-mono,
-html.white a {
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-html.white table {
-  width: 100%;
-}
-
-html.white th,
-html.white td {
-  color: #1f2937 !important;
-  border-color: #ddd7c8 !important;
-}
-
-/* Mobile: keep content inside the viewport while allowing intentional data scrolling. */
-@media (max-width: 767px) {
-  html.white main,
-  html.white section,
-  html.white article,
-  html.white form {
-    min-width: 0;
-    max-width: 100%;
-  }
-
-  html.white .overflow-x-auto {
-    -webkit-overflow-scrolling: touch;
-  }
-
-  html.white input,
-  html.white textarea,
-  html.white button {
-    max-width: 100%;
-  }
-}
-
-html.white ::-webkit-scrollbar-track {
-  background: #f7f3e8 !important;
-}
-
-html.white ::-webkit-scrollbar-thumb {
-  background: #c9c1b0 !important;
-}
-
-html.white ::-webkit-scrollbar-thumb:hover {
-  background: #a99f8c !important;
-}
-
-
-/* =============================================================
-   FINAL WARM WHITE / MILK MODE
-   ============================================================= */
-html.white,
-html.white body,
-html.white #root {
-  color-scheme: light !important;
-  background: #f4efe3 !important;
-  color: #20242a !important;
-}
-
-/* Force every app surface, including footer/navigation, onto the milk canvas. */
-html.white body,
-html.white #root,
-html.white main,
-html.white header,
-html.white footer,
-html.white nav,
-html.white aside,
-html.white section,
-html.white article {
-  background-color: #f4efe3 !important;
-  color: #20242a !important;
-  border-color: #ddd5c5 !important;
-}
-
-/* Preserve hierarchy with barely darker milk cards. */
-html.white .bg-\\[\\#090a0c\\],
-html.white .bg-\\[\\#0f1012\\],
-html.white .bg-\\[\\#07080a\\],
-html.white .bg-\\[\\#000000\\],
-html.white .bg-\\[\\#08090b\\],
-html.white .bg-\\[\\#08090b\\]\\/95,
-html.white .bg-\\[\\#0d0f12\\],
-html.white .bg-\\[\\#0b0d10\\],
-html.white .bg-\\[\\#0b0d10\\]\\/95,
-html.white .bg-\\[\\#0c0e12\\],
-html.white .bg-\\[\\#0d0f13\\],
-html.white .bg-\\[\\#0d0f14\\],
-html.white .bg-\\[\\#0c0d10\\],
-html.white .bg-\\[\\#101216\\],
-html.white .bg-\\[\\#111317\\],
-html.white .bg-\\[\\#111418\\],
-html.white .bg-\\[\\#131519\\],
-html.white .bg-\\[\\#14161a\\],
-html.white .bg-\\[\\#14161d\\],
-html.white .bg-\\[\\#151720\\],
-html.white .bg-\\[\\#16181d\\],
-html.white .bg-\\[\\#0e1014\\],
-html.white .bg-\\[\\#090b0e\\],
-html.white .bg-\\[\\#08090c\\],
-html.white .bg-\\[\\#12141a\\],
-html.white .bg-\\[\\#12151b\\],
-html.white .bg-\\[\\#13161c\\],
-html.white .bg-\\[\\#1a1d24\\],
-html.white .bg-\\[\\#050608\\],
-html.white .bg-zinc-950,
-html.white .bg-zinc-900 {
-  background-color: #f4efe3 !important;
-  color: #20242a !important;
-  border-color: #ddd5c5 !important;
-}
-
-html.white .bg-zinc-800,
-html.white .bg-zinc-700,
-html.white .bg-zinc-600 {
-  background-color: #e9e1d1 !important;
-  color: #20242a !important;
-  border-color: #d3c9b6 !important;
-}
-
-/* Warm hover surfaces */
-html.white .hover\\:bg-zinc-800:hover,
-html.white .hover\\:bg-zinc-900:hover,
-html.white .hover\\:bg-zinc-800\\/40:hover,
-html.white .hover\\:bg-zinc-800\\/50:hover,
-html.white .hover\\:bg-zinc-800\\/80:hover,
-html.white .hover\\:bg-zinc-800\\/90:hover {
-  background-color: #e5dccb !important;
-}
-
-/* Replace white-on-dark typography everywhere so no information disappears. */
-html.white .text-white,
-html.white .text-zinc-100,
-html.white .text-zinc-200 {
-  color: #20242a !important;
-}
-
-html.white .text-zinc-300 { color: #343a40 !important; }
-html.white .text-zinc-400 { color: #5c6168 !important; }
-html.white .text-zinc-500 { color: #6b6f75 !important; }
-html.white .text-zinc-600 { color: #4b5057 !important; }
-
-html.white .hover\\:text-white:hover,
-html.white .hover\\:text-zinc-200:hover,
-html.white .hover\\:text-zinc-300:hover {
-  color: #111827 !important;
-}
-
-/* Borders, dividers and table lines */
-html.white .border-zinc-900,
-html.white .border-zinc-900\\/80,
-html.white .border-zinc-900\\/90,
-html.white .border-zinc-800,
-html.white .border-zinc-800\\/90,
-html.white .border-zinc-800\\/80,
-html.white .border-zinc-800\\/50,
-html.white .border-zinc-700,
-html.white .border-zinc-700\\/80 {
-  border-color: #ddd5c5 !important;
-}
-
-html.white hr {
-  border-color: #ddd5c5 !important;
-}
-
-html.white input,
-html.white textarea,
-html.white select {
-  background-color: #fbf8f1 !important;
-  color: #20242a !important;
-  border-color: #cfc5b2 !important;
-}
-
-html.white input::placeholder,
-html.white textarea::placeholder {
-  color: #77736b !important;
-}
-
-/* Keep status colors distinct against milk. */
-html.white .text-blue-300,
-html.white .text-blue-400 { color: #1d4ed8 !important; }
-html.white .text-emerald-400 { color: #047857 !important; }
-html.white .text-amber-400 { color: #a16207 !important; }
-html.white .text-red-400 { color: #b91c1c !important; }
-html.white .text-orange-400 { color: #c2410c !important; }
-html.white .text-yellow-400 { color: #854d0e !important; }
-html.white .text-purple-400 { color: #7e22ce !important; }
-
-/* Remove black/white theme remnants from controls and buttons. */
-html.white .bg-white.text-black,
-html.white button.bg-white.text-black,
-html.white a.bg-white.text-black {
-  background-color: #2f6fed !important;
-  color: #ffffff !important;
-  border-color: #2f6fed !important;
-}
-
-html.white .bg-white.text-black *,
-html.white button.bg-white.text-black *,
-html.white a.bg-white.text-black * {
-  color: #ffffff !important;
-}
-
-/* Warm white surfaces for generic white controls that are not primary CTAs. */
-html.white .bg-white:not(.text-black) {
-  background-color: #fbf8f1 !important;
-  color: #20242a !important;
-}
-
-/* Data visibility and mobile containment. */
-html.white .whitespace-pre-wrap,
-html.white .font-mono,
-html.white a {
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-html.white table {
-  width: 100%;
-}
-
-html.white th,
-html.white td {
-  color: #20242a !important;
-  border-color: #ddd5c5 !important;
-}
-
-@media (max-width: 767px) {
-  html.white main,
-  html.white section,
-  html.white article,
-  html.white form,
-  html.white footer {
-    min-width: 0;
-    max-width: 100%;
-  }
-
-  html.white .overflow-x-auto {
-    max-width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  html.white input,
-  html.white textarea,
-  html.white button {
-    max-width: 100%;
-  }
-}
-
-html.white ::-webkit-scrollbar-track {
-  background: #f4efe3 !important;
-}
-
-html.white ::-webkit-scrollbar-thumb {
-  background: #c8bda8 !important;
-}
-
-html.white ::-webkit-scrollbar-thumb:hover {
-  background: #aa9d87 !important;
-}
-
-
-/* =============================================================
-   FOOTER FIX: FORCE WARM WHITE MODE THROUGH THE ENTIRE FOOTER
-   ============================================================= */
-html.white #gen0-app-footer {
-  background-color: #f4efe3 !important;
-  background-image: none !important;
-  color: #20242a !important;
-  border-top-color: #ddd5c5 !important;
-  box-shadow: none !important;
-}
-
-html.white #gen0-app-footer .text-zinc-200,
-html.white #gen0-app-footer .text-zinc-300,
-html.white #gen0-app-footer .text-zinc-400,
-html.white #gen0-app-footer .text-zinc-500,
-html.white #gen0-app-footer .text-zinc-600 {
-  color: #5c6168 !important;
-}
-
-html.white #gen0-app-footer .text-zinc-200 {
-  color: #20242a !important;
-}
-
-html.white #gen0-app-footer .bg-\[\#111317\],
-html.white #gen0-app-footer .bg-zinc-800,
-html.white #gen0-app-footer .bg-zinc-900 {
-  background-color: #e9e1d1 !important;
-  color: #20242a !important;
-  border-color: #d3c9b6 !important;
-}
-
-html.white #gen0-app-footer .border-zinc-800,
-html.white #gen0-app-footer .border-zinc-900,
-html.white #gen0-app-footer .border-zinc-900\/90 {
-  border-color: #d3c9b6 !important;
-}
-
-html.white #gen0-app-footer .bg-zinc-800:hover,
-html.white #gen0-app-footer .hover\:bg-zinc-800:hover {
-  background-color: #dfd6c5 !important;
-}
-
-html.white #gen0-app-footer a:hover {
-  color: #1f2937 !important;
-}
-
-html.white #gen0-app-footer .bg-\[\#111317\] svg,
-html.white #gen0-app-footer svg {
-  color: #5c6168;
-}
-
-html.white #gen0-app-footer .bg-\[\#111317\]:hover svg {
-  color: #1f2937;
-}
-
-/* =============================================================
-   GM STREAK + LEADERBOARD WARM WHITE SURFACES
-   ============================================================= */
-html.white .gm-streak-page .bg-\[\#0e1014\],
-html.white .gm-leaderboard-page .bg-\[\#0e1014\] {
-  background-color: #f4efe3 !important;
-  color: #20242a !important;
-  border-color: #ddd5c5 !important;
-}
-
-html.white .gm-streak-page .bg-zinc-900\/50,
-html.white .gm-leaderboard-page .bg-zinc-900\/30 {
-  background-color: #e9e1d1 !important;
-  color: #20242a !important;
-  border-color: #d3c9b6 !important;
-}
-
-html.white .gm-streak-page .bg-black\/20 {
-  background-color: rgba(233, 225, 209, 0.55) !important;
-  border-color: #d3c9b6 !important;
-}
-
-/* =============================================================
-   LIGHT BROWN THEME OVERRIDE
-   ============================================================= */
-html.white,
-html.white body,
-html.white #root {
-  background: #e7dcc9 !important;
-  color: #2a2926 !important;
-}
-
-html.white body,
-html.white #root,
-html.white main,
-html.white header,
-html.white footer,
-html.white nav,
-html.white aside,
-html.white section,
-html.white article {
-  background-color: #e7dcc9 !important;
-  color: #2a2926 !important;
-  border-color: #cdbda5 !important;
-}
-
-html.white .bg-\\[\\#090a0c\\],
-html.white .bg-\\[\\#0f1012\\],
-html.white .bg-\\[\\#07080a\\],
-html.white .bg-\\[\\#000000\\],
-html.white .bg-\\[\\#08090b\\],
-html.white .bg-\\[\\#08090b\\]\\/95,
-html.white .bg-\\[\\#0d0f12\\],
-html.white .bg-\\[\\#0b0d10\\],
-html.white .bg-\\[\\#0b0d10\\]\\/95,
-html.white .bg-\\[\\#0c0e12\\],
-html.white .bg-\\[\\#0d0f13\\],
-html.white .bg-\\[\\#0d0f14\\],
-html.white .bg-\\[\\#0c0d10\\],
-html.white .bg-\\[\\#101216\\],
-html.white .bg-\\[\\#111317\\],
-html.white .bg-\\[\\#111418\\],
-html.white .bg-\\[\\#131519\\],
-html.white .bg-\\[\\#14161a\\],
-html.white .bg-\\[\\#14161d\\],
-html.white .bg-\\[\\#151720\\],
-html.white .bg-\\[\\#16181d\\],
-html.white .bg-\\[\\#0e1014\\],
-html.white .bg-\\[\\#090b0e\\],
-html.white .bg-\\[\\#08090c\\],
-html.white .bg-\\[\\#12141a\\],
-html.white .bg-\\[\\#12151b\\],
-html.white .bg-\\[\\#13161c\\],
-html.white .bg-\\[\\#1a1d24\\],
-html.white .bg-\\[\\#050608\\],
-html.white .bg-zinc-950,
-html.white .bg-zinc-900 {
-  background-color: #e7dcc9 !important;
-  color: #2a2926 !important;
-  border-color: #cdbda5 !important;
-}
-
-html.white .bg-zinc-800,
-html.white .bg-zinc-700,
-html.white .bg-zinc-600 {
-  background-color: #dacbb5 !important;
-  color: #2a2926 !important;
-  border-color: #c4b399 !important;
-}
-
-html.white .hover\\:bg-zinc-800:hover,
-html.white .hover\\:bg-zinc-900:hover,
-html.white .hover\\:bg-zinc-800\\/40:hover,
-html.white .hover\\:bg-zinc-800\\/50:hover,
-html.white .hover\\:bg-zinc-800\\/80:hover,
-html.white .hover\\:bg-zinc-800\\/90:hover {
-  background-color: #d2c2aa !important;
-}
-
-html.white .text-white,
-html.white .text-zinc-100,
-html.white .text-zinc-200 {
-  color: #2a2926 !important;
-}
-
-html.white .text-zinc-300 { color: #403d37 !important; }
-html.white .text-zinc-400 { color: #625d54 !important; }
-html.white .text-zinc-500 { color: #746e63 !important; }
-html.white .text-zinc-600 { color: #514c44 !important; }
-
-html.white .border-zinc-900,
-html.white .border-zinc-900\\/80,
-html.white .border-zinc-900\\/90,
-html.white .border-zinc-800,
-html.white .border-zinc-800\\/90,
-html.white .border-zinc-800\\/80,
-html.white .border-zinc-800\\/50,
-html.white .border-zinc-700,
-html.white .border-zinc-700\\/80 {
-  border-color: #cdbda5 !important;
-}
-
-html.white input,
-html.white textarea,
-html.white select,
-html.white .bg-white:not(.text-black) {
-  background-color: #f1e9dc !important;
-  color: #2a2926 !important;
-  border-color: #c4b399 !important;
-}
-
-html.white ::-webkit-scrollbar-track { background: #e7dcc9 !important; }
-html.white ::-webkit-scrollbar-thumb { background: #b9a98f !important; }
-html.white ::-webkit-scrollbar-thumb:hover { background: #9f8e73 !important; }
-
-html.white #gen0-app-footer {
-  background-color: #e7dcc9 !important;
-  border-top-color: #cdbda5 !important;
-}
-
-html.white .gm-streak-page .bg-\\[\\#0e1014\\],
-html.white .gm-leaderboard-page .bg-\\[\\#0e1014\\] {
-  background-color: #e7dcc9 !important;
-  color: #2a2926 !important;
-  border-color: #cdbda5 !important;
-}
-
-html.white .gm-streak-page .bg-zinc-900\\/50,
-html.white .gm-leaderboard-page .bg-zinc-900\\/30,
-html.white .gm-streak-page .bg-black\\/20 {
-  background-color: #dacbb5 !important;
-  color: #2a2926 !important;
-  border-color: #c4b399 !important;
-}
-
-
-/* =============================================================
-   LIGHT BROWN SYSTEM: FULL SURFACE + TAB POLISH
-   ============================================================= */
-html.white {
-  --lb-canvas: #e7dcc9;
-  --lb-surface: #ded1bc;
-  --lb-surface-2: #d4c4aa;
-  --lb-surface-hover: #cbb99d;
-  --lb-border: #c2ae90;
-  --lb-border-strong: #ae9878;
-  --lb-ink: #2b2925;
-  --lb-muted: #665f54;
-  --lb-blue: #315f9f;
-  --lb-sage: #4f735d;
-  --lb-terracotta: #a45f45;
-  --lb-plum: #715b78;
-}
-
-html.white,
-html.white body,
-html.white #root,
-html.white main,
-html.white header,
-html.white footer,
-html.white nav,
-html.white aside,
-html.white section,
-html.white article {
-  background-color: var(--lb-canvas) !important;
-  color: var(--lb-ink) !important;
-}
-
-/* Eliminate the remaining white / warm-white surfaces. */
-html.white .bg-white,
-html.white .bg-white\\/95,
-html.white .bg-white\\/90,
-html.white .bg-white\\/80,
-html.white .bg-white\\/70,
-html.white .bg-white\\/60,
-html.white .bg-\\[\\#ffffff\\],
-html.white .bg-\\[\\#fff\\],
-html.white .bg-\\[\\#fffdf7\\],
-html.white .bg-\\[\\#fbf8f1\\],
-html.white .bg-\\[\\#f8fafc\\],
-html.white .bg-\\[\\#f7f3e8\\],
-html.white .bg-\\[\\#f4efe3\\] {
-  background-color: var(--lb-surface) !important;
-  color: var(--lb-ink) !important;
-  border-color: var(--lb-border) !important;
-}
-
-/* Any arbitrary near-white Tailwind surface gets pulled into the brown system. */
-html.white [class*="bg-[#fff"],
-html.white [class*="bg-[#fbf"],
-html.white [class*="bg-[#f8f"],
-html.white [class*="bg-[#f7f"],
-html.white [class*="bg-[#f4f"] {
-  background-color: var(--lb-surface) !important;
-  color: var(--lb-ink) !important;
-  border-color: var(--lb-border) !important;
-}
-
-/* Stronger visual hierarchy for cards, panels and controls. */
-html.white .bg-zinc-800,
-html.white .bg-zinc-700,
-html.white .bg-zinc-600,
-html.white .bg-zinc-500 {
-  background-color: var(--lb-surface-2) !important;
-  color: var(--lb-ink) !important;
-  border-color: var(--lb-border) !important;
-}
-
-html.white .hover\\:bg-zinc-800:hover,
-html.white .hover\\:bg-zinc-900:hover,
-html.white .hover\\:bg-zinc-700:hover {
-  background-color: var(--lb-surface-hover) !important;
-}
-
-html.white .border-white,
-html.white .border-zinc-900,
-html.white .border-zinc-800,
-html.white .border-zinc-700,
-html.white .border-zinc-600 {
-  border-color: var(--lb-border) !important;
-}
-
-html.white .divide-zinc-800 > :not([hidden]) ~ :not([hidden]),
-html.white .divide-zinc-700 > :not([hidden]) ~ :not([hidden]) {
-  border-color: var(--lb-border) !important;
-}
-
-/* Typography stays dark and readable on the brown canvas. */
-html.white .text-white,
-html.white .text-zinc-100,
-html.white .text-zinc-200 { color: var(--lb-ink) !important; }
-html.white .text-zinc-300 { color: #403b34 !important; }
-html.white .text-zinc-400 { color: #5f584d !important; }
-html.white .text-zinc-500 { color: #71695d !important; }
-html.white .text-zinc-600 { color: #544d43 !important; }
-
-html.white input,
-html.white textarea,
-html.white select {
-  background-color: #e9dfcf !important;
-  color: var(--lb-ink) !important;
-  border-color: var(--lb-border) !important;
-}
-
-html.white input::placeholder,
-html.white textarea::placeholder { color: #776f62 !important; }
-
-/* Tab palette: blue, sage, terracotta and plum work against light brown. */
-html.white .glow-blue-tab,
-html.white [role="tab"][aria-selected="true"] {
-  background-color: rgba(49, 95, 159, 0.13) !important;
-  color: var(--lb-blue) !important;
-  border-color: rgba(49, 95, 159, 0.34) !important;
-  box-shadow: 0 0 18px -5px rgba(49, 95, 159, 0.25) !important;
-}
-
-html.white .glow-blue-tab:hover,
-html.white [role="tab"]:hover {
-  background-color: rgba(49, 95, 159, 0.09) !important;
-}
-
-html.white .text-blue-300,
-html.white .text-blue-400 { color: var(--lb-blue) !important; }
-html.white .text-emerald-400 { color: var(--lb-sage) !important; }
-html.white .text-orange-400,
-html.white .text-red-400 { color: var(--lb-terracotta) !important; }
-html.white .text-purple-400 { color: var(--lb-plum) !important; }
-html.white .text-amber-400,
-html.white .text-yellow-400 { color: #8a682e !important; }
-
-/* Preserve blue as the primary action colour while keeping it integrated. */
-html.white .bg-white.text-black,
-html.white button.bg-white.text-black,
-html.white a.bg-white.text-black {
-  background-color: var(--lb-blue) !important;
-  color: #ffffff !important;
-  border-color: var(--lb-blue) !important;
-}
-
-html.white .bg-white.text-black:hover,
-html.white button.bg-white.text-black:hover,
-html.white a.bg-white.text-black:hover {
-  background-color: #284f86 !important;
-}
-
-html.white ::-webkit-scrollbar-track { background: var(--lb-canvas) !important; }
-html.white ::-webkit-scrollbar-thumb { background: #b49f80 !important; }
-html.white ::-webkit-scrollbar-thumb:hover { background: #987f5f !important; }
-
-
-/* =============================================================
-   FINAL LIGHT BROWN HARDENING
-   Use valid attribute selectors so Tailwind arbitrary classes
-   cannot leave white/warm-white pockets behind.
-   ============================================================= */
-html.white,
-html.white body,
-html.white #root {
-  background-color: #e7dcc9 !important;
-  color: #2b2925 !important;
-}
-
-/* Known legacy dark surfaces -> brown. */
+/* Card hierarchy: white canvas, soft grey surfaces */
 html.white [class*="bg-[#090a0c]"],
 html.white [class*="bg-[#0f1012]"],
 html.white [class*="bg-[#07080a]"],
@@ -1549,114 +622,357 @@ html.white [class*="bg-[#12141a]"],
 html.white [class*="bg-[#12151b]"],
 html.white [class*="bg-[#13161c]"],
 html.white [class*="bg-[#1a1d24]"],
-html.white [class*="bg-[#050608]"] {
-  background-color: #ded1bc !important;
-  color: #2b2925 !important;
-  border-color: #c2ae90 !important;
-}
-
-/* Every actual white / warm-white surface -> brown. */
-html.white .bg-white:not(.text-black),
-html.white [class*="bg-[#ffffff]"],
-html.white [class*="bg-[#fffdf7]"],
-html.white [class*="bg-[#fbf8f1]"],
-html.white [class*="bg-[#f8fafc]"],
-html.white [class*="bg-[#f7f3e8]"],
-html.white [class*="bg-[#f4efe3]"] {
-  background-color: #ded1bc !important;
-  color: #2b2925 !important;
-  border-color: #c2ae90 !important;
-}
-
-/* Do not allow white primary controls to disappear into the canvas. */
-html.white button.bg-white,
-html.white a.bg-white,
-html.white button[class*="bg-[#ffffff]"],
-html.white a[class*="bg-[#ffffff]"] {
-  background-color: #315f9f !important;
-  color: #ffffff !important;
-  border-color: #315f9f !important;
-}
-
-html.white button.bg-white *,
-html.white a.bg-white *,
-html.white button[class*="bg-[#ffffff]"] *,
-html.white a[class*="bg-[#ffffff]"] * {
-  color: #ffffff !important;
-}
-
-/* Brown theme for common neutral utility surfaces. */
+html.white [class*="bg-[#050608]"],
 html.white .bg-zinc-950,
 html.white .bg-zinc-900 {
-  background-color: #ded1bc !important;
-  color: #2b2925 !important;
-  border-color: #c2ae90 !important;
+  background: #ffffff !important;
+  color: var(--light-ink) !important;
+  border-color: var(--light-border) !important;
 }
 
 html.white .bg-zinc-800,
 html.white .bg-zinc-700,
 html.white .bg-zinc-600 {
-  background-color: #d4c4aa !important;
-  color: #2b2925 !important;
-  border-color: #bfae93 !important;
+  background: var(--light-surface-2) !important;
+  color: var(--light-ink-2) !important;
+  border-color: var(--light-border-strong) !important;
 }
 
-/* Logo must have dark contrast in light brown mode. */
-html.white #gen0-brand-logo svg path,
-html.white #gen0-brand-logo .project-logo-mark {
-  fill: #2b2925 !important;
-  color: #2b2925 !important;
+html.white .bg-zinc-500 {
+  background: var(--light-surface-3) !important;
+  color: var(--light-ink) !important;
 }
 
-html.white #gen0-brand-logo .text-zinc-950 {
-  color: #2b2925 !important;
+/* Hover surfaces */
+html.white .hover\:bg-zinc-800:hover,
+html.white .hover\:bg-zinc-900:hover,
+html.white .hover\:bg-zinc-700:hover,
+html.white .hover\:bg-zinc-800\/40:hover,
+html.white .hover\:bg-zinc-800\/50:hover,
+html.white .hover\:bg-zinc-800\/80:hover,
+html.white .hover\:bg-zinc-800\/90:hover {
+  background: #eef2f7 !important;
 }
 
-/* Header/sidebar/mobile navigation get a distinct surface, not white. */
-html.white #main-app-header,
-html.white #desktop-sidebar,
-html.white #mobile-bottom-nav {
-  background-color: #ded1bc !important;
-  border-color: #c2ae90 !important;
-}
-
-/* Inputs and selects stay lighter than cards, but never white. */
-html.white input,
-html.white textarea,
-html.white select {
-  background-color: #e9dfcf !important;
-  color: #2b2925 !important;
-  border-color: #c2ae90 !important;
-}
-
-/* White text utilities become readable brown-theme ink. */
+/* Typography: near-black primary, graphite secondary */
 html.white .text-white,
 html.white .text-zinc-100,
 html.white .text-zinc-200 {
-  color: #2b2925 !important;
+  color: #111111 !important;
 }
 
-html.white .text-zinc-300 { color: #403b34 !important; }
-html.white .text-zinc-400 { color: #5f584d !important; }
-html.white .text-zinc-500 { color: #71695d !important; }
-
-/* Keep deliberate blue controls and status colors intact. */
-html.white .bg-blue-500\/10,
-html.white .bg-blue-500\/15,
-html.white .bg-blue-500\/20 {
-  color: #315f9f !important;
+html.white .text-zinc-300 {
+  color: #262626 !important;
 }
 
-html.white .glow-blue-tab,
-html.white [role="tab"][aria-selected="true"] {
-  background-color: rgba(49, 95, 159, 0.13) !important;
-  color: #315f9f !important;
-  border-color: rgba(49, 95, 159, 0.34) !important;
+html.white .text-zinc-400 {
+  color: #525252 !important;
 }
 
+html.white .text-zinc-500 {
+  color: #64748b !important;
+}
+
+html.white .text-zinc-600 {
+  color: #475569 !important;
+}
+
+html.white .hover\:text-white:hover,
+html.white .hover\:text-zinc-200:hover,
+html.white .hover\:text-zinc-300:hover {
+  color: #000000 !important;
+}
+
+/* Borders and dividers */
+html.white .border-zinc-900,
+html.white .border-zinc-900\/80,
+html.white .border-zinc-900\/90,
+html.white .border-zinc-800,
+html.white .border-zinc-800\/90,
+html.white .border-zinc-800\/80,
+html.white .border-zinc-800\/50,
+html.white .border-zinc-700,
+html.white .border-zinc-700\/80,
+html.white .border-white {
+  border-color: var(--light-border) !important;
+}
+
+html.white hr {
+  border-color: var(--light-border) !important;
+}
+
+/* Inputs, selects and dropdowns */
+html.white input,
+html.white textarea,
+html.white select {
+  background: #ffffff !important;
+  color: #111111 !important;
+  border-color: var(--light-border-strong) !important;
+}
+
+html.white input::placeholder,
+html.white textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+html.white input:focus,
+html.white textarea:focus,
+html.white select:focus {
+  outline: none;
+  border-color: var(--light-blue) !important;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.10) !important;
+}
+
+html.white option {
+  background: #ffffff !important;
+  color: #111111 !important;
+}
+
+/* Tabs and navigation */
+html.white [role="tab"] {
+  color: #64748b !important;
+  border-color: transparent !important;
+}
+
+html.white [role="tab"]:hover {
+  color: #111111 !important;
+  background: #f1f5f9 !important;
+}
+
+html.white [role="tab"][aria-selected="true"],
+html.white .glow-blue-tab {
+  color: #111111 !important;
+  background: #eef2f7 !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: inset 3px 0 0 #111111, 0 2px 8px rgba(15,23,42,.05) !important;
+}
+
+/* Primary actions use black/charcoal for a premium light-mode hierarchy */
+html.white .bg-white.text-black,
+html.white button.bg-white.text-black,
+html.white a.bg-white.text-black {
+  background: #111111 !important;
+  color: #ffffff !important;
+  border-color: #111111 !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,.12);
+}
+
+html.white .bg-white.text-black:hover,
+html.white button.bg-white.text-black:hover,
+html.white a.bg-white.text-black:hover {
+  background: #2b2b2b !important;
+  border-color: #2b2b2b !important;
+}
+
+html.white .bg-white.text-black *,
+html.white button.bg-white.text-black *,
+html.white a.bg-white.text-black * {
+  color: #ffffff !important;
+}
+
+/* Generic white controls remain white, not muddy */
+html.white .bg-white:not(.text-black) {
+  background: #ffffff !important;
+  color: #111111 !important;
+}
+
+/* Semantic status colours remain distinct */
+html.white .text-blue-300,
+html.white .text-blue-400,
+html.white .text-blue-500 {
+  color: #2563eb !important;
+}
+
+html.white .text-emerald-300,
+html.white .text-emerald-400,
+html.white .text-green-300,
+html.white .text-green-400,
+html.white .text-lime-300,
+html.white .text-lime-400 {
+  color: #059669 !important;
+}
+
+html.white .text-amber-300,
+html.white .text-amber-400,
+html.white .text-yellow-300,
+html.white .text-yellow-400,
+html.white .text-orange-300,
+html.white .text-orange-400 {
+  color: #b45309 !important;
+}
+
+html.white .text-red-400,
+html.white .text-red-500,
+html.white .text-rose-400,
+html.white .text-rose-500 {
+  color: #dc2626 !important;
+}
+
+html.white .text-violet-300,
+html.white .text-violet-400,
+html.white .text-violet-500,
+html.white .text-purple-300,
+html.white .text-purple-400,
+html.white .text-purple-500,
+html.white .text-indigo-300,
+html.white .text-indigo-400 {
+  color: #7c3aed !important;
+}
+
+/* Semantic accent surfaces */
+html.white [class*="bg-blue-"] {
+  background-color: rgba(37,99,235,.08) !important;
+}
+
+html.white [class*="bg-emerald-"],
+html.white [class*="bg-green-"],
+html.white [class*="bg-lime-"] {
+  background-color: rgba(5,150,105,.08) !important;
+}
+
+html.white [class*="bg-red-"],
+html.white [class*="bg-rose-"] {
+  background-color: rgba(220,38,38,.07) !important;
+}
+
+/* Dialogs and overlays */
+html.white .bg-black\/80,
+html.white .bg-black\/70,
+html.white .bg-black\/60 {
+  background-color: rgba(0,0,0,.55) !important;
+}
+
+html.white [role="dialog"] {
+  background: #ffffff !important;
+  color: #111111 !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 24px 70px rgba(15,23,42,.18) !important;
+}
+
+/* Logo and links */
+html.white #gen0-brand-logo svg path,
+html.white .project-logo-mark {
+  fill: #111111 !important;
+  color: #111111 !important;
+}
+
+html.white #gen0-brand-logo:hover svg path {
+  fill: #2563eb !important;
+}
+
+html.white a:not([class*="bg-"]) {
+  color: #2563eb;
+}
+
+html.white a:not([class*="bg-"]):hover {
+  color: #111111 !important;
+}
+
+/* Tables and dense data */
+html.white table {
+  width: 100%;
+}
+
+html.white th {
+  color: #64748b !important;
+  border-color: var(--light-border) !important;
+}
+
+html.white td {
+  color: #111111 !important;
+  border-color: var(--light-border) !important;
+}
+
+html.white tr:hover {
+  background: #f8fafc !important;
+}
+
+/* Footer */
 html.white #gen0-app-footer {
-  background-color: #e7dcc9 !important;
-  border-top-color: #c2ae90 !important;
+  background: #ffffff !important;
+  color: #111111 !important;
+  border-top-color: var(--light-border) !important;
+}
+
+/* Focus and selection */
+html.white :focus-visible {
+  outline: 2px solid #2563eb !important;
+  outline-offset: 2px;
+}
+
+html.white ::selection {
+  background: #111111 !important;
+  color: #ffffff !important;
+}
+
+/* Scrollbar */
+html.white ::-webkit-scrollbar-track {
+  background: #ffffff !important;
+}
+
+html.white ::-webkit-scrollbar-thumb {
+  background: #cbd5e1 !important;
+  border-radius: 999px;
+}
+
+html.white ::-webkit-scrollbar-thumb:hover {
+  background: #64748b !important;
+}
+
+/* GM / rewards */
+html.white .gm-streak-page [class*="bg-emerald-"],
+html.white .gm-streak-page [class*="bg-green-"],
+html.white .gm-streak-page [class*="bg-lime-"],
+html.white .gm-leaderboard-page [class*="bg-emerald-"],
+html.white .gm-leaderboard-page [class*="bg-green-"],
+html.white .gm-leaderboard-page [class*="bg-lime-"] {
+  background-color: rgba(5,150,105,.08) !important;
+}
+
+html.white .gm-streak-page .text-emerald-400,
+html.white .gm-streak-page .text-green-400,
+html.white .gm-streak-page .text-lime-400,
+html.white .gm-leaderboard-page .text-emerald-400,
+html.white .gm-leaderboard-page .text-green-400,
+html.white .gm-leaderboard-page .text-lime-400 {
+  color: #059669 !important;
+}
+
+/* Data wrapping and mobile containment */
+html.white .whitespace-pre-wrap,
+html.white .font-mono,
+html.white a {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+@media (max-width: 767px) {
+  html.white main,
+  html.white section,
+  html.white article,
+  html.white form,
+  html.white footer {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  html.white .overflow-x-auto {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  html.white input,
+  html.white textarea,
+  html.white button {
+    max-width: 100%;
+  }
+}
+
+@supports (padding: max(0px)) {
+  html.white #mobile-bottom-nav {
+    padding-bottom: max(.5rem, env(safe-area-inset-bottom)) !important;
+  }
 }
 
 /* =============================================================
