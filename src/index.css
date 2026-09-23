@@ -3321,3 +3321,152 @@ html.brown .bg-zinc-950 {
   color: #172033 !important;
   border-color: rgba(71,85,105,.14) !important;
 }
+
+
+/* =============================================================
+   GEN-0FI WARM DARK v4
+   Deeper brown mode: mature espresso/graphite surfaces with
+   cool neon accents. Darker without becoming muddy or sepia.
+   ============================================================= */
+
+html.brown,
+html.brown body,
+html.brown #root {
+  color-scheme: dark !important;
+  color: #f4f1eb !important;
+  background:
+    radial-gradient(900px 560px at 4% -10%, rgba(34,211,238,.10), transparent 60%),
+    radial-gradient(820px 540px at 96% 0%, rgba(124,92,246,.10), transparent 62%),
+    radial-gradient(760px 520px at 52% 110%, rgba(180,126,62,.09), transparent 64%),
+    linear-gradient(145deg,#171412 0%,#211b17 48%,#151315 100%) !important;
+}
+
+html.brown body {
+  background-attachment: fixed;
+}
+
+/* Dark warm chrome */
+html.brown #desktop-sidebar,
+html.brown #main-app-header,
+html.brown #mobile-bottom-nav {
+  background: rgba(27,24,22,.88) !important;
+  color: #f4f1eb !important;
+  border-color: rgba(214,197,174,.13) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.045),
+    0 10px 30px rgba(0,0,0,.28) !important;
+  backdrop-filter: blur(24px) saturate(120%);
+  -webkit-backdrop-filter: blur(24px) saturate(120%);
+}
+
+/* Mature dark-warm glass cards */
+html.brown .glow-blue-card,
+html.brown .glow-blue-card-hover {
+  background: linear-gradient(145deg,rgba(48,40,34,.86),rgba(29,26,25,.78)) !important;
+  color: #f4f1eb !important;
+  border-color: rgba(181,157,129,.16) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.045),
+    0 14px 38px rgba(0,0,0,.26),
+    0 0 26px rgba(34,211,238,.035) !important;
+  backdrop-filter: blur(20px) saturate(120%);
+  -webkit-backdrop-filter: blur(20px) saturate(120%);
+}
+
+html.brown .glow-blue-card-hover:hover {
+  border-color: rgba(34,211,238,.30) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.06),
+    0 18px 44px rgba(0,0,0,.32),
+    0 0 32px rgba(34,211,238,.08) !important;
+}
+
+/* Warm dark typography */
+html.brown .text-white,
+html.brown .text-zinc-100,
+html.brown .text-zinc-200 {
+  color: #f7f4ee !important;
+}
+
+html.brown .text-zinc-300 { color: #d2c9bd !important; }
+html.brown .text-zinc-400 { color: #aaa095 !important; }
+html.brown .text-zinc-500 { color: #897f75 !important; }
+html.brown .text-zinc-600 { color: #706860 !important; }
+
+/* Borders remain subtle, never muddy */
+html.brown .border-zinc-900,
+html.brown .border-zinc-900\/80,
+html.brown .border-zinc-800,
+html.brown .border-zinc-800\/80,
+html.brown .border-zinc-700 {
+  border-color: rgba(205,190,169,.13) !important;
+}
+
+/* Inputs and selects */
+html.brown input,
+html.brown textarea,
+html.brown select {
+  background: rgba(31,28,27,.92) !important;
+  color: #f7f4ee !important;
+  border-color: rgba(190,173,151,.17) !important;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.16) !important;
+}
+
+html.brown input::placeholder,
+html.brown textarea::placeholder {
+  color: #827970 !important;
+}
+
+html.brown input:focus,
+html.brown textarea:focus,
+html.brown select:focus {
+  border-color: rgba(34,211,238,.48) !important;
+  box-shadow:
+    0 0 0 3px rgba(34,211,238,.075),
+    0 0 24px rgba(34,211,238,.07) !important;
+}
+
+/* Dropdowns stay dark and opaque for maximum readability */
+html.brown [role="listbox"],
+html.brown [role="menu"],
+html.brown [data-radix-popper-content-wrapper] > *,
+html.brown .absolute.z-50,
+html.brown .absolute.z-\[50\] {
+  background: #29231f !important;
+  color: #f7f4ee !important;
+  border-color: rgba(205,190,169,.16) !important;
+  box-shadow: 0 20px 48px rgba(0,0,0,.38) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+/* Dark warm utility surfaces */
+html.brown .bg-zinc-800,
+html.brown .bg-zinc-900,
+html.brown .bg-zinc-950 {
+  background: #29231f !important;
+  color: #f7f4ee !important;
+  border-color: rgba(205,190,169,.14) !important;
+}
+
+/* Keep semantic accents vivid against the darker canvas */
+html.brown .gen-accent-finance { color: #60a5fa !important; }
+html.brown .gen-accent-onchain { color: #67e8f9 !important; }
+html.brown .gen-accent-intelligence { color: #a78bfa !important; }
+html.brown .gen-accent-gm { color: #bef264 !important; }
+html.brown .gen-accent-positive { color: #5eead4 !important; }
+html.brown .gen-accent-warning { color: #fcd34d !important; }
+html.brown .gen-accent-negative { color: #fb7185 !important; }
+
+/* Warm mode: dark amber is atmosphere only, not UI text */
+html.brown main::before {
+  background:
+    radial-gradient(520px 360px at 78% 12%, rgba(34,211,238,.055), transparent 70%),
+    radial-gradient(460px 320px at 18% 78%, rgba(180,126,62,.045), transparent 70%) !important;
+}
+
+html.brown body::after {
+  background:
+    radial-gradient(circle at 50% -10%, rgba(34,211,238,.035), transparent 35%),
+    radial-gradient(circle at 100% 100%, rgba(139,92,246,.025), transparent 30%) !important;
+}
