@@ -28,15 +28,15 @@ export const Logo: React.FC<LogoProps> = ({ size = 'md', showText = true, classN
   const textSizeClass = { sm: 'text-sm font-bold', md: 'text-base font-bold', lg: 'text-xl font-extrabold' }[size];
 
   return (
-    <div className={`flex items-center gap-2.5 select-none ${className}`} id="gen0-brand-logo">
+    <div className={`flex items-center gap-2.5 select-none shrink-0 whitespace-nowrap ${className}`} id="gen0-brand-logo">
       <div className={`relative flex items-center justify-center shrink-0 ${iconSizeClass}`}>
         <ProjectLogoMark className="w-full h-full" />
       </div>
       {showText && (
-        <div className="flex flex-col leading-none">
-          <div className={`tracking-tight flex items-center gap-1.5 ${isWhite ? 'text-[#f5ead8]' : 'text-white'} ${textSizeClass}`}>
-            <span className={`font-extrabold tracking-tight ${isWhite ? 'text-[#f5ead8]' : 'text-white'}`}>GEN-0</span>
-            <span className="text-blue-400 font-bold font-mono text-[12px] px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/30">FI</span>
+        <div className="flex flex-col leading-none shrink-0 whitespace-nowrap">
+          <div className={`tracking-tight flex items-center gap-1.5 whitespace-nowrap ${isWhite ? 'text-[#f5ead8]' : 'text-white'} ${textSizeClass}`}>
+            <span className={`font-extrabold tracking-tight whitespace-nowrap ${isWhite ? 'text-[#f5ead8]' : 'text-white'}`}>GEN-0</span>
+            <span className="text-blue-400 font-bold font-mono text-[12px] px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/30 shrink-0">FI</span>
           </div>
         </div>
       )}
