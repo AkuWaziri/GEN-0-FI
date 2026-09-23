@@ -92,6 +92,57 @@ function getDirectPublicClient(chainId: number, chain?: LiFiChain) {
   });
 }
 
+async function switchWalletChain(chainId: number, chain?: LiFiChain) {
+  const ethereum = typeof window !== 'undefined' ? (window as any).ethereum : null;
+  if (!ethereum?.request) throw new Error('No compatible wallet provider is available.');
+
+  const hexChainId = '0x' + chainId.toString(16);
+  try {
+    await ethereum.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: hexChainId }],
+    });
+    return;
+  } catch (error: any) {
+    const code = error?.code;
+    if (code !== 4902 && code !== -32603) throw error;
+  }
+
+  const rpcUrl = chain?.metamask?.rpcUrls?.find((url) => {
+    try {
+      const host = new URL(url).hostname.toLowerCase();
+      return !host.includes('walletconnect') && !host.includes('reown');
+    } catch {
+      return false;
+    }
+  }) || (chainId === 5042 ? 'https://rpc.mainnet.arc.io' : undefined);
+
+  if (!rpcUrl) {
+    throw new Error('Your wallet does not have this network configured. Add the network to your wallet and try again.');
+  }
+
+  const native = chain?.nativeToken;
+  await ethereum.request({
+    method: 'wallet_addEthereumChain',
+    params: [{
+      chainId: hexChainId,
+      chainName: chain?.name || 'Network ' + chainId,
+      nativeCurrency: {
+        name: native?.name || chain?.name || 'Native Token',
+        symbol: native?.symbol || 'NATIVE',
+        decimals: native?.decimals ?? 18,
+      },
+      rpcUrls: [rpcUrl],
+      blockExplorerUrls: chain?.metamask?.blockExplorerUrls?.filter(Boolean),
+    }],
+  });
+
+  await ethereum.request({
+    method: 'wallet_switchEthereumChain',
+    params: [{ chainId: hexChainId }],
+  });
+}
+
 function cleanSwapError(error: unknown, context: 'balance' | 'allowance' | 'gas' | 'transaction' = 'transaction') {
   const message = error instanceof Error ? error.message : String(error || '');
   const lower = message.toLowerCase();
@@ -476,10 +527,17 @@ export const SwapView: React.FC = () => {
   };
 
   const switchFromChain = async () => {
+    setError(null);
     try {
-      await switchChain(wagmiConfig, { chainId: fromChainId });
-    } catch {
-      setError('Your wallet could not switch to the selected source chain.');
+      await switchWalletChain(fromChainId, fromChain);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error || '');
+      const lower = message.toLowerCase();
+      if (/user rejected|user denied|4001/.test(lower)) {
+        setError('Network switch was cancelled in your wallet.');
+      } else {
+        setError(message || 'Your wallet could not switch to the selected source chain.');
+      }
     }
   };
 
