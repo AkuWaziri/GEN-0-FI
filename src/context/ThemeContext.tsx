@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-export type ThemeMode = 'dark' | 'brown';
+export type ThemeMode = 'light' | 'neon';
 
 interface ThemeContextType {
   theme: ThemeMode;
@@ -9,7 +9,7 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: 'dark',
+  theme: 'light',
   toggleTheme: () => {},
   setTheme: () => {},
 });
@@ -18,34 +18,39 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [theme, setThemeState] = useState<ThemeMode>(() => {
     if (typeof window !== 'undefined') {
       const explicitChoice = localStorage.getItem('gen0_theme_selection');
-      if (explicitChoice === 'dark' || explicitChoice === 'brown') {
+
+      if (explicitChoice === 'light' || explicitChoice === 'neon') {
         return explicitChoice;
       }
-      if (explicitChoice === 'white') {
-        return 'brown';
-      }
-      return 'dark';
+
+      // Migrate previous theme names without changing the user's selected visual mode.
+      if (explicitChoice === 'dark') return 'light';
+      if (explicitChoice === 'brown' || explicitChoice === 'white') return 'neon';
+
+      return 'light';
     }
-    return 'dark';
+    return 'light';
   });
 
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === 'brown') {
+
+    if (theme === 'neon') {
       root.classList.add('brown');
       root.classList.remove('dark');
-      root.classList.remove('grey');
+      root.classList.remove('white');
     } else {
-      root.classList.add('dark');
-      root.classList.remove('grey');
+      root.classList.add('white');
+      root.classList.remove('dark');
       root.classList.remove('brown');
     }
+
     localStorage.setItem('gen0_theme_selection', theme);
     localStorage.setItem('gen0_theme', theme);
   }, [theme]);
 
   const toggleTheme = () => {
-    setThemeState((prev) => (prev === 'dark' ? 'brown' : 'dark'));
+    setThemeState((prev) => (prev === 'light' ? 'neon' : 'light'));
   };
 
   const setTheme = (newTheme: ThemeMode) => {
