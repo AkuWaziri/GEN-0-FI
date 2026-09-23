@@ -4,7 +4,6 @@ import {
   Shield,
   Volume2,
   VolumeX,
-  Moon,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { soundEngine } from '../../utils/sound';
@@ -13,7 +12,7 @@ export const SettingsView: React.FC = () => {
   const { theme, setTheme } = useTheme();
   const [isMuted, setIsMuted] = useState(soundEngine.getIsMuted());
 
-  const handleThemeChange = (mode: 'dark' | 'brown') => {
+  const handleThemeChange = (mode: 'light' | 'neon') => {
     soundEngine.playSoftClick(520, 0.05);
     setTheme(mode);
   };
@@ -33,24 +32,24 @@ export const SettingsView: React.FC = () => {
         <div className="flex items-center justify-between gap-4">
           <div>
             <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">Appearance</h2>
-            <p className="text-xs text-zinc-500 mt-1">{theme === 'dark' ? 'Dark' : 'Brown'}</p>
+            <p className="text-xs text-zinc-500 mt-1">{theme === 'light' ? 'Light' : 'Neon Core'}</p>
           </div>
           <button
             type="button"
-            onClick={() => handleThemeChange(theme === 'dark' ? 'brown' : 'dark')}
-            className="relative w-24 h-10 rounded-xl overflow-hidden border border-zinc-700 shadow-sm transition-all"
-            aria-label={theme === 'dark' ? 'Switch to Brown mode' : 'Switch to Dark mode'}
+            onClick={() => handleThemeChange(theme === 'light' ? 'neon' : 'light')}
+            className="relative w-28 h-10 rounded-xl overflow-hidden border border-zinc-300 shadow-sm transition-all"
+            aria-label={theme === 'light' ? 'Switch to Neon Core mode' : 'Switch to Light mode'}
           >
-            <span className="absolute inset-y-0 left-0 w-1/2 bg-[#111317]" />
-            <span className="absolute inset-y-0 right-0 w-1/2 bg-[#8b5e3c]" />
+            <span className="absolute inset-y-0 left-0 w-1/2 bg-[#f5f5f5]" />
+            <span className="absolute inset-y-0 right-0 w-1/2 bg-[#0D0D0D]" />
             <span
-              className={`absolute top-1 w-8 h-8 rounded-lg bg-white shadow-md transition-all ${theme === 'dark' ? 'left-1' : 'right-1'}`}
+              className={`absolute top-1 w-8 h-8 rounded-lg bg-white shadow-md transition-all ${theme === 'light' ? 'left-1' : 'right-1'}`}
             />
           </button>
         </div>
         <div className="mt-3 flex items-center justify-between text-[11px] font-medium">
-          <span className="text-zinc-500">Dark</span>
-          <span className="text-[#9a6a45]">Brown</span>
+          <span className={theme === 'light' ? 'text-zinc-900 font-semibold' : 'text-zinc-500'}>Light</span>
+          <span className={theme === 'neon' ? 'text-[#00FF85] font-semibold' : 'text-zinc-500'}>Neon Core</span>
         </div>
       </div>
 
