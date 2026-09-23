@@ -344,7 +344,7 @@ export const AskGen0View: React.FC<AskGen0ViewProps> = ({ embedded = false }) =>
       {/* Quick Questions */}
       {messages.length === 1 && !isGenerating && (
         <div className="space-y-2">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Try asking</div>
+          <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 gen-ai-try-asking">Try asking</div>
           <div className="flex flex-wrap gap-2">
             {quickQuestions.map((question) => (
               <button
