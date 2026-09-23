@@ -3978,3 +3978,121 @@ html.brown [data-radix-select-item][data-state="checked"] {
   background: rgba(245, 234, 216, 0.09) !important;
   color: #fffdf8 !important;
 }
+
+
+/* =============================================================
+   GEN-0FI TAB + SURFACE READABILITY v8
+   Prevent pale/white UI chrome from washing out section content.
+   Applies only to dark themes. White mode remains intentionally light.
+   ============================================================= */
+
+/* Grey mode: keep every tab container and selected state on graphite. */
+html.grey [role="tablist"],
+html.light [role="tablist"] {
+  background: #1c1e23 !important;
+  border-color: #2e313a !important;
+}
+
+html.grey [role="tab"],
+html.light [role="tab"] {
+  background-color: transparent !important;
+  color: #b8bec9 !important;
+  border-color: transparent !important;
+}
+
+html.grey [role="tab"][aria-selected="true"],
+html.light [role="tab"][aria-selected="true"] {
+  background: #30343d !important;
+  color: #ffffff !important;
+  border-color: #454b58 !important;
+  box-shadow: 0 0 14px rgba(255,255,255,.045) !important;
+}
+
+html.grey [role="tab"]:hover,
+html.light [role="tab"]:hover {
+  background: #272a31 !important;
+  color: #f3f4f6 !important;
+}
+
+/* Grey mode: white utility surfaces must never hide dark text on dark canvas. */
+html.grey .bg-white,
+html.grey [class*="bg-white/"],
+html.light .bg-white,
+html.light [class*="bg-white/"] {
+  background-color: #292c34 !important;
+  color: #ffffff !important;
+  border-color: #3a3e48 !important;
+}
+
+html.grey .bg-white .text-black,
+html.grey .bg-white [class*="text-gray-9"],
+html.grey .bg-white [class*="text-zinc-9"],
+html.light .bg-white .text-black,
+html.light .bg-white [class*="text-gray-9"],
+html.light .bg-white [class*="text-zinc-9"] {
+  color: #ffffff !important;
+}
+
+/* Brown mode: all section tabs use warm glass, never pale white chrome. */
+html.brown [role="tablist"] {
+  background: rgba(38,32,28,.94) !important;
+  border-color: rgba(205,190,169,.16) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035) !important;
+}
+
+html.brown [role="tab"] {
+  background-color: transparent !important;
+  color: #c8bdb1 !important;
+  border-color: transparent !important;
+}
+
+html.brown [role="tab"][aria-selected="true"] {
+  background: rgba(245,234,216,.12) !important;
+  color: #fffdf8 !important;
+  border-color: rgba(245,234,216,.24) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.05),
+    0 0 16px rgba(245,234,216,.045) !important;
+}
+
+html.brown [role="tab"]:hover {
+  background: rgba(245,234,216,.075) !important;
+  color: #fffaf2 !important;
+}
+
+/* Brown mode: eliminate pale utility surfaces across cards, filters and controls. */
+html.brown .bg-white,
+html.brown [class*="bg-white/"] {
+  background-color: #29231f !important;
+  color: #fffaf2 !important;
+  border-color: rgba(205,190,169,.18) !important;
+}
+
+html.brown .bg-white .text-black,
+html.brown .bg-white [class*="text-gray-9"],
+html.brown .bg-white [class*="text-zinc-9"],
+html.brown [class*="bg-white/"] [class*="text-black"] {
+  color: #fffaf2 !important;
+}
+
+/* Buttons/controls that accidentally inherit a light surface stay readable. */
+html.brown button,
+html.grey button,
+html.light button {
+  color: inherit;
+}
+
+html.brown button[class*="bg-white"],
+html.grey button[class*="bg-white"],
+html.light button[class*="bg-white"] {
+  background-color: #29231f !important;
+  color: #fffaf2 !important;
+  border-color: rgba(205,190,169,.18) !important;
+}
+
+html.grey button[class*="bg-white"],
+html.light button[class*="bg-white"] {
+  background-color: #292c34 !important;
+  color: #ffffff !important;
+  border-color: #3a3e48 !important;
+}
