@@ -15,26 +15,37 @@ export const LandingView: React.FC<LandingViewProps> = ({ onOpenConnect, onOpenG
 
   return (
     <div className="min-h-screen bg-[#000000] text-zinc-100 flex flex-col justify-between selection:bg-white selection:text-black">
-      {/* Top Navbar with Connect Wallet on the right side */}
-      <header className={`flex items-center justify-between px-4 sm:px-8 lg:px-12 py-3.5 sm:py-4 border-b w-full backdrop-blur-md sticky top-0 z-30 transition-colors duration-200 ${isWhite ? 'border-zinc-200 bg-white/90' : 'border-zinc-900 bg-[#000000]/90'}`}>
-        <Logo size="md" />
-        <div className={`flex items-center gap-1 p-1 rounded-2xl border ${isWhite ? 'border-zinc-200 bg-white/80' : 'border-zinc-800 bg-zinc-950/70'}`}>
+      {/* Responsive landing navigation */}
+      <header className={`flex items-center justify-between gap-2 px-3 sm:px-8 lg:px-12 py-3 sm:py-4 border-b w-full backdrop-blur-md sticky top-0 z-30 transition-colors duration-200 ${isWhite ? 'border-zinc-200 bg-white/90' : 'border-zinc-900 bg-[#000000]/90'}`}>
+        <div className="shrink-0">
+          <div className="sm:hidden">
+            <Logo size="sm" />
+          </div>
+          <div className="hidden sm:block">
+            <Logo size="md" />
+          </div>
+        </div>
+
+        <div className={`flex items-center gap-0.5 sm:gap-1 p-1 rounded-2xl border shrink-0 ${isWhite ? 'border-zinc-200 bg-white/80' : 'border-zinc-800 bg-zinc-950/70'}`}>
           <button
             type="button"
             onClick={onOpenGmStreak}
-            className={`flex items-center gap-1.5 h-9 px-2.5 sm:px-3 rounded-xl text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-colors ${isWhite ? 'text-zinc-700 hover:text-black hover:bg-zinc-100' : 'text-zinc-300 hover:text-white hover:bg-white/5'}`}
+            aria-label="Open GM Streak"
+            className={`flex items-center justify-center gap-1.5 h-9 px-2 sm:px-3 rounded-xl text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-colors ${isWhite ? 'text-zinc-700 hover:text-black hover:bg-zinc-100' : 'text-zinc-300 hover:text-white hover:bg-white/5'}`}
           >
-            <Flame className="w-3.5 h-3.5 text-blue-400" />
-            <span>GM Streak</span>
+            <Flame className="w-3.5 h-3.5 shrink-0 text-blue-400" />
+            <span className="hidden min-[401px]:inline">GM Streak</span>
+            <span className="min-[401px]:hidden">GM</span>
           </button>
+
           <button
             id="btn-navbar-connect-wallet"
             onClick={onOpenConnect}
-            className="flex items-center gap-1.5 h-9 px-2.5 sm:px-3 rounded-xl bg-white hover:bg-zinc-200 text-[11px] sm:text-xs font-bold text-black glow-blue-cta cursor-pointer transition-all duration-150 shadow-md whitespace-nowrap"
+            className="flex items-center justify-center gap-1.5 h-9 px-2 sm:px-3 rounded-xl bg-white hover:bg-zinc-200 text-[11px] sm:text-xs font-bold text-black glow-blue-cta cursor-pointer transition-all duration-150 shadow-md whitespace-nowrap"
           >
-            <Wallet className="w-3.5 h-3.5" />
-            <span className="hidden xs:inline sm:inline">Connect Wallet</span>
-            <span className="xs:hidden sm:hidden">Connect</span>
+            <Wallet className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden min-[361px]:inline">Connect Wallet</span>
+            <span className="min-[361px]:hidden">Connect</span>
           </button>
         </div>
       </header>
