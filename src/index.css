@@ -4189,3 +4189,145 @@ html.brown [data-radix-select-content] {
   border-color: rgba(205,190,169,.20) !important;
   opacity: 1 !important;
 }
+
+
+/* =============================================================
+   GEN-0FI BROWN MODE v10
+   Deepen all shared component chrome. Prevent white cards/buttons
+   from washing out information in AI, Activity, GM, Settings,
+   Leaderboard, Swap and Bridge.
+   ============================================================= */
+
+html.brown [class*="bg-[#0d0f12]"],
+html.brown [class*="bg-[#111317]"],
+html.brown [class*="bg-[#131519]"] {
+  background-color: #211b17 !important;
+  color: #fffaf2 !important;
+  border-color: rgba(205,190,169,.17) !important;
+}
+
+html.brown [class*="bg-zinc-900"],
+html.brown [class*="bg-zinc-800"] {
+  background-color: #28211c !important;
+  color: #fffaf2 !important;
+  border-color: rgba(205,190,169,.20) !important;
+}
+
+html.brown [class*="hover:bg-zinc-800"]:hover,
+html.brown [class*="hover:bg-zinc-900"]:hover {
+  background-color: #342a23 !important;
+}
+
+html.brown .text-zinc-300 {
+  color: #e9ddd1 !important;
+}
+
+html.brown .text-zinc-400 {
+  color: #d9cbbd !important;
+}
+
+html.brown .text-zinc-500 {
+  color: #c2b2a3 !important;
+}
+
+html.brown .text-zinc-600 {
+  color: #ad9c8c !important;
+}
+
+/* GEN-0 AI: user bubbles must never be pure white. */
+html.brown .bg-white.text-black,
+html.brown [class*="bg-white"][class*="text-black"] {
+  background: linear-gradient(135deg, #49372a 0%, #3a2c24 100%) !important;
+  color: #fffaf2 !important;
+  border: 1px solid rgba(245,234,216,.20) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.20) !important;
+}
+
+/* All brown-mode primary action buttons use warm glass instead of white. */
+html.brown button.bg-white,
+html.brown a.bg-white,
+html.brown [class*="bg-white"][class*="text-black"] {
+  background: linear-gradient(135deg, #5a4433 0%, #403127 100%) !important;
+  color: #fffaf2 !important;
+  border-color: rgba(245,234,216,.24) !important;
+}
+
+html.brown button.bg-white:hover,
+html.brown a.bg-white:hover {
+  background: linear-gradient(135deg, #6a503c 0%, #4b382b 100%) !important;
+  color: #ffffff !important;
+}
+
+/* GEN-0FI controls: avoid light chrome around useful information. */
+html.brown input,
+html.brown textarea,
+html.brown select,
+html.brown [role="combobox"] {
+  background-color: #211b17 !important;
+  color: #fffaf2 !important;
+}
+
+html.brown input:disabled,
+html.brown textarea:disabled,
+html.brown select:disabled {
+  background-color: #1c1714 !important;
+  color: #b7a799 !important;
+}
+
+/* Swap / Bridge panels and token controls. */
+html.brown [class*="bg-blue-500/5"],
+html.brown [class*="bg-blue-500/[0.05]"],
+html.brown [class*="bg-blue-500/[0.06]"] {
+  background-color: rgba(78,60,47,.72) !important;
+  border-color: rgba(181,138,99,.24) !important;
+}
+
+html.brown [class*="bg-red-500/5"] {
+  background-color: rgba(78,36,34,.72) !important;
+}
+
+html.brown [class*="bg-green-500/5"] {
+  background-color: rgba(38,69,58,.72) !important;
+}
+
+/* Warm dropdowns: readable names, subdued secondary prices. */
+html.brown [role="listbox"] [class*="text-[#71695d]"] {
+  color: #c9b9a9 !important;
+}
+
+html.brown [role="listbox"] button:hover {
+  background-color: #49352a !important;
+}
+
+/* GM / leaderboard: keep the information hierarchy crisp. */
+html.brown .bg-white.text-black.disabled\:opacity-40 {
+  background: linear-gradient(135deg, #5a4433, #403127) !important;
+}
+
+html.brown [class*="divide-zinc-800"] > * {
+  border-color: rgba(205,190,169,.15) !important;
+}
+
+/* Settings theme toggle and sound control. */
+html.brown [class*="bg-white"][class*="shadow-md"] {
+  background-color: #f0e4d6 !important;
+  color: #2b211b !important;
+}
+
+html.brown [class*="bg-white"][class*="glow-blue-cta"] {
+  background: linear-gradient(135deg, #5a4433, #403127) !important;
+  color: #fffaf2 !important;
+}
+
+/* Never allow a near-white utility surface to become a content backdrop. */
+html.brown [class*="bg-stone-50"],
+html.brown [class*="bg-stone-100"],
+html.brown [class*="bg-neutral-50"],
+html.brown [class*="bg-neutral-100"],
+html.brown [class*="bg-gray-50"],
+html.brown [class*="bg-gray-100"],
+html.brown [class*="bg-zinc-50"],
+html.brown [class*="bg-zinc-100"] {
+  background-color: #29231f !important;
+  color: #fffaf2 !important;
+}
