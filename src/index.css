@@ -1661,35 +1661,34 @@ html.white #gen0-app-footer {
 
 /* =============================================================
    GEN-0FI BROWN MODE
-   FRESH PALETTE SYSTEM
-   Black + Jet Black + Soft Linen + Tan + Stone Brown
+   FRESH ORGANIC EARTH SYSTEM
+   Soft Peach + Dry Sage + Grey Olive + Ebony + Iron Grey
    ============================================================= */
 
 html.brown {
   color-scheme: dark;
-  --gen0-black: #0a0908;
-  --gen0-jet: #22333b;
-  --gen0-linen: #eae0d5;
-  --gen0-tan: #c6ac8f;
-  --gen0-stone: #5e503f;
-  --gen0-ink: #141312;
-  --gen0-surface: #18242a;
-  --gen0-surface-2: #223039;
-  --gen0-border: rgba(198,172,143,.22);
-  --gen0-linen-soft: rgba(234,224,213,.72);
-  background: #0a0908 !important;
-  color: #eae0d5 !important;
+  --gen0-peach: #e1ca96;
+  --gen0-sage: #aca885;
+  --gen0-olive: #918b76;
+  --gen0-ebony: #626c66;
+  --gen0-iron: #434a42;
+  --gen0-black: #101310;
+  --gen0-surface: #202520;
+  --gen0-surface-2: #2a302b;
+  --gen0-border: rgba(172,168,133,.22);
+  background: #101310 !important;
+  color: #e1ca96 !important;
 }
 
-/* Canvas */
+/* Canvas: deep iron/ebony with restrained organic atmosphere */
 html.brown body,
 html.brown #root {
   background:
-    radial-gradient(circle at 10% 0%, rgba(34,51,59,.58), transparent 34%),
-    radial-gradient(circle at 92% 8%, rgba(94,80,63,.24), transparent 30%),
-    radial-gradient(circle at 50% 100%, rgba(198,172,143,.10), transparent 42%),
-    linear-gradient(145deg, #0a0908 0%, #111718 48%, #0a0908 100%) !important;
-  color: #eae0d5 !important;
+    radial-gradient(circle at 8% 0%, rgba(98,108,102,.34), transparent 32%),
+    radial-gradient(circle at 92% 10%, rgba(172,168,133,.16), transparent 30%),
+    radial-gradient(circle at 50% 100%, rgba(225,202,150,.08), transparent 40%),
+    linear-gradient(145deg, #101310 0%, #1b211d 48%, #101310 100%) !important;
+  color: #e1ca96 !important;
 }
 
 html.brown {
@@ -1697,18 +1696,14 @@ html.brown {
 }
 
 /* Scrollbar */
-html.brown ::-webkit-scrollbar-track {
-  background: #0a0908;
-}
+html.brown ::-webkit-scrollbar-track { background: #101310; }
 html.brown ::-webkit-scrollbar-thumb {
-  background: #5e503f;
+  background: #626c66;
   border-radius: 999px;
 }
-html.brown ::-webkit-scrollbar-thumb:hover {
-  background: #c6ac8f;
-}
+html.brown ::-webkit-scrollbar-thumb:hover { background: #aca885; }
 
-/* Typography */
+/* Primary typography */
 html.brown h1,
 html.brown h2,
 html.brown h3,
@@ -1717,13 +1712,13 @@ html.brown h5,
 html.brown h6,
 html.brown .text-white,
 html.brown [class*="text-white/"] {
-  color: #eae0d5 !important;
+  color: #e1ca96 !important;
   opacity: 1 !important;
 }
 
 html.brown p,
 html.brown label {
-  color: #cfc2b4 !important;
+  color: #c9c1a8 !important;
 }
 
 html.brown .text-zinc-100,
@@ -1732,25 +1727,25 @@ html.brown .text-gray-100,
 html.brown .text-gray-200,
 html.brown .text-stone-100,
 html.brown .text-stone-200 {
-  color: #eae0d5 !important;
+  color: #e1ca96 !important;
 }
 
 html.brown .text-zinc-300,
 html.brown .text-gray-300,
 html.brown .text-stone-300 {
-  color: #d6cabc !important;
+  color: #d3c9ad !important;
 }
 
 html.brown .text-zinc-400,
 html.brown .text-gray-400,
 html.brown .text-stone-400 {
-  color: #c0b1a1 !important;
+  color: #aca885 !important;
 }
 
 html.brown .text-zinc-500,
 html.brown .text-gray-500,
 html.brown .text-stone-500 {
-  color: #a99783 !important;
+  color: #918b76 !important;
 }
 
 html.brown .text-zinc-600,
@@ -1759,14 +1754,12 @@ html.brown .text-stone-600,
 html.brown .text-zinc-700,
 html.brown .text-gray-700,
 html.brown .text-stone-700 {
-  color: #8c7c6a !important;
+  color: #7d837a !important;
 }
 
-html.brown .text-black {
-  color: #0a0908 !important;
-}
+html.brown .text-black { color: #101310 !important; }
 
-/* Soft linen-to-tan text gradients */
+/* Soft Peach -> Sage -> Olive text treatment */
 html.brown .text-blue-200,
 html.brown .text-blue-300,
 html.brown .text-blue-400,
@@ -1785,14 +1778,14 @@ html.brown .text-purple-500,
 html.brown .text-indigo-300,
 html.brown .text-indigo-400,
 html.brown .text-indigo-500 {
-  background-image: linear-gradient(105deg, #eae0d5 0%, #c6ac8f 52%, #8f7c65 100%) !important;
+  background-image: linear-gradient(105deg, #e1ca96 0%, #aca885 52%, #918b76 100%) !important;
   background-clip: text !important;
   -webkit-background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
-  color: #eae0d5 !important;
+  color: #e1ca96 !important;
 }
 
-/* All status/accent text stays inside the five-color system */
+/* All legacy status colors collapse into the five-color system */
 html.brown .text-emerald-300,
 html.brown .text-emerald-400,
 html.brown .text-green-300,
@@ -1806,10 +1799,10 @@ html.brown .text-orange-400,
 html.brown .text-red-400,
 html.brown .text-red-500,
 html.brown .text-rose-400 {
-  color: #c6ac8f !important;
+  color: #aca885 !important;
 }
 
-/* Core dark surfaces */
+/* Deep surfaces */
 html.brown [class*="bg-[#07080a]"],
 html.brown [class*="bg-[#08090b]"],
 html.brown [class*="bg-[#090a0c]"],
@@ -1828,12 +1821,12 @@ html.brown [class*="bg-gray-900"],
 html.brown [class*="bg-gray-800"],
 html.brown [class*="bg-slate-950"],
 html.brown [class*="bg-slate-900"] {
-  background: #18242a !important;
-  color: #eae0d5 !important;
-  border-color: rgba(198,172,143,.18) !important;
+  background: #202520 !important;
+  color: #e1ca96 !important;
+  border-color: rgba(172,168,133,.18) !important;
 }
 
-/* Secondary / elevated surfaces */
+/* Elevated surfaces */
 html.brown .bg-white,
 html.brown [class*="bg-white/"],
 html.brown [class*="bg-gray-50"],
@@ -1844,12 +1837,12 @@ html.brown [class*="bg-stone-50"],
 html.brown [class*="bg-stone-100"],
 html.brown [class*="bg-neutral-50"],
 html.brown [class*="bg-neutral-100"] {
-  background: #223039 !important;
-  color: #eae0d5 !important;
-  border-color: rgba(198,172,143,.24) !important;
+  background: #2a302b !important;
+  color: #e1ca96 !important;
+  border-color: rgba(172,168,133,.24) !important;
 }
 
-/* Replace every legacy colored surface */
+/* Every legacy accent surface is remapped */
 html.brown [class*="bg-blue-"],
 html.brown [class*="bg-cyan-"],
 html.brown [class*="bg-violet-"],
@@ -1862,10 +1855,10 @@ html.brown [class*="bg-amber-"],
 html.brown [class*="bg-orange-"],
 html.brown [class*="bg-red-"],
 html.brown [class*="bg-rose-"] {
-  background-color: rgba(34,51,59,.62) !important;
+  background-color: rgba(98,108,102,.34) !important;
 }
 
-/* Legacy colored borders */
+/* Legacy accent borders */
 html.brown [class*="border-blue-"],
 html.brown [class*="border-cyan-"],
 html.brown [class*="border-violet-"],
@@ -1878,10 +1871,10 @@ html.brown [class*="border-amber-"],
 html.brown [class*="border-orange-"],
 html.brown [class*="border-red-"],
 html.brown [class*="border-rose-"] {
-  border-color: rgba(198,172,143,.28) !important;
+  border-color: rgba(172,168,133,.28) !important;
 }
 
-/* Generic neutral borders */
+/* Neutral borders */
 html.brown .border-zinc-900,
 html.brown .border-zinc-900\/80,
 html.brown .border-zinc-900\/90,
@@ -1894,51 +1887,51 @@ html.brown .border-zinc-700\/80,
 html.brown .border-gray-800,
 html.brown .border-gray-700,
 html.brown .border-stone-800 {
-  border-color: rgba(198,172,143,.20) !important;
+  border-color: rgba(172,168,133,.20) !important;
 }
 
-/* Tabs */
+/* Navigation / tabs */
 html.brown [role="tablist"],
 html.brown [data-radix-tabs-list] {
-  background: rgba(34,51,59,.88) !important;
-  border: 1px solid rgba(198,172,143,.20) !important;
+  background: rgba(67,74,66,.88) !important;
+  border: 1px solid rgba(172,168,133,.22) !important;
   box-shadow:
-    inset 0 1px 0 rgba(234,224,213,.05),
-    0 12px 34px rgba(10,9,8,.28) !important;
+    inset 0 1px 0 rgba(225,202,150,.05),
+    0 12px 34px rgba(16,19,16,.34) !important;
 }
 
 html.brown [role="tab"],
 html.brown [data-radix-tabs-trigger] {
   background: transparent !important;
-  color: #a99783 !important;
+  color: #918b76 !important;
   border-color: transparent !important;
 }
 
 html.brown [role="tab"][aria-selected="true"],
 html.brown [data-radix-tabs-trigger][data-state="active"],
 html.brown [data-state="active"] {
-  background: linear-gradient(135deg, rgba(198,172,143,.26), rgba(34,51,59,.92)) !important;
-  color: #eae0d5 !important;
-  border-color: rgba(198,172,143,.34) !important;
+  background: linear-gradient(135deg, rgba(225,202,150,.20), rgba(98,108,102,.82)) !important;
+  color: #e1ca96 !important;
+  border-color: rgba(225,202,150,.28) !important;
   box-shadow:
-    0 0 24px rgba(198,172,143,.10),
-    inset 0 1px 0 rgba(234,224,213,.06) !important;
+    0 0 24px rgba(225,202,150,.09),
+    inset 0 1px 0 rgba(225,202,150,.06) !important;
 }
 
 html.brown [role="tab"]:hover,
 html.brown [data-radix-tabs-trigger]:hover {
-  background: rgba(94,80,63,.24) !important;
-  color: #eae0d5 !important;
+  background: rgba(145,139,118,.20) !important;
+  color: #e1ca96 !important;
 }
 
-/* Inputs / selects */
+/* Inputs / selects / comboboxes */
 html.brown input,
 html.brown textarea,
 html.brown select,
 html.brown [role="combobox"] {
-  background: #18242a !important;
-  color: #eae0d5 !important;
-  border-color: rgba(198,172,143,.24) !important;
+  background: #202520 !important;
+  color: #e1ca96 !important;
+  border-color: rgba(172,168,133,.24) !important;
 }
 
 html.brown input:focus,
@@ -1946,34 +1939,34 @@ html.brown textarea:focus,
 html.brown select:focus,
 html.brown [role="combobox"]:focus,
 html.brown [role="combobox"][data-state="open"] {
-  border-color: #c6ac8f !important;
+  border-color: #aca885 !important;
   box-shadow:
-    0 0 0 3px rgba(198,172,143,.13),
-    0 0 22px rgba(34,51,59,.30) !important;
+    0 0 0 3px rgba(172,168,133,.13),
+    0 0 22px rgba(98,108,102,.28) !important;
 }
 
 html.brown input::placeholder,
 html.brown textarea::placeholder {
-  color: #8c7c6a !important;
+  color: #7d837a !important;
 }
 
-/* Dropdowns and menus */
+/* Dropdowns / menus */
 html.brown [role="listbox"],
 html.brown [role="menu"],
 html.brown [role="option"],
 html.brown [role="menuitem"],
 html.brown [data-radix-popper-content-wrapper] > * {
-  background: #223039 !important;
-  color: #eae0d5 !important;
-  border-color: rgba(198,172,143,.24) !important;
+  background: #2a302b !important;
+  color: #e1ca96 !important;
+  border-color: rgba(172,168,133,.24) !important;
 }
 
 html.brown [role="option"]:hover,
 html.brown [role="option"][data-highlighted],
 html.brown [role="menuitem"]:hover,
 html.brown [role="menuitem"][data-highlighted] {
-  background: #5e503f !important;
-  color: #eae0d5 !important;
+  background: #626c66 !important;
+  color: #e1ca96 !important;
 }
 
 /* Buttons */
@@ -1981,26 +1974,26 @@ html.brown button[class*="bg-white"],
 html.brown a[class*="bg-white"],
 html.brown button[class*="bg-zinc-"],
 html.brown button[class*="bg-gray-"] {
-  background: #223039 !important;
-  color: #eae0d5 !important;
-  border-color: rgba(198,172,143,.26) !important;
+  background: #2a302b !important;
+  color: #e1ca96 !important;
+  border-color: rgba(172,168,133,.26) !important;
 }
 
 html.brown button.bg-white,
 html.brown a.bg-white,
 html.brown [class*="bg-white"][class*="text-black"] {
-  background: linear-gradient(135deg, #eae0d5 0%, #c6ac8f 100%) !important;
-  color: #0a0908 !important;
-  border-color: rgba(234,224,213,.50) !important;
-  box-shadow: 0 8px 26px rgba(10,9,8,.28) !important;
+  background: linear-gradient(135deg, #e1ca96 0%, #aca885 100%) !important;
+  color: #101310 !important;
+  border-color: rgba(225,202,150,.52) !important;
+  box-shadow: 0 8px 26px rgba(16,19,16,.30) !important;
 }
 
 html.brown button.bg-white:hover,
 html.brown a.bg-white:hover {
-  background: linear-gradient(135deg, #f3ebe2 0%, #d3bda2 100%) !important;
+  background: linear-gradient(135deg, #ead7aa 0%, #bdb995 100%) !important;
 }
 
-/* Solid legacy accents */
+/* Solid legacy accent buttons */
 html.brown .bg-blue-500,
 html.brown .bg-blue-600,
 html.brown .bg-cyan-500,
@@ -2014,51 +2007,51 @@ html.brown .bg-yellow-500,
 html.brown .bg-red-500,
 html.brown .bg-emerald-500,
 html.brown .bg-green-500 {
-  background-color: #5e503f !important;
+  background-color: #626c66 !important;
 }
 
-/* Glows become restrained linen / tan lighting */
+/* Organic glows */
 html.brown [class*="glow-blue"],
 html.brown [class*="glow-violet"],
 html.brown [class*="glow-cyan"],
 html.brown [class*="glow-orange"],
 html.brown [class*="glow-rose"] {
-  border-color: rgba(198,172,143,.24) !important;
+  border-color: rgba(172,168,133,.24) !important;
   box-shadow:
-    0 18px 55px rgba(10,9,8,.34),
-    0 0 30px rgba(198,172,143,.10),
-    inset 0 1px 0 rgba(234,224,213,.05) !important;
+    0 18px 55px rgba(16,19,16,.34),
+    0 0 30px rgba(225,202,150,.09),
+    inset 0 1px 0 rgba(225,202,150,.05) !important;
 }
 
-/* Cards and elevation */
+/* Cards / elevation */
 html.brown .rounded-xl,
 html.brown .rounded-2xl {
-  border-color: rgba(198,172,143,.18);
+  border-color: rgba(172,168,133,.18);
 }
 
 html.brown .shadow-md,
 html.brown .shadow-lg,
 html.brown .shadow-xl {
   box-shadow:
-    0 18px 50px rgba(10,9,8,.34),
-    inset 0 1px 0 rgba(234,224,213,.035) !important;
+    0 18px 50px rgba(16,19,16,.36),
+    inset 0 1px 0 rgba(225,202,150,.035) !important;
 }
 
-/* AI prompt */
+/* GEN-0 AI prompt */
 html.brown .gen-ai-try-asking {
-  color: #c6ac8f !important;
+  color: #aca885 !important;
   opacity: 1 !important;
 }
 
 html.brown .gen-ai-try-asking ~ div button,
 html.brown .gen-ai-try-asking + div button {
-  color: #d6cabc !important;
+  color: #c9c1a8 !important;
 }
 
 html.brown .gen-ai-try-asking ~ div button:hover,
 html.brown .gen-ai-try-asking + div button:hover {
-  color: #eae0d5 !important;
-  background: rgba(34,51,59,.72) !important;
+  color: #e1ca96 !important;
+  background: rgba(98,108,102,.34) !important;
 }
 
 /* Dense data / activity / leaderboard */
@@ -2067,14 +2060,14 @@ html.brown tr,
 html.brown td,
 html.brown th,
 html.brown [class*="divide-zinc-800"] > * {
-  border-color: rgba(198,172,143,.15) !important;
+  border-color: rgba(172,168,133,.15) !important;
 }
 
 html.brown thead {
-  color: #a99783 !important;
+  color: #918b76 !important;
 }
 
-/* Icons stay neutral within the palette */
+/* Icons inherit the organic palette */
 html.brown .text-blue-300 svg,
 html.brown .text-blue-400 svg,
 html.brown .text-violet-300 svg,
@@ -2085,30 +2078,43 @@ html.brown .text-orange-300 svg,
 html.brown .text-orange-400 svg,
 html.brown .text-emerald-300 svg,
 html.brown .text-emerald-400 svg {
-  color: #c6ac8f !important;
+  color: #aca885 !important;
 }
 
-/* Utility text hover */
 html.brown .hover\:text-white:hover,
 html.brown .hover\:text-zinc-200:hover,
 html.brown .hover\:text-zinc-300:hover {
-  color: #eae0d5 !important;
+  color: #e1ca96 !important;
 }
 
 /* Modal / overlay */
 html.brown .bg-black\/80,
 html.brown .bg-black\/90 {
-  background: rgba(10,9,8,.82) !important;
+  background: rgba(16,19,16,.84) !important;
 }
 
 /* Skeletons */
 html.brown .animate-pulse {
-  background: #223039 !important;
-  border-color: rgba(198,172,143,.16) !important;
+  background: #2a302b !important;
+  border-color: rgba(172,168,133,.16) !important;
 }
 
-/* Semantic utility variables for future components */
+/* Future semantic utilities */
 html.brown .text-primary,
 html.brown .text-secondary {
-  color: #eae0d5 !important;
+  color: #e1ca96 !important;
+}
+
+/* Keep the five-color rule strict for SVG/icon utility classes */
+html.brown svg.text-blue-300,
+html.brown svg.text-blue-400,
+html.brown svg.text-cyan-300,
+html.brown svg.text-cyan-400,
+html.brown svg.text-violet-300,
+html.brown svg.text-violet-400,
+html.brown svg.text-emerald-300,
+html.brown svg.text-emerald-400,
+html.brown svg.text-orange-300,
+html.brown svg.text-orange-400 {
+  color: #aca885 !important;
 }
