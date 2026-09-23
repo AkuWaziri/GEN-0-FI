@@ -191,8 +191,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
                   <div className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight flex items-baseline gap-3 font-mono">
                     <span>{activeBalanceUSDC}</span><span className="text-xl sm:text-2xl font-bold text-zinc-400">USDC</span>
                   </div>
-                  <div className="text-xs text-zinc-400 mt-2 flex items-center gap-2 font-mono"><span className="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)] animate-pulse" /><span>Arc • 18 Decimals Verified Onchain</span></div>
-                </div>
+                    </div>
               )}
             </div>
             <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2.5 pt-4 sm:pt-0 border-t sm:border-t-0 border-zinc-800/80">
