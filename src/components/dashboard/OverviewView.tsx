@@ -176,7 +176,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.55fr)_minmax(280px,0.75fr)] gap-4 sm:gap-5">
-        <div className="p-6 sm:p-7 rounded-2xl bg-[#0d0f12] bg-[radial-gradient(ellipse_at_top_left,rgba(59,130,246,0.08),transparent_65%)] border border-blue-500/20 glow-blue-card relative overflow-hidden">
+        <div className="p-6 sm:p-7 rounded-2xl bg-[#0d0f12] bg-[radial-gradient(ellipse_at_top_left,rgba(34,211,238,0.10),transparent_58%),radial-gradient(ellipse_at_bottom_right,rgba(139,92,246,0.08),transparent_62%)] border border-cyan-400/20 glow-blue-card relative overflow-hidden">
           <div className="absolute -right-12 -top-12 w-72 h-72 bg-blue-500/[0.07] rounded-full blur-3xl pointer-events-none" />
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
             <div className="space-y-1.5">
@@ -204,11 +204,11 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
           </div>
         </div>
 
-        <button type="button" id="section-gm-streak" onClick={() => onSelectTab('gm')} className="text-left p-5 rounded-2xl bg-blue-500/[0.06] bg-[radial-gradient(ellipse_at_top_right,rgba(59,130,246,0.15),transparent_72%)] border border-blue-500/25 glow-blue-card-hover relative overflow-hidden flex flex-col justify-between transition-all group cursor-pointer">
+        <button type="button" id="section-gm-streak" onClick={() => onSelectTab('gm')} className="text-left p-5 rounded-2xl bg-lime-400/[0.035] bg-[radial-gradient(ellipse_at_top_right,rgba(163,230,53,0.12),transparent_62%),radial-gradient(ellipse_at_bottom_left,rgba(34,211,238,0.07),transparent_68%)] border border-lime-400/20 glow-blue-card-hover relative overflow-hidden flex flex-col justify-between transition-all group cursor-pointer">
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 rounded-lg bg-blue-500/15 border border-blue-400/30 flex items-center justify-center text-blue-300"><Flame className="w-3.5 h-3.5" /></div>
-              <div><h2 className="text-sm font-bold text-white">GM Streak</h2><p className="text-[10px] text-blue-300/70 font-mono">Daily check-in</p></div>
+              <div className="w-7 h-7 rounded-lg bg-lime-400/10 border border-lime-300/25 flex items-center justify-center text-lime-300"><Flame className="w-3.5 h-3.5" /></div>
+              <div><h2 className="text-sm font-bold text-white">GM Streak</h2><p className="text-[10px] text-lime-300/75 font-mono">Daily check-in</p></div>
             </div>
             <div className="grid grid-cols-3 gap-2 pt-1">
               <div><div className="text-lg font-bold text-white font-mono">{gmStats?.currentStreak ?? 0}</div><div className="text-[10px] text-zinc-500">Streak</div></div>
@@ -218,7 +218,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
           </div>
           <div className="pt-4 mt-4 border-t border-blue-500/10 flex items-center justify-between gap-2">
             <span className="text-[10px] text-zinc-500 font-mono">{gmStats?.checkedInToday ? 'Checked in today' : 'Check in today'}</span>
-            <span className="text-[10px] text-blue-300 font-semibold">Open →</span>
+            <span className="text-[10px] text-cyan-300 font-semibold">Open →</span>
           </div>
         </button>
       </div>
