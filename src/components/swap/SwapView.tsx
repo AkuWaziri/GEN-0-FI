@@ -709,9 +709,12 @@ function TokenPanel(props: {
   }, [openMenu]);
 
   const warmWhite = typeof document !== 'undefined' && document.documentElement.classList.contains('brown');
+  const lightMode = typeof document !== 'undefined' && document.documentElement.classList.contains('white');
   const menuClass = warmWhite
     ? 'border-[#b58a63] bg-[#2f2118] text-[#fff7ef]'
-    : 'border-blue-400/30 bg-[#0f1724] text-white';
+    : lightMode
+      ? 'border-[#cbd5e1] bg-[#eef1f4] text-[#111111]'
+      : 'border-blue-400/30 bg-[#0f1724] text-white';
 
   const tokenWalletBalance = (token: LiFiToken) => {
     if (props.chainId === 5042 && token.symbol?.toUpperCase() === 'USDC' && props.arcNativeBalance !== null) return formatBalance(props.arcNativeBalance, 18);
@@ -797,7 +800,7 @@ function TokenPanel(props: {
           }}
           role="listbox"
         >
-          <div className={warmWhite ? 'sticky top-0 p-2 bg-[#2f2118]' : 'sticky top-0 p-2 bg-[#0f1724]'}>
+          <div className={warmWhite ? 'sticky top-0 p-2 bg-[#2f2118]' : lightMode ? 'sticky top-0 p-2 bg-[#e5e7eb]' : 'sticky top-0 p-2 bg-[#0f1724]'}>
             <input
               autoFocus
               value={search}
@@ -841,7 +844,7 @@ function TokenPanel(props: {
               {lookingUpToken && <div className={warmWhite ? 'px-4 py-2 text-xs text-[#d0b59e]' : 'px-4 py-2 text-xs text-zinc-400'}>Looking up contract on LI.FI...</div>}
               {lookupError && <div className="px-4 py-2 text-xs text-red-300">{lookupError}</div>}
               {visibleTokens.map((token) => (
-                <button key={token.address} type="button" onClick={() => { props.setToken(token); setSearch(''); setOpenMenu(null); }} className={warmWhite ? 'w-full flex items-center justify-between px-3 py-3 text-sm text-[#fff7ef] hover:bg-[#4a3224] transition' : 'w-full flex items-center justify-between px-3 py-3 text-sm text-white hover:bg-[#18283d] transition'}>
+                <button key={token.address} type="button" onClick={() => { props.setToken(token); setSearch(''); setOpenMenu(null); }} className={warmWhite ? 'w-full flex items-center justify-between px-3 py-3 text-sm text-[#fff7ef] hover:bg-[#4a3224] transition' : lightMode ? 'w-full flex items-center justify-between px-3 py-3 text-sm text-[#111111] hover:bg-[#dbe3ea] transition' : 'w-full flex items-center justify-between px-3 py-3 text-sm text-white hover:bg-[#18283d] transition'}>
                   <span className="flex items-center gap-2 min-w-0">{token.logoURI && <img src={token.logoURI} alt="" className="w-6 h-6 rounded-full shrink-0" />}<span className="truncate">{token.symbol}</span></span>
                   {token.priceUSD && <span className={warmWhite ? 'text-xs text-[#71695d] ml-3' : 'text-xs text-zinc-500 ml-3'}>${Number(token.priceUSD).toLocaleString()}</span>}
                 </button>
@@ -866,7 +869,7 @@ function TokenPanel(props: {
         ref={chainTriggerRef}
         type="button"
         onClick={() => openDropdown('chain')}
-        className="w-full flex items-center justify-between rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-white"
+        className={lightMode ? 'w-full flex items-center justify-between rounded-xl border border-[#cbd5e1] bg-[#eef1f4] px-3 py-2.5 text-sm text-[#111111]' : 'w-full flex items-center justify-between rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-white'}
       >
         <span className="truncate">{props.chain?.name || 'Select chain'}</span>
         <ChevronDown className="w-4 h-4 text-zinc-500 shrink-0" />
@@ -876,11 +879,11 @@ function TokenPanel(props: {
         ref={tokenTriggerRef}
         type="button"
         onClick={() => openDropdown('token')}
-        className="w-full mt-3 flex items-center justify-between rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5"
+        className={lightMode ? 'w-full mt-3 flex items-center justify-between rounded-xl border border-[#cbd5e1] bg-[#eef1f4] px-3 py-2.5' : 'w-full mt-3 flex items-center justify-between rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5'}
       >
         <span className="flex items-center gap-2 min-w-0">
           {props.token?.logoURI && <img src={props.token.logoURI} alt="" className="w-6 h-6 rounded-full shrink-0" />}
-          <span className="text-white font-medium truncate">{props.token?.symbol || 'Select token'}</span>
+          <span className={lightMode ? 'text-[#111111] font-medium truncate' : 'text-white font-medium truncate'}>{props.token?.symbol || 'Select token'}</span>
         </span>
         <ChevronDown className="w-4 h-4 text-zinc-500 shrink-0" />
       </button>
