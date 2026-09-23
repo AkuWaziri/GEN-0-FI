@@ -1661,49 +1661,43 @@ html.white #gen0-app-footer {
 
 /* =============================================================
    GEN-0FI BROWN MODE
-   FRESH ORGANIC EARTH SYSTEM
-   Soft Peach + Dry Sage + Grey Olive + Ebony + Iron Grey
+   NEON BLACK SYSTEM
+   Black + Neon Green + Electric Blue + Vivid Pink
    ============================================================= */
 
 html.brown {
   color-scheme: dark;
-  --gen0-peach: #e1ca96;
-  --gen0-sage: #aca885;
-  --gen0-olive: #918b76;
-  --gen0-ebony: #626c66;
-  --gen0-iron: #434a42;
-  --gen0-black: #101310;
-  --gen0-surface: #202520;
-  --gen0-surface-2: #2a302b;
-  --gen0-border: rgba(172,168,133,.22);
-  background: #101310 !important;
-  color: #e1ca96 !important;
+  --gen0-bg: #0D0D0D;
+  --gen0-surface: #121212;
+  --gen0-surface-2: #181818;
+  --gen0-surface-3: #202020;
+  --gen0-white: #FFFFFF;
+  --gen0-green: #00FF85;
+  --gen0-blue: #1E90FF;
+  --gen0-pink: #FF0099;
+  --gen0-border: rgba(255,255,255,.10);
+  --gen0-border-green: rgba(0,255,133,.30);
+  --gen0-border-blue: rgba(30,144,255,.30);
+  --gen0-border-pink: rgba(255,0,153,.34);
+  --gen0-muted: #9ca3af;
+  --gen0-dim: #6b7280;
+  background: #0D0D0D !important;
+  color: #FFFFFF !important;
 }
 
-/* Canvas: deep iron/ebony with restrained organic atmosphere */
+/* Core canvas: pure black, no brown residue */
 html.brown body,
 html.brown #root {
   background:
-    radial-gradient(circle at 8% 0%, rgba(98,108,102,.34), transparent 32%),
-    radial-gradient(circle at 92% 10%, rgba(172,168,133,.16), transparent 30%),
-    radial-gradient(circle at 50% 100%, rgba(225,202,150,.08), transparent 40%),
-    linear-gradient(145deg, #101310 0%, #1b211d 48%, #101310 100%) !important;
-  color: #e1ca96 !important;
+    radial-gradient(circle at 8% 0%, rgba(30,144,255,.10), transparent 28%),
+    radial-gradient(circle at 92% 8%, rgba(0,255,133,.075), transparent 25%),
+    radial-gradient(circle at 50% 100%, rgba(255,0,153,.055), transparent 34%),
+    #0D0D0D !important;
+  color: #FFFFFF !important;
+  min-height: 100vh;
 }
 
-html.brown {
-  min-height: 100%;
-}
-
-/* Scrollbar */
-html.brown ::-webkit-scrollbar-track { background: #101310; }
-html.brown ::-webkit-scrollbar-thumb {
-  background: #626c66;
-  border-radius: 999px;
-}
-html.brown ::-webkit-scrollbar-thumb:hover { background: #aca885; }
-
-/* Primary typography */
+/* Global readable typography */
 html.brown h1,
 html.brown h2,
 html.brown h3,
@@ -1712,13 +1706,13 @@ html.brown h5,
 html.brown h6,
 html.brown .text-white,
 html.brown [class*="text-white/"] {
-  color: #e1ca96 !important;
+  color: #FFFFFF !important;
   opacity: 1 !important;
 }
 
 html.brown p,
 html.brown label {
-  color: #c9c1a8 !important;
+  color: #d1d5db !important;
 }
 
 html.brown .text-zinc-100,
@@ -1727,25 +1721,25 @@ html.brown .text-gray-100,
 html.brown .text-gray-200,
 html.brown .text-stone-100,
 html.brown .text-stone-200 {
-  color: #e1ca96 !important;
+  color: #FFFFFF !important;
 }
 
 html.brown .text-zinc-300,
 html.brown .text-gray-300,
 html.brown .text-stone-300 {
-  color: #d3c9ad !important;
+  color: #e5e7eb !important;
 }
 
 html.brown .text-zinc-400,
 html.brown .text-gray-400,
 html.brown .text-stone-400 {
-  color: #aca885 !important;
+  color: #9ca3af !important;
 }
 
 html.brown .text-zinc-500,
 html.brown .text-gray-500,
 html.brown .text-stone-500 {
-  color: #918b76 !important;
+  color: #6b7280 !important;
 }
 
 html.brown .text-zinc-600,
@@ -1754,55 +1748,59 @@ html.brown .text-stone-600,
 html.brown .text-zinc-700,
 html.brown .text-gray-700,
 html.brown .text-stone-700 {
-  color: #7d837a !important;
+  color: #4b5563 !important;
 }
 
-html.brown .text-black { color: #101310 !important; }
-
-/* Soft Peach -> Sage -> Olive text treatment */
-html.brown .text-blue-200,
-html.brown .text-blue-300,
-html.brown .text-blue-400,
-html.brown .text-blue-500,
-html.brown .text-cyan-200,
-html.brown .text-cyan-300,
-html.brown .text-cyan-400,
-html.brown .text-cyan-500,
-html.brown .text-violet-200,
-html.brown .text-violet-300,
-html.brown .text-violet-400,
-html.brown .text-violet-500,
-html.brown .text-purple-300,
-html.brown .text-purple-400,
-html.brown .text-purple-500,
-html.brown .text-indigo-300,
-html.brown .text-indigo-400,
-html.brown .text-indigo-500 {
-  background-image: linear-gradient(105deg, #e1ca96 0%, #aca885 52%, #918b76 100%) !important;
-  background-clip: text !important;
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  color: #e1ca96 !important;
+html.brown .text-black {
+  color: #0D0D0D !important;
 }
 
-/* All legacy status colors collapse into the five-color system */
-html.brown .text-emerald-300,
-html.brown .text-emerald-400,
-html.brown .text-green-300,
-html.brown .text-green-400,
-html.brown .text-yellow-300,
-html.brown .text-yellow-400,
-html.brown .text-amber-300,
-html.brown .text-amber-400,
-html.brown .text-orange-300,
-html.brown .text-orange-400,
-html.brown .text-red-400,
-html.brown .text-red-500,
-html.brown .text-rose-400 {
-  color: #aca885 !important;
+/* Semantic navigation language:
+   primary navigation = electric blue
+   selected/current = neon green
+   hover/focus = vivid pink */
+html.brown nav a,
+html.brown aside a,
+html.brown [role="navigation"] a {
+  color: #d1d5db;
+  transition: color .18s ease, background-color .18s ease, border-color .18s ease, box-shadow .18s ease;
 }
 
-/* Deep surfaces */
+html.brown nav a:hover,
+html.brown aside a:hover,
+html.brown [role="navigation"] a:hover {
+  color: #FF0099 !important;
+  text-shadow: 0 0 14px rgba(255,0,153,.32);
+}
+
+html.brown nav a[aria-current="page"],
+html.brown aside a[aria-current="page"],
+html.brown [role="navigation"] a[aria-current="page"] {
+  color: #00FF85 !important;
+  background: rgba(0,255,133,.08) !important;
+  border-color: rgba(0,255,133,.24) !important;
+  box-shadow: inset 3px 0 0 #00FF85, 0 0 18px rgba(0,255,133,.08);
+}
+
+/* App header, sidebar and mobile navigation */
+html.brown #desktop-sidebar,
+html.brown #main-app-header,
+html.brown #mobile-bottom-nav {
+  background: rgba(13,13,13,.94) !important;
+  border-color: rgba(255,255,255,.10) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+html.brown #desktop-sidebar {
+  box-shadow: 12px 0 40px rgba(0,0,0,.32);
+}
+
+html.brown #main-app-header {
+  box-shadow: 0 10px 30px rgba(0,0,0,.22);
+}
+
+/* Primary surfaces */
 html.brown [class*="bg-[#07080a]"],
 html.brown [class*="bg-[#08090b]"],
 html.brown [class*="bg-[#090a0c]"],
@@ -1821,12 +1819,12 @@ html.brown [class*="bg-gray-900"],
 html.brown [class*="bg-gray-800"],
 html.brown [class*="bg-slate-950"],
 html.brown [class*="bg-slate-900"] {
-  background: #202520 !important;
-  color: #e1ca96 !important;
-  border-color: rgba(172,168,133,.18) !important;
+  background: #121212 !important;
+  color: #FFFFFF !important;
+  border-color: rgba(255,255,255,.09) !important;
 }
 
-/* Elevated surfaces */
+/* Elevated cards and light legacy surfaces */
 html.brown .bg-white,
 html.brown [class*="bg-white/"],
 html.brown [class*="bg-gray-50"],
@@ -1837,284 +1835,500 @@ html.brown [class*="bg-stone-50"],
 html.brown [class*="bg-stone-100"],
 html.brown [class*="bg-neutral-50"],
 html.brown [class*="bg-neutral-100"] {
-  background: #2a302b !important;
-  color: #e1ca96 !important;
-  border-color: rgba(172,168,133,.24) !important;
+  background: #181818 !important;
+  color: #FFFFFF !important;
+  border-color: rgba(255,255,255,.11) !important;
 }
 
-/* Every legacy accent surface is remapped */
+/* Neutral utility surfaces */
+html.brown .bg-zinc-800,
+html.brown .bg-zinc-700,
+html.brown .bg-zinc-600,
+html.brown .bg-gray-800,
+html.brown .bg-gray-700,
+html.brown .bg-slate-800,
+html.brown .bg-slate-700 {
+  background: #202020 !important;
+  color: #FFFFFF !important;
+  border-color: rgba(255,255,255,.12) !important;
+}
+
+/* Surface hover: vivid pink only on interaction */
+html.brown [class*="hover\\:bg-zinc-"]:hover,
+html.brown [class*="hover\\:bg-gray-"]:hover,
+html.brown [class*="hover\\:bg-slate-"]:hover,
+html.brown [class*="hover\\:bg-neutral-"]:hover,
+html.brown [class*="hover\\:bg-white"]:hover {
+  background: rgba(255,0,153,.09) !important;
+  border-color: rgba(255,0,153,.28) !important;
+  color: #FFFFFF !important;
+}
+
+/* Semantic text accents */
+html.brown .text-emerald-300,
+html.brown .text-emerald-400,
+html.brown .text-green-300,
+html.brown .text-green-400,
+html.brown .text-lime-300,
+html.brown .text-lime-400 {
+  color: #00FF85 !important;
+}
+
+html.brown .text-blue-200,
+html.brown .text-blue-300,
+html.brown .text-blue-400,
+html.brown .text-blue-500,
+html.brown .text-cyan-200,
+html.brown .text-cyan-300,
+html.brown .text-cyan-400,
+html.brown .text-cyan-500,
+html.brown .text-sky-300,
+html.brown .text-sky-400 {
+  color: #1E90FF !important;
+}
+
+html.brown .text-violet-200,
+html.brown .text-violet-300,
+html.brown .text-violet-400,
+html.brown .text-violet-500,
+html.brown .text-purple-300,
+html.brown .text-purple-400,
+html.brown .text-purple-500,
+html.brown .text-indigo-300,
+html.brown .text-indigo-400,
+html.brown .text-indigo-500 {
+  color: #1E90FF !important;
+}
+
+html.brown .text-yellow-300,
+html.brown .text-yellow-400,
+html.brown .text-amber-300,
+html.brown .text-amber-400,
+html.brown .text-orange-300,
+html.brown .text-orange-400 {
+  color: #00FF85 !important;
+}
+
+html.brown .text-red-400,
+html.brown .text-red-500,
+html.brown .text-rose-400,
+html.brown .text-rose-500 {
+  color: #FF0099 !important;
+}
+
+/* Accent surfaces */
 html.brown [class*="bg-blue-"],
 html.brown [class*="bg-cyan-"],
-html.brown [class*="bg-violet-"],
-html.brown [class*="bg-purple-"],
-html.brown [class*="bg-indigo-"],
+html.brown [class*="bg-sky-"] {
+  background-color: rgba(30,144,255,.12) !important;
+}
+
 html.brown [class*="bg-emerald-"],
 html.brown [class*="bg-green-"],
-html.brown [class*="bg-yellow-"],
-html.brown [class*="bg-amber-"],
-html.brown [class*="bg-orange-"],
+html.brown [class*="bg-lime-"] {
+  background-color: rgba(0,255,133,.11) !important;
+}
+
+html.brown [class*="bg-violet-"],
+html.brown [class*="bg-purple-"],
+html.brown [class*="bg-indigo-"] {
+  background-color: rgba(30,144,255,.10) !important;
+}
+
 html.brown [class*="bg-red-"],
 html.brown [class*="bg-rose-"] {
-  background-color: rgba(98,108,102,.34) !important;
+  background-color: rgba(255,0,153,.10) !important;
 }
 
-/* Legacy accent borders */
+/* Accent borders */
 html.brown [class*="border-blue-"],
 html.brown [class*="border-cyan-"],
-html.brown [class*="border-violet-"],
-html.brown [class*="border-purple-"],
-html.brown [class*="border-indigo-"],
+html.brown [class*="border-sky-"] {
+  border-color: rgba(30,144,255,.32) !important;
+}
+
 html.brown [class*="border-emerald-"],
 html.brown [class*="border-green-"],
-html.brown [class*="border-yellow-"],
-html.brown [class*="border-amber-"],
-html.brown [class*="border-orange-"],
+html.brown [class*="border-lime-"] {
+  border-color: rgba(0,255,133,.32) !important;
+}
+
+html.brown [class*="border-violet-"],
+html.brown [class*="border-purple-"],
+html.brown [class*="border-indigo-"] {
+  border-color: rgba(30,144,255,.28) !important;
+}
+
 html.brown [class*="border-red-"],
 html.brown [class*="border-rose-"] {
-  border-color: rgba(172,168,133,.28) !important;
+  border-color: rgba(255,0,153,.32) !important;
 }
 
-/* Neutral borders */
 html.brown .border-zinc-900,
-html.brown .border-zinc-900\/80,
-html.brown .border-zinc-900\/90,
 html.brown .border-zinc-800,
-html.brown .border-zinc-800\/90,
-html.brown .border-zinc-800\/80,
-html.brown .border-zinc-800\/50,
 html.brown .border-zinc-700,
-html.brown .border-zinc-700\/80,
 html.brown .border-gray-800,
 html.brown .border-gray-700,
-html.brown .border-stone-800 {
-  border-color: rgba(172,168,133,.20) !important;
+html.brown .border-slate-800 {
+  border-color: rgba(255,255,255,.10) !important;
 }
 
-/* Navigation / tabs */
-html.brown [role="tablist"],
-html.brown [data-radix-tabs-list] {
-  background: rgba(67,74,66,.88) !important;
-  border: 1px solid rgba(172,168,133,.22) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(225,202,150,.05),
-    0 12px 34px rgba(16,19,16,.34) !important;
-}
-
-html.brown [role="tab"],
-html.brown [data-radix-tabs-trigger] {
-  background: transparent !important;
-  color: #918b76 !important;
+/* Tabs: electric blue structure, neon green active state */
+html.brown [role="tab"] {
+  color: #9ca3af !important;
   border-color: transparent !important;
+  transition: all .18s ease;
 }
 
-html.brown [role="tab"][aria-selected="true"],
-html.brown [data-radix-tabs-trigger][data-state="active"],
-html.brown [data-state="active"] {
-  background: linear-gradient(135deg, rgba(225,202,150,.20), rgba(98,108,102,.82)) !important;
-  color: #e1ca96 !important;
-  border-color: rgba(225,202,150,.28) !important;
-  box-shadow:
-    0 0 24px rgba(225,202,150,.09),
-    inset 0 1px 0 rgba(225,202,150,.06) !important;
+html.brown [role="tab"]:hover {
+  color: #FF0099 !important;
+  background: rgba(255,0,153,.07) !important;
 }
 
-html.brown [role="tab"]:hover,
-html.brown [data-radix-tabs-trigger]:hover {
-  background: rgba(145,139,118,.20) !important;
-  color: #e1ca96 !important;
+html.brown [role="tab"][aria-selected="true"] {
+  color: #00FF85 !important;
+  background: linear-gradient(135deg, rgba(0,255,133,.13), rgba(30,144,255,.10)) !important;
+  border-color: rgba(0,255,133,.30) !important;
+  box-shadow: 0 0 22px rgba(0,255,133,.10), inset 0 0 14px rgba(30,144,255,.05);
 }
 
-/* Inputs / selects / comboboxes */
+/* Existing blue glow utilities become theme-aware */
+html.brown .glow-blue-tab {
+  border-color: rgba(30,144,255,.34) !important;
+  background: rgba(30,144,255,.10) !important;
+  color: #1E90FF !important;
+  box-shadow: 0 0 20px rgba(30,144,255,.16), inset 0 0 12px rgba(30,144,255,.05) !important;
+}
+
+html.brown .glow-blue-cta {
+  background: linear-gradient(135deg, #00FF85 0%, #1E90FF 100%) !important;
+  color: #0D0D0D !important;
+  border-color: transparent !important;
+  box-shadow: 0 0 26px rgba(0,255,133,.20), 0 0 42px rgba(30,144,255,.10);
+}
+
+html.brown .glow-blue-cta:hover {
+  background: #FF0099 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 32px rgba(255,0,153,.34);
+  transform: translateY(-1px);
+}
+
+html.brown .glow-blue-card {
+  border-color: rgba(30,144,255,.20) !important;
+  box-shadow: 0 0 30px rgba(30,144,255,.07), 0 12px 32px rgba(0,0,0,.34) !important;
+}
+
+html.brown .glow-blue-card-hover:hover {
+  border-color: rgba(255,0,153,.32) !important;
+  box-shadow: 0 0 28px rgba(255,0,153,.12), 0 12px 32px rgba(0,0,0,.42) !important;
+}
+
+/* Inputs, selects and dropdowns */
 html.brown input,
 html.brown textarea,
-html.brown select,
-html.brown [role="combobox"] {
-  background: #202520 !important;
-  color: #e1ca96 !important;
-  border-color: rgba(172,168,133,.24) !important;
-}
-
-html.brown input:focus,
-html.brown textarea:focus,
-html.brown select:focus,
-html.brown [role="combobox"]:focus,
-html.brown [role="combobox"][data-state="open"] {
-  border-color: #aca885 !important;
-  box-shadow:
-    0 0 0 3px rgba(172,168,133,.13),
-    0 0 22px rgba(98,108,102,.28) !important;
+html.brown select {
+  background: #121212 !important;
+  color: #FFFFFF !important;
+  border-color: rgba(255,255,255,.13) !important;
 }
 
 html.brown input::placeholder,
 html.brown textarea::placeholder {
-  color: #7d837a !important;
+  color: #6b7280 !important;
 }
 
-/* Dropdowns / menus */
-html.brown [role="listbox"],
-html.brown [role="menu"],
-html.brown [role="option"],
-html.brown [role="menuitem"],
-html.brown [data-radix-popper-content-wrapper] > * {
-  background: #2a302b !important;
-  color: #e1ca96 !important;
-  border-color: rgba(172,168,133,.24) !important;
+html.brown input:focus,
+html.brown textarea:focus,
+html.brown select:focus {
+  outline: none;
+  border-color: #1E90FF !important;
+  box-shadow: 0 0 0 3px rgba(30,144,255,.15), 0 0 18px rgba(30,144,255,.10) !important;
 }
 
-html.brown [role="option"]:hover,
-html.brown [role="option"][data-highlighted],
-html.brown [role="menuitem"]:hover,
-html.brown [role="menuitem"][data-highlighted] {
-  background: #626c66 !important;
-  color: #e1ca96 !important;
+html.brown option {
+  background: #121212 !important;
+  color: #FFFFFF !important;
 }
 
-/* Buttons */
-html.brown button[class*="bg-white"],
-html.brown a[class*="bg-white"],
-html.brown button[class*="bg-zinc-"],
-html.brown button[class*="bg-gray-"] {
-  background: #2a302b !important;
-  color: #e1ca96 !important;
-  border-color: rgba(172,168,133,.26) !important;
+html.brown option:hover,
+html.brown option:checked {
+  background: #202020 !important;
+  color: #00FF85 !important;
 }
 
-html.brown button.bg-white,
-html.brown a.bg-white,
-html.brown [class*="bg-white"][class*="text-black"] {
-  background: linear-gradient(135deg, #e1ca96 0%, #aca885 100%) !important;
-  color: #101310 !important;
-  border-color: rgba(225,202,150,.52) !important;
-  box-shadow: 0 8px 26px rgba(16,19,16,.30) !important;
+/* Buttons: clear hierarchy */
+html.brown button,
+html.brown a {
+  transition: color .18s ease, background-color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
 
-html.brown button.bg-white:hover,
-html.brown a.bg-white:hover {
-  background: linear-gradient(135deg, #ead7aa 0%, #bdb995 100%) !important;
+html.brown button:hover:not(:disabled),
+html.brown a:hover {
+  border-color: rgba(255,0,153,.24);
 }
 
-/* Solid legacy accent buttons */
-html.brown .bg-blue-500,
-html.brown .bg-blue-600,
-html.brown .bg-cyan-500,
-html.brown .bg-violet-500,
-html.brown .bg-purple-500,
-html.brown .bg-indigo-500,
-html.brown .bg-orange-500,
-html.brown .bg-orange-600,
-html.brown .bg-amber-500,
-html.brown .bg-yellow-500,
-html.brown .bg-red-500,
-html.brown .bg-emerald-500,
-html.brown .bg-green-500 {
-  background-color: #626c66 !important;
+html.brown button.bg-white.text-black,
+html.brown a.bg-white.text-black,
+html.brown button[class*="bg-[#ffffff]"],
+html.brown a[class*="bg-[#ffffff]"] {
+  background: linear-gradient(135deg, #00FF85, #1E90FF) !important;
+  color: #0D0D0D !important;
+  border-color: transparent !important;
+  box-shadow: 0 0 24px rgba(0,255,133,.14);
 }
 
-/* Organic glows */
-html.brown [class*="glow-blue"],
-html.brown [class*="glow-violet"],
-html.brown [class*="glow-cyan"],
-html.brown [class*="glow-orange"],
-html.brown [class*="glow-rose"] {
-  border-color: rgba(172,168,133,.24) !important;
-  box-shadow:
-    0 18px 55px rgba(16,19,16,.34),
-    0 0 30px rgba(225,202,150,.09),
-    inset 0 1px 0 rgba(225,202,150,.05) !important;
+html.brown button.bg-white.text-black:hover,
+html.brown a.bg-white.text-black:hover,
+html.brown button[class*="bg-[#ffffff]"]:hover,
+html.brown a[class*="bg-[#ffffff]"]:hover {
+  background: #FF0099 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 28px rgba(255,0,153,.28);
 }
 
-/* Cards / elevation */
-html.brown .rounded-xl,
-html.brown .rounded-2xl {
-  border-color: rgba(172,168,133,.18);
+html.brown button.bg-white.text-black *,
+html.brown a.bg-white.text-black *,
+html.brown button[class*="bg-[#ffffff]"] *,
+html.brown a[class*="bg-[#ffffff]"] * {
+  color: inherit !important;
 }
 
-html.brown .shadow-md,
-html.brown .shadow-lg,
-html.brown .shadow-xl {
-  box-shadow:
-    0 18px 50px rgba(16,19,16,.36),
-    inset 0 1px 0 rgba(225,202,150,.035) !important;
+/* Wallet / primary interaction indicators */
+html.brown .glow-blue-wallet {
+  border-color: rgba(30,144,255,.36) !important;
+  box-shadow: 0 0 22px rgba(30,144,255,.18) !important;
 }
 
-/* GEN-0 AI prompt */
+html.brown .glow-blue-interactive:hover {
+  border-color: rgba(255,0,153,.34) !important;
+  box-shadow: 0 0 18px rgba(255,0,153,.12) !important;
+}
+
+html.brown .glow-blue-focus:focus,
+html.brown .glow-blue-focus:focus-visible {
+  border-color: #1E90FF !important;
+  box-shadow: 0 0 20px rgba(30,144,255,.22), 0 0 0 1px rgba(30,144,255,.40) !important;
+}
+
+html.brown .glow-blue-indicator {
+  background-color: #00FF85 !important;
+  box-shadow: 0 0 8px rgba(0,255,133,.75), 0 0 18px rgba(0,255,133,.35) !important;
+}
+
+/* GEN-0 AI: intelligence = electric blue, hover = pink */
 html.brown .gen-ai-try-asking {
-  color: #aca885 !important;
-  opacity: 1 !important;
+  color: #1E90FF !important;
+  border-color: rgba(30,144,255,.24) !important;
+  background: rgba(30,144,255,.06) !important;
 }
 
-html.brown .gen-ai-try-asking ~ div button,
-html.brown .gen-ai-try-asking + div button {
-  color: #c9c1a8 !important;
+html.brown .gen-ai-try-asking:hover {
+  color: #FFFFFF !important;
+  border-color: rgba(255,0,153,.42) !important;
+  background: rgba(255,0,153,.10) !important;
+  box-shadow: 0 0 22px rgba(255,0,153,.16);
 }
 
-html.brown .gen-ai-try-asking ~ div button:hover,
-html.brown .gen-ai-try-asking + div button:hover {
-  color: #e1ca96 !important;
-  background: rgba(98,108,102,.34) !important;
+/* GM / rewards = neon green */
+html.brown .gm-streak-page [class*="bg-emerald-"],
+html.brown .gm-streak-page [class*="bg-green-"],
+html.brown .gm-streak-page [class*="bg-lime-"],
+html.brown .gm-leaderboard-page [class*="bg-emerald-"],
+html.brown .gm-leaderboard-page [class*="bg-green-"],
+html.brown .gm-leaderboard-page [class*="bg-lime-"] {
+  background-color: rgba(0,255,133,.12) !important;
 }
 
-/* Dense data / activity / leaderboard */
-html.brown table,
-html.brown tr,
-html.brown td,
-html.brown th,
-html.brown [class*="divide-zinc-800"] > * {
-  border-color: rgba(172,168,133,.15) !important;
+html.brown .gm-streak-page .text-emerald-400,
+html.brown .gm-streak-page .text-green-400,
+html.brown .gm-streak-page .text-lime-400,
+html.brown .gm-leaderboard-page .text-emerald-400,
+html.brown .gm-leaderboard-page .text-green-400,
+html.brown .gm-leaderboard-page .text-lime-400 {
+  color: #00FF85 !important;
 }
 
-html.brown thead {
-  color: #918b76 !important;
+/* Activity and onchain verification = blue */
+html.brown [class*="activity"] .text-blue-400,
+html.brown [class*="transaction"] .text-blue-400,
+html.brown [class*="onchain"] .text-blue-400 {
+  color: #1E90FF !important;
 }
 
-/* Icons inherit the organic palette */
-html.brown .text-blue-300 svg,
-html.brown .text-blue-400 svg,
-html.brown .text-violet-300 svg,
-html.brown .text-violet-400 svg,
-html.brown .text-cyan-300 svg,
-html.brown .text-cyan-400 svg,
-html.brown .text-orange-300 svg,
-html.brown .text-orange-400 svg,
-html.brown .text-emerald-300 svg,
-html.brown .text-emerald-400 svg {
-  color: #aca885 !important;
+/* Positive values = green, warnings = green tint, errors = pink */
+html.brown .text-positive,
+html.brown .text-success {
+  color: #00FF85 !important;
 }
 
-html.brown .hover\:text-white:hover,
-html.brown .hover\:text-zinc-200:hover,
-html.brown .hover\:text-zinc-300:hover {
-  color: #e1ca96 !important;
+html.brown .text-warning,
+html.brown .text-amber-400 {
+  color: #00FF85 !important;
 }
 
-/* Modal / overlay */
-html.brown .bg-black\/80,
-html.brown .bg-black\/90 {
-  background: rgba(16,19,16,.84) !important;
+html.brown .text-error,
+html.brown .text-negative {
+  color: #FF0099 !important;
+}
+
+/* Logo / brand mark */
+html.brown #gen0-brand-logo svg path,
+html.brown .project-logo-mark {
+  fill: #FFFFFF !important;
+  color: #FFFFFF !important;
+}
+
+html.brown #gen0-brand-logo:hover svg path {
+  fill: #00FF85 !important;
+}
+
+/* Links */
+html.brown a:not([class*="bg-"]) {
+  color: #1E90FF;
+}
+
+html.brown a:not([class*="bg-"]):hover {
+  color: #FF0099 !important;
+}
+
+/* Checkboxes / radios / native controls */
+html.brown input[type="checkbox"],
+html.brown input[type="radio"] {
+  accent-color: #00FF85;
+}
+
+/* Progress / range controls */
+html.brown input[type="range"] {
+  accent-color: #00FF85;
 }
 
 /* Skeletons */
 html.brown .animate-pulse {
-  background: #2a302b !important;
-  border-color: rgba(172,168,133,.16) !important;
+  background: #202020 !important;
+  border-color: rgba(255,255,255,.08) !important;
 }
 
-/* Future semantic utilities */
-html.brown .text-primary,
-html.brown .text-secondary {
-  color: #e1ca96 !important;
+/* Tables / dense data */
+html.brown table {
+  width: 100%;
 }
 
-/* Keep the five-color rule strict for SVG/icon utility classes */
-html.brown svg.text-blue-300,
+html.brown th {
+  color: #9ca3af !important;
+  border-color: rgba(255,255,255,.09) !important;
+}
+
+html.brown td {
+  color: #FFFFFF !important;
+  border-color: rgba(255,255,255,.07) !important;
+}
+
+html.brown tr:hover {
+  background: rgba(255,0,153,.045) !important;
+}
+
+/* Modal / overlay system */
+html.brown .bg-black\/80,
+html.brown .bg-black\/70,
+html.brown .bg-black\/60 {
+  background-color: rgba(0,0,0,.82) !important;
+}
+
+html.brown [role="dialog"] {
+  background: #121212 !important;
+  border-color: rgba(30,144,255,.22) !important;
+  box-shadow: 0 24px 80px rgba(0,0,0,.58), 0 0 30px rgba(30,144,255,.08);
+}
+
+/* Focus ring: electric blue, interaction hover: pink */
+html.brown :focus-visible {
+  outline: 2px solid #1E90FF !important;
+  outline-offset: 2px;
+}
+
+html.brown ::selection {
+  background: #FF0099 !important;
+  color: #FFFFFF !important;
+}
+
+/* Scrollbar */
+html.brown ::-webkit-scrollbar-track {
+  background: #0D0D0D !important;
+}
+
+html.brown ::-webkit-scrollbar-thumb {
+  background: #1E90FF !important;
+  border-radius: 999px;
+}
+
+html.brown ::-webkit-scrollbar-thumb:hover {
+  background: #FF0099 !important;
+}
+
+/* Prevent old theme gradients from surviving */
+html.brown [style*="linear-gradient"],
+html.brown [style*="radial-gradient"] {
+  /* Inline gradients are intentionally left structurally intact where components own them. */
+}
+
+/* Mobile containment */
+@media (max-width: 767px) {
+  html.brown main,
+  html.brown section,
+  html.brown article,
+  html.brown form,
+  html.brown footer {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  html.brown .overflow-x-auto {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  html.brown input,
+  html.brown textarea,
+  html.brown button {
+    max-width: 100%;
+  }
+}
+
+/* Data-heavy content */
+html.brown .whitespace-pre-wrap,
+html.brown .font-mono,
+html.brown a {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Footer */
+html.brown #gen0-app-footer {
+  background: rgba(13,13,13,.96) !important;
+  color: #FFFFFF !important;
+  border-top-color: rgba(255,255,255,.10) !important;
+}
+
+html.brown #gen0-app-footer a:hover {
+  color: #FF0099 !important;
+}
+
+/* Strict five-color visual guardrails for SVG/icon utilities */
 html.brown svg.text-blue-400,
-html.brown svg.text-cyan-300,
 html.brown svg.text-cyan-400,
-html.brown svg.text-violet-300,
-html.brown svg.text-violet-400,
-html.brown svg.text-emerald-300,
+html.brown svg.text-violet-400 {
+  color: #1E90FF !important;
+}
+
 html.brown svg.text-emerald-400,
-html.brown svg.text-orange-300,
-html.brown svg.text-orange-400 {
-  color: #aca885 !important;
+html.brown svg.text-green-400,
+html.brown svg.text-lime-400 {
+  color: #00FF85 !important;
+}
+
+html.brown svg.text-red-400,
+html.brown svg.text-rose-400 {
+  color: #FF0099 !important;
 }
