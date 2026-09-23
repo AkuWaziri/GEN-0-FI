@@ -4352,3 +4352,367 @@ html.brown .gen-ai-try-asking + div button:hover,
 html.brown .gen-ai-try-asking ~ div button:hover {
   color: #fffaf2 !important;
 }
+
+
+/* =============================================================
+   GEN-0FI BROWN MODE v12
+   Rose Gold / Soft Gold / Silver / Onyx master visual system
+   Palette:
+   Rose Gold  #bd8c7d
+   Soft Gold  #d1bfa7
+   Silver     #8e8e90
+   Onyx       #49494b
+   ============================================================= */
+
+html.brown {
+  color-scheme: dark;
+  --gen0-rose: #bd8c7d;
+  --gen0-gold: #d1bfa7;
+  --gen0-silver: #8e8e90;
+  --gen0-onyx: #49494b;
+  --gen0-bg: #242426;
+  --gen0-surface: #2d2d30;
+  --gen0-surface-2: #353538;
+  --gen0-surface-3: #3d3d40;
+  --gen0-border: rgba(209,191,167,.20);
+  --gen0-border-strong: rgba(209,191,167,.34);
+  --gen0-text: #f4eee6;
+  --gen0-text-soft: #d1bfa7;
+  --gen0-text-muted: #b2b0b1;
+  --gen0-text-dim: #9b999b;
+  background: #242426 !important;
+  color: var(--gen0-text) !important;
+}
+
+/* Core canvas */
+html.brown body,
+html.brown #root {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(189,140,125,.10), transparent 30%),
+    radial-gradient(circle at 92% 8%, rgba(209,191,167,.07), transparent 28%),
+    linear-gradient(145deg, #202022 0%, #29292c 52%, #222224 100%) !important;
+  color: #f4eee6 !important;
+}
+
+/* Global typography hierarchy */
+html.brown h1,
+html.brown h2,
+html.brown h3,
+html.brown h4,
+html.brown h5,
+html.brown h6 {
+  color: #f8f2eb !important;
+}
+
+html.brown p,
+html.brown label {
+  color: #d1bfa7 !important;
+}
+
+html.brown .text-white,
+html.brown [class*="text-white/"] {
+  color: #f8f2eb !important;
+  opacity: 1 !important;
+}
+
+html.brown .text-zinc-300,
+html.brown .text-gray-300,
+html.brown .text-stone-300 {
+  color: #e1d7ca !important;
+}
+
+html.brown .text-zinc-400,
+html.brown .text-gray-400,
+html.brown .text-stone-400 {
+  color: #d1bfa7 !important;
+}
+
+html.brown .text-zinc-500,
+html.brown .text-gray-500,
+html.brown .text-stone-500 {
+  color: #b9b2ad !important;
+}
+
+html.brown .text-zinc-600,
+html.brown .text-gray-600,
+html.brown .text-stone-600 {
+  color: #a5a1a2 !important;
+}
+
+html.brown .text-zinc-700,
+html.brown .text-gray-700,
+html.brown .text-stone-700 {
+  color: #969396 !important;
+}
+
+html.brown .text-black {
+  color: #f8f2eb !important;
+}
+
+/* Accent system */
+html.brown .text-blue-300,
+html.brown .text-blue-400,
+html.brown .text-blue-500,
+html.brown .text-cyan-300,
+html.brown .text-cyan-400,
+html.brown .text-violet-300,
+html.brown .text-violet-400 {
+  color: #bd8c7d !important;
+}
+
+html.brown .text-emerald-300,
+html.brown .text-emerald-400,
+html.brown .text-green-300,
+html.brown .text-green-400 {
+  color: #d1bfa7 !important;
+}
+
+/* Main surfaces */
+html.brown [class*="bg-[#0d0f12]"],
+html.brown [class*="bg-[#111317]"],
+html.brown [class*="bg-[#131519]"],
+html.brown [class*="bg-zinc-900"],
+html.brown [class*="bg-zinc-800"],
+html.brown [class*="bg-gray-900"],
+html.brown [class*="bg-slate-900"] {
+  background: linear-gradient(145deg, #2d2d30 0%, #272729 100%) !important;
+  color: #f4eee6 !important;
+  border-color: rgba(209,191,167,.20) !important;
+}
+
+html.brown .bg-white,
+html.brown [class*="bg-white/"],
+html.brown [class*="bg-gray-50"],
+html.brown [class*="bg-gray-100"],
+html.brown [class*="bg-zinc-50"],
+html.brown [class*="bg-zinc-100"],
+html.brown [class*="bg-stone-50"],
+html.brown [class*="bg-stone-100"],
+html.brown [class*="bg-neutral-50"],
+html.brown [class*="bg-neutral-100"] {
+  background: #353538 !important;
+  color: #f4eee6 !important;
+  border-color: rgba(209,191,167,.22) !important;
+}
+
+/* Onyx utility surface */
+html.brown [class*="bg-zinc-950"],
+html.brown [class*="bg-gray-950"],
+html.brown [class*="bg-slate-950"] {
+  background: #202022 !important;
+  color: #f4eee6 !important;
+}
+
+/* Cards, panels and glass */
+html.brown .rounded-xl,
+html.brown .rounded-2xl {
+  border-color: rgba(209,191,167,.18);
+}
+
+html.brown .border-zinc-800,
+html.brown .border-zinc-700,
+html.brown .border-gray-800,
+html.brown .border-gray-700 {
+  border-color: rgba(209,191,167,.20) !important;
+}
+
+html.brown .shadow-md,
+html.brown .shadow-lg,
+html.brown .shadow-xl {
+  box-shadow:
+    0 18px 50px rgba(0,0,0,.30),
+    inset 0 1px 0 rgba(209,191,167,.055) !important;
+}
+
+/* Tabs */
+html.brown [role="tablist"],
+html.brown [data-radix-tabs-list] {
+  background: rgba(73,73,75,.42) !important;
+  border: 1px solid rgba(209,191,167,.20) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04) !important;
+}
+
+html.brown [role="tab"],
+html.brown [data-radix-tabs-trigger] {
+  background: transparent !important;
+  color: #b9b7b8 !important;
+  border-color: transparent !important;
+}
+
+html.brown [role="tab"][aria-selected="true"],
+html.brown [data-radix-tabs-trigger][data-state="active"],
+html.brown [data-state="active"] {
+  background: rgba(189,140,125,.18) !important;
+  color: #f8f2eb !important;
+  border-color: rgba(189,140,125,.42) !important;
+  box-shadow: 0 0 20px rgba(189,140,125,.10) !important;
+}
+
+html.brown [role="tab"]:hover,
+html.brown [data-radix-tabs-trigger]:hover {
+  background: rgba(209,191,167,.10) !important;
+  color: #f4eee6 !important;
+}
+
+/* Inputs, selects, search and text areas */
+html.brown input,
+html.brown textarea,
+html.brown select,
+html.brown [role="combobox"] {
+  background: #2d2d30 !important;
+  color: #f8f2eb !important;
+  border-color: rgba(209,191,167,.24) !important;
+}
+
+html.brown input:focus,
+html.brown textarea:focus,
+html.brown select:focus,
+html.brown [role="combobox"]:focus {
+  border-color: rgba(189,140,125,.65) !important;
+  box-shadow: 0 0 0 3px rgba(189,140,125,.10), 0 0 20px rgba(189,140,125,.08) !important;
+}
+
+html.brown input::placeholder,
+html.brown textarea::placeholder {
+  color: #8e8e90 !important;
+  opacity: 1 !important;
+}
+
+/* Dropdowns and menus */
+html.brown [role="listbox"],
+html.brown [role="menu"],
+html.brown [role="option"],
+html.brown [role="menuitem"],
+html.brown [data-radix-popper-content-wrapper] > * {
+  background: #353538 !important;
+  color: #f4eee6 !important;
+  border-color: rgba(209,191,167,.25) !important;
+}
+
+html.brown [role="option"]:hover,
+html.brown [role="option"][data-highlighted],
+html.brown [role="menuitem"]:hover,
+html.brown [role="menuitem"][data-highlighted] {
+  background: rgba(189,140,125,.18) !important;
+  color: #fffaf4 !important;
+}
+
+/* Buttons */
+html.brown button[class*="bg-white"],
+html.brown a[class*="bg-white"],
+html.brown button[class*="bg-zinc-"],
+html.brown button[class*="bg-gray-"] {
+  color: #f8f2eb !important;
+}
+
+html.brown button.bg-white,
+html.brown a.bg-white,
+html.brown [class*="bg-white"][class*="text-black"] {
+  background: linear-gradient(135deg, #4b3b39 0%, #38383a 100%) !important;
+  color: #f8f2eb !important;
+  border-color: rgba(189,140,125,.38) !important;
+}
+
+html.brown button.bg-white:hover,
+html.brown a.bg-white:hover {
+  background: linear-gradient(135deg, #594542 0%, #414144 100%) !important;
+  border-color: rgba(189,140,125,.58) !important;
+}
+
+/* Rose-gold semantic highlights */
+html.brown .bg-blue-500,
+html.brown .bg-violet-500,
+html.brown .bg-cyan-500 {
+  background-color: #bd8c7d !important;
+}
+
+html.brown .border-blue-500,
+html.brown .border-violet-500,
+html.brown .border-cyan-500 {
+  border-color: rgba(189,140,125,.55) !important;
+}
+
+html.brown [class*="bg-blue-500/"],
+html.brown [class*="bg-violet-500/"],
+html.brown [class*="bg-cyan-500/"] {
+  background-color: rgba(189,140,125,.10) !important;
+}
+
+/* Rose-gold glow */
+html.brown [class*="glow-blue"],
+html.brown [class*="glow-violet"] {
+  box-shadow:
+    0 18px 50px rgba(0,0,0,.28),
+    0 0 28px rgba(189,140,125,.09),
+    inset 0 1px 0 rgba(209,191,167,.06) !important;
+}
+
+/* Status colors stay legible, but fit the palette */
+html.brown .text-red-400,
+html.brown .text-red-500,
+html.brown .text-rose-400 {
+  color: #bd8c7d !important;
+}
+
+html.brown .text-yellow-400,
+html.brown .text-amber-400,
+html.brown .text-orange-400 {
+  color: #d1bfa7 !important;
+}
+
+/* AI prompt area */
+html.brown .gen-ai-try-asking {
+  color: #d1bfa7 !important;
+  opacity: 1 !important;
+}
+
+html.brown .gen-ai-try-asking ~ div button,
+html.brown .gen-ai-try-asking + div button {
+  color: #e3d7ca !important;
+}
+
+html.brown .gen-ai-try-asking ~ div button:hover,
+html.brown .gen-ai-try-asking + div button:hover {
+  color: #fff8f0 !important;
+}
+
+/* Tables / activity / leaderboard */
+html.brown table,
+html.brown tr {
+  border-color: rgba(209,191,167,.16) !important;
+}
+
+html.brown thead {
+  color: #b9b7b8 !important;
+}
+
+html.brown td,
+html.brown th {
+  border-color: rgba(209,191,167,.13) !important;
+}
+
+html.brown [class*="divide-zinc-800"] > * {
+  border-color: rgba(209,191,167,.16) !important;
+}
+
+/* SVG/icon treatment */
+html.brown svg {
+  color: inherit;
+}
+
+html.brown .text-blue-300 svg,
+html.brown .text-blue-400 svg,
+html.brown .text-violet-300 svg,
+html.brown .text-cyan-300 svg {
+  color: #bd8c7d !important;
+}
+
+/* Scrollbars */
+html.brown ::-webkit-scrollbar-thumb {
+  background: #49494b;
+  border-radius: 999px;
+}
+
+html.brown ::-webkit-scrollbar-thumb:hover {
+  background: #bd8c7d;
+}
