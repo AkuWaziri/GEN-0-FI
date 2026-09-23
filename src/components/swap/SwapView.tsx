@@ -37,6 +37,7 @@ type BalanceToken = LiFiToken & {
 const API = 'https://li.quest/v1';
 const QUOTE_API = '/api/lifi/quote';
 const NATIVE = '0x0000000000000000000000000000000000000000';
+const ARC_USDC_PREDEPLOY = '0x3600000000000000000000000000000000000000';
 const ERC20_APPROVE_ABI = [{ type: 'function', name: 'approve', stateMutability: 'nonpayable', inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }] }, { type: 'function', name: 'allowance', stateMutability: 'view', inputs: [{ name: 'owner', type: 'address' }, { name: 'spender', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] }] as const;
 
 function quoteIsExecutable(quote: any) {
@@ -346,8 +347,16 @@ export const SwapView: React.FC = () => {
 
       // Preflight the real source balance before touching allowance or requesting a signature.
       // This keeps low-balance attempts in the UI instead of exposing raw RPC errors.
+      const isArcUsdc = fromChainId === 5042 && fromToken?.address?.toLowerCase() === ARC_USDC_PREDEPLOY;
+
       if (fromToken && required > 0n) {
-        if (fromToken.address.toLowerCase() !== NATIVE) {
+        if (isArcUsdc && arcNativeBalance !== null) {
+          const nativeRaw = BigInt(arcNativeBalance);
+          const requiredNativeUnits = fromToken.decimals === 6 ? required * 10n ** 12n : required;
+          if (nativeRaw < requiredNativeUnits) {
+            throw new Error(`Insufficient ${fromToken.symbol} balance for this ${fromChainId === toChainId ? 'swap' : 'bridge'}.`);
+          }
+        } else if (fromToken.address.toLowerCase() !== NATIVE) {
           const balanceItem = tokenBalanceFor(balances, fromChainId, fromToken);
           if (balanceItem?.amount && BigInt(balanceItem.amount) < required) {
             throw new Error(`Insufficient ${fromToken.symbol} balance for this ${fromChainId === toChainId ? 'swap' : 'bridge'}.`);
@@ -384,7 +393,7 @@ export const SwapView: React.FC = () => {
 
       // Native gas is required for ERC-20 approvals and source-chain transactions.
       // We only display a clean warning here. No transaction is submitted by this check.
-      if (fromToken && fromToken.address.toLowerCase() !== NATIVE) {
+      if (fromToken && fromToken.address.toLowerCase() !== NATIVE && !(isArcUsdc && arcNativeBalance !== null)) {
         try {
           const nativeBalance = await publicClient.getBalance({ address: address as `0x${string}` });
           if (nativeBalance === 0n) {
