@@ -5112,3 +5112,421 @@ html.brown ::-webkit-scrollbar-thumb {
 html.brown ::-webkit-scrollbar-thumb:hover {
   background: #FF5A09;
 }
+
+
+/* =============================================================
+   GEN-0FI BROWN MODE v14
+   COSMIC MODE
+   Sunset the previous orange system completely.
+   Gray-washed white + space blue + slate gray + soft gradients.
+   ============================================================= */
+
+html.brown {
+  color-scheme: dark;
+  --gen0-cosmic-white: #e7ebf0;
+  --gen0-space-blue: #162a46;
+  --gen0-space-blue-bright: #294b73;
+  --gen0-slate: #667383;
+  --gen0-slate-light: #9ba7b5;
+  --gen0-cosmic-bg: #10161f;
+  --gen0-cosmic-surface: #18212d;
+  --gen0-cosmic-surface-2: #202b38;
+  --gen0-cosmic-border: rgba(155,167,181,.22);
+  background: #10161f !important;
+  color: #e7ebf0 !important;
+}
+
+/* Cosmic canvas */
+html.brown body,
+html.brown #root {
+  background:
+    radial-gradient(circle at 8% 4%, rgba(41,75,115,.22), transparent 30%),
+    radial-gradient(circle at 92% 12%, rgba(102,115,131,.13), transparent 28%),
+    radial-gradient(circle at 50% 100%, rgba(22,42,70,.26), transparent 38%),
+    linear-gradient(145deg, #10161f 0%, #16202c 52%, #111923 100%) !important;
+  color: #e7ebf0 !important;
+}
+
+/* Core typography */
+html.brown h1,
+html.brown h2,
+html.brown h3,
+html.brown h4,
+html.brown h5,
+html.brown h6,
+html.brown .text-white,
+html.brown [class*="text-white/"] {
+  color: #e7ebf0 !important;
+  opacity: 1 !important;
+}
+
+html.brown p,
+html.brown label {
+  color: #b9c3ce !important;
+}
+
+html.brown .text-zinc-100,
+html.brown .text-zinc-200,
+html.brown .text-gray-100,
+html.brown .text-gray-200,
+html.brown .text-stone-100,
+html.brown .text-stone-200 {
+  color: #e7ebf0 !important;
+}
+
+html.brown .text-zinc-300,
+html.brown .text-gray-300,
+html.brown .text-stone-300 {
+  color: #d2d9e1 !important;
+}
+
+html.brown .text-zinc-400,
+html.brown .text-gray-400,
+html.brown .text-stone-400 {
+  color: #b9c3ce !important;
+}
+
+html.brown .text-zinc-500,
+html.brown .text-gray-500,
+html.brown .text-stone-500 {
+  color: #9ba7b5 !important;
+}
+
+html.brown .text-zinc-600,
+html.brown .text-gray-600,
+html.brown .text-stone-600,
+html.brown .text-zinc-700,
+html.brown .text-gray-700,
+html.brown .text-stone-700 {
+  color: #7f8c9b !important;
+}
+
+html.brown .text-black {
+  color: #e7ebf0 !important;
+}
+
+/* Soft cosmic text gradients */
+html.brown .text-blue-200,
+html.brown .text-blue-300,
+html.brown .text-blue-400,
+html.brown .text-blue-500,
+html.brown .text-cyan-200,
+html.brown .text-cyan-300,
+html.brown .text-cyan-400,
+html.brown .text-cyan-500,
+html.brown .text-violet-200,
+html.brown .text-violet-300,
+html.brown .text-violet-400,
+html.brown .text-violet-500,
+html.brown .text-purple-300,
+html.brown .text-purple-400,
+html.brown .text-purple-500,
+html.brown .text-indigo-300,
+html.brown .text-indigo-400,
+html.brown .text-indigo-500 {
+  color: #dbe4ee !important;
+  background-image: linear-gradient(105deg, #f0f3f6 0%, #b7c5d5 46%, #6f8baa 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+/* Replace previous colored text families */
+html.brown .text-emerald-300,
+html.brown .text-emerald-400,
+html.brown .text-green-300,
+html.brown .text-green-400,
+html.brown .text-yellow-300,
+html.brown .text-yellow-400,
+html.brown .text-amber-300,
+html.brown .text-amber-400,
+html.brown .text-orange-300,
+html.brown .text-orange-400,
+html.brown .text-red-400,
+html.brown .text-red-500,
+html.brown .text-rose-400 {
+  color: #c5d0db !important;
+}
+
+/* Surfaces */
+html.brown [class*="bg-[#0d0f12]"],
+html.brown [class*="bg-[#111317]"],
+html.brown [class*="bg-[#131519]"],
+html.brown [class*="bg-[#101216]"],
+html.brown [class*="bg-[#14161a]"],
+html.brown [class*="bg-[#151720]"],
+html.brown [class*="bg-zinc-950"],
+html.brown [class*="bg-zinc-900"],
+html.brown [class*="bg-zinc-800"],
+html.brown [class*="bg-gray-950"],
+html.brown [class*="bg-gray-900"],
+html.brown [class*="bg-gray-800"],
+html.brown [class*="bg-slate-950"],
+html.brown [class*="bg-slate-900"] {
+  background: #18212d !important;
+  color: #e7ebf0 !important;
+  border-color: rgba(155,167,181,.20) !important;
+}
+
+html.brown .bg-white,
+html.brown [class*="bg-white/"],
+html.brown [class*="bg-gray-50"],
+html.brown [class*="bg-gray-100"],
+html.brown [class*="bg-zinc-50"],
+html.brown [class*="bg-zinc-100"],
+html.brown [class*="bg-stone-50"],
+html.brown [class*="bg-stone-100"],
+html.brown [class*="bg-neutral-50"],
+html.brown [class*="bg-neutral-100"] {
+  background: #202b38 !important;
+  color: #e7ebf0 !important;
+  border-color: rgba(155,167,181,.24) !important;
+}
+
+/* Remove previous orange/colored surfaces */
+html.brown [class*="bg-orange-"],
+html.brown [class*="bg-amber-"],
+html.brown [class*="bg-yellow-"],
+html.brown [class*="bg-red-"],
+html.brown [class*="bg-rose-"],
+html.brown [class*="bg-emerald-"],
+html.brown [class*="bg-green-"] {
+  background-color: rgba(41,75,115,.16) !important;
+}
+
+html.brown [class*="bg-blue-"],
+html.brown [class*="bg-cyan-"],
+html.brown [class*="bg-violet-"],
+html.brown [class*="bg-purple-"],
+html.brown [class*="bg-indigo-"] {
+  background-color: rgba(41,75,115,.16) !important;
+}
+
+/* Borders */
+html.brown [class*="border-orange-"],
+html.brown [class*="border-amber-"],
+html.brown [class*="border-yellow-"],
+html.brown [class*="border-red-"],
+html.brown [class*="border-rose-"],
+html.brown [class*="border-emerald-"],
+html.brown [class*="border-green-"],
+html.brown [class*="border-blue-"],
+html.brown [class*="border-cyan-"],
+html.brown [class*="border-violet-"],
+html.brown [class*="border-purple-"],
+html.brown [class*="border-indigo-"] {
+  border-color: rgba(155,167,181,.28) !important;
+}
+
+/* Tabs */
+html.brown [role="tablist"],
+html.brown [data-radix-tabs-list] {
+  background: rgba(22,42,70,.74) !important;
+  border: 1px solid rgba(155,167,181,.20) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(231,235,240,.045),
+    0 10px 35px rgba(0,0,0,.18) !important;
+}
+
+html.brown [role="tab"],
+html.brown [data-radix-tabs-trigger] {
+  background: transparent !important;
+  color: #9ba7b5 !important;
+  border-color: transparent !important;
+}
+
+html.brown [role="tab"][aria-selected="true"],
+html.brown [data-radix-tabs-trigger][data-state="active"],
+html.brown [data-state="active"] {
+  background: linear-gradient(135deg, rgba(41,75,115,.58), rgba(102,115,131,.28)) !important;
+  color: #f0f3f6 !important;
+  border-color: rgba(155,167,181,.30) !important;
+  box-shadow:
+    0 0 24px rgba(41,75,115,.18),
+    inset 0 1px 0 rgba(231,235,240,.06) !important;
+}
+
+html.brown [role="tab"]:hover,
+html.brown [data-radix-tabs-trigger]:hover {
+  background: rgba(102,115,131,.14) !important;
+  color: #e7ebf0 !important;
+}
+
+/* Inputs / selects */
+html.brown input,
+html.brown textarea,
+html.brown select,
+html.brown [role="combobox"] {
+  background: #18212d !important;
+  color: #e7ebf0 !important;
+  border-color: rgba(155,167,181,.24) !important;
+}
+
+html.brown input:focus,
+html.brown textarea:focus,
+html.brown select:focus,
+html.brown [role="combobox"]:focus,
+html.brown [role="combobox"][data-state="open"] {
+  border-color: #6f8baa !important;
+  box-shadow:
+    0 0 0 3px rgba(41,75,115,.18),
+    0 0 22px rgba(41,75,115,.16) !important;
+}
+
+html.brown input::placeholder,
+html.brown textarea::placeholder {
+  color: #7f8c9b !important;
+}
+
+/* Dropdowns */
+html.brown [role="listbox"],
+html.brown [role="menu"],
+html.brown [role="option"],
+html.brown [role="menuitem"],
+html.brown [data-radix-popper-content-wrapper] > * {
+  background: #202b38 !important;
+  color: #e7ebf0 !important;
+  border-color: rgba(155,167,181,.24) !important;
+}
+
+html.brown [role="option"]:hover,
+html.brown [role="option"][data-highlighted],
+html.brown [role="menuitem"]:hover,
+html.brown [role="menuitem"][data-highlighted] {
+  background: #294b73 !important;
+  color: #ffffff !important;
+}
+
+/* Buttons */
+html.brown button[class*="bg-white"],
+html.brown a[class*="bg-white"],
+html.brown button[class*="bg-zinc-"],
+html.brown button[class*="bg-gray-"] {
+  background: #202b38 !important;
+  color: #e7ebf0 !important;
+  border-color: rgba(155,167,181,.26) !important;
+}
+
+html.brown button.bg-white,
+html.brown a.bg-white,
+html.brown [class*="bg-white"][class*="text-black"] {
+  background: linear-gradient(135deg, #e7ebf0 0%, #9ba7b5 100%) !important;
+  color: #10161f !important;
+  border-color: rgba(231,235,240,.48) !important;
+  box-shadow: 0 8px 26px rgba(0,0,0,.22) !important;
+}
+
+html.brown button.bg-white:hover,
+html.brown a.bg-white:hover {
+  background: linear-gradient(135deg, #f2f4f7 0%, #aeb9c6 100%) !important;
+}
+
+/* Legacy orange solid accents -> space blue */
+html.brown .bg-orange-500,
+html.brown .bg-orange-600,
+html.brown .bg-amber-500,
+html.brown .bg-yellow-500,
+html.brown .bg-red-500,
+html.brown .bg-emerald-500,
+html.brown .bg-green-500 {
+  background-color: #294b73 !important;
+}
+
+/* Blue solid accents become deep space blue */
+html.brown .bg-blue-500,
+html.brown .bg-blue-600,
+html.brown .bg-cyan-500,
+html.brown .bg-violet-500,
+html.brown .bg-purple-500 {
+  background-color: #294b73 !important;
+}
+
+/* Cosmic glow utilities */
+html.brown [class*="glow-blue"],
+html.brown [class*="glow-violet"],
+html.brown [class*="glow-cyan"],
+html.brown [class*="glow-orange"],
+html.brown [class*="glow-rose"] {
+  border-color: rgba(155,167,181,.24) !important;
+  box-shadow:
+    0 18px 55px rgba(0,0,0,.30),
+    0 0 34px rgba(41,75,115,.16),
+    inset 0 1px 0 rgba(231,235,240,.055) !important;
+}
+
+/* Cards */
+html.brown .rounded-xl,
+html.brown .rounded-2xl {
+  border-color: rgba(155,167,181,.18);
+}
+
+html.brown .border-zinc-800,
+html.brown .border-zinc-700,
+html.brown .border-gray-800,
+html.brown .border-gray-700,
+html.brown .border-stone-800 {
+  border-color: rgba(155,167,181,.20) !important;
+}
+
+html.brown .shadow-md,
+html.brown .shadow-lg,
+html.brown .shadow-xl {
+  box-shadow:
+    0 18px 50px rgba(0,0,0,.30),
+    inset 0 1px 0 rgba(231,235,240,.035) !important;
+}
+
+/* AI prompt */
+html.brown .gen-ai-try-asking {
+  color: #b9c3ce !important;
+  opacity: 1 !important;
+}
+
+html.brown .gen-ai-try-asking ~ div button,
+html.brown .gen-ai-try-asking + div button {
+  color: #d2d9e1 !important;
+}
+
+html.brown .gen-ai-try-asking ~ div button:hover,
+html.brown .gen-ai-try-asking + div button:hover {
+  color: #ffffff !important;
+  background: rgba(41,75,115,.24) !important;
+}
+
+/* Activity / leaderboard */
+html.brown table,
+html.brown tr,
+html.brown td,
+html.brown th,
+html.brown [class*="divide-zinc-800"] > * {
+  border-color: rgba(155,167,181,.15) !important;
+}
+
+html.brown thead {
+  color: #9ba7b5 !important;
+}
+
+/* Icons */
+html.brown .text-blue-300 svg,
+html.brown .text-blue-400 svg,
+html.brown .text-violet-300 svg,
+html.brown .text-violet-400 svg,
+html.brown .text-cyan-300 svg,
+html.brown .text-cyan-400 svg,
+html.brown .text-orange-300 svg,
+html.brown .text-orange-400 svg {
+  color: #9ba7b5 !important;
+}
+
+/* Scrollbars */
+html.brown ::-webkit-scrollbar-track {
+  background: #10161f;
+}
+
+html.brown ::-webkit-scrollbar-thumb {
+  background: #667383;
+}
+
+html.brown ::-webkit-scrollbar-thumb:hover {
+  background: #294b73;
+}
