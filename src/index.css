@@ -3776,3 +3776,205 @@ html.brown .text-stone-300,
 html.brown .text-stone-400 {
   color: #e5d7c8 !important;
 }
+
+
+/* =============================================================
+   GEN-0FI BROWN MODE v7
+   Warm premium contrast + neutralized blue chrome
+   ============================================================= */
+
+/* Brown mode owns its chrome. Blue remains semantic only. */
+html.brown .glow-blue-tab,
+html.brown [role="tab"][aria-selected="true"] {
+  background: rgba(245, 234, 216, 0.10) !important;
+  color: #fffaf2 !important;
+  border-color: rgba(245, 234, 216, 0.26) !important;
+  box-shadow:
+    0 0 20px rgba(245, 234, 216, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+html.brown [role="tab"][aria-selected="true"] svg,
+html.brown [role="tab"][aria-selected="true"] span {
+  color: inherit !important;
+}
+
+/* Neutralize generic blue UI surfaces in brown mode. */
+html.brown .bg-blue-500\/10,
+html.brown .bg-blue-500\/15,
+html.brown .bg-blue-500\/20,
+html.brown .bg-blue-500\/30,
+html.brown .bg-blue-600\/10,
+html.brown .bg-blue-600\/20 {
+  background: rgba(245, 234, 216, 0.09) !important;
+}
+
+html.brown .border-blue-500\/20,
+html.brown .border-blue-500\/25,
+html.brown .border-blue-500\/30,
+html.brown .border-blue-500\/40,
+html.brown .border-blue-600\/30 {
+  border-color: rgba(245, 234, 216, 0.20) !important;
+}
+
+/* Generic blue text becomes warm-white when it is UI chrome.
+   Explicit semantic accent classes remain blue/cyan below. */
+html.brown .text-blue-300,
+html.brown .text-blue-400,
+html.brown .text-blue-500 {
+  color: #dfeaf2 !important;
+}
+
+/* Focus states use milk/champagne rather than electric blue. */
+html.brown input:focus,
+html.brown textarea:focus,
+html.brown select:focus,
+html.brown button:focus-visible,
+html.brown a:focus-visible {
+  border-color: rgba(245, 234, 216, 0.46) !important;
+  outline: 1px solid rgba(245, 234, 216, 0.20) !important;
+  box-shadow:
+    0 0 0 3px rgba(245, 234, 216, 0.075),
+    0 0 22px rgba(245, 234, 216, 0.055) !important;
+}
+
+/* Make the warm typography materially brighter. */
+html.brown .text-white,
+html.brown .text-zinc-100,
+html.brown .text-zinc-200,
+html.brown .text-stone-50,
+html.brown .text-stone-100,
+html.brown .text-neutral-50,
+html.brown .text-neutral-100,
+html.brown .text-gray-50,
+html.brown .text-gray-100 {
+  color: #fffdf8 !important;
+  text-shadow: 0 0 18px rgba(255, 250, 242, 0.045);
+}
+
+html.brown .text-zinc-300,
+html.brown .text-stone-200,
+html.brown .text-stone-300,
+html.brown .text-neutral-200,
+html.brown .text-neutral-300,
+html.brown .text-gray-200,
+html.brown .text-gray-300 {
+  color: #f0e7dc !important;
+}
+
+html.brown .text-zinc-400,
+html.brown .text-stone-400,
+html.brown .text-neutral-400,
+html.brown .text-gray-400,
+html.brown .text-slate-400 {
+  color: #d8cabc !important;
+}
+
+html.brown .text-zinc-500,
+html.brown .text-stone-500,
+html.brown .text-neutral-500,
+html.brown .text-gray-500,
+html.brown .text-slate-500 {
+  color: #bdaea0 !important;
+}
+
+html.brown .text-zinc-600,
+html.brown .text-stone-600,
+html.brown .text-neutral-600,
+html.brown .text-gray-600,
+html.brown .text-slate-600 {
+  color: #a99a8c !important;
+}
+
+/* Explicit opacity text utilities must stay visible. */
+html.brown .text-white\/30,
+html.brown .text-white\/40,
+html.brown .text-white\/50,
+html.brown .text-white\/60,
+html.brown .text-white\/70 {
+  color: #d2c4b6 !important;
+  opacity: 1 !important;
+}
+
+html.brown .text-white\/80,
+html.brown .text-white\/90 {
+  color: #f0e7dc !important;
+  opacity: 1 !important;
+}
+
+html.brown label,
+html.brown small,
+html.brown caption {
+  color: #d5c7b9 !important;
+}
+
+/* Warm brown/tan copy is lifted so it does not disappear into espresso. */
+html.brown .text-yellow-300,
+html.brown .text-yellow-400,
+html.brown .text-orange-300,
+html.brown .text-orange-400,
+html.brown .text-amber-300,
+html.brown .text-amber-400 {
+  color: #f1c982 !important;
+}
+
+/* Semantic colors remain identifiable, but only where they carry meaning. */
+html.brown .gen-accent-finance { color: #8fc7ff !important; }
+html.brown .gen-accent-onchain { color: #7debf5 !important; }
+html.brown .gen-accent-intelligence { color: #c1a9ff !important; }
+html.brown .gen-accent-gm { color: #d2f878 !important; }
+html.brown .gen-accent-positive { color: #72e5c9 !important; }
+html.brown .gen-accent-warning { color: #ffd66f !important; }
+html.brown .gen-accent-negative { color: #ff899c !important; }
+
+/* Semantic gradient surfaces stay meaningful, while ordinary tabs stay warm. */
+html.brown .gen-gradient-finance {
+  background: linear-gradient(135deg, #3f6fa3 0%, #247f88 100%) !important;
+}
+html.brown .gen-gradient-intelligence {
+  background: linear-gradient(135deg, #62559b 0%, #7750a1 100%) !important;
+}
+html.brown .gen-gradient-gm {
+  background: linear-gradient(135deg, #789b36 0%, #398c87 100%) !important;
+}
+
+/* Blue glow utilities become warm glass when used as generic chrome. */
+html.brown .glow-blue-card,
+html.brown .glow-blue-card-hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 247, 235, 0.055),
+    0 18px 48px rgba(0, 0, 0, 0.28),
+    0 0 26px rgba(245, 234, 216, 0.035) !important;
+}
+
+html.brown .glow-blue-card-hover:hover {
+  border-color: rgba(245, 234, 216, 0.25) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 247, 235, 0.07),
+    0 22px 58px rgba(0, 0, 0, 0.34),
+    0 0 30px rgba(245, 234, 216, 0.045) !important;
+}
+
+/* Brown mode native dropdowns keep strong contrast. */
+html.brown [role="listbox"],
+html.brown [role="menu"],
+html.brown [role="option"],
+html.brown [role="menuitem"],
+html.brown [data-radix-select-content],
+html.brown [data-radix-select-item] {
+  color: #fffaf2 !important;
+}
+
+html.brown [role="option"]:hover,
+html.brown [role="option"][data-highlighted],
+html.brown [data-radix-select-item]:hover,
+html.brown [data-radix-select-item][data-highlighted] {
+  background: rgba(245, 234, 216, 0.12) !important;
+  color: #fffdf8 !important;
+}
+
+html.brown [role="option"][aria-selected="true"],
+html.brown [data-radix-select-item][data-state="checked"] {
+  background: rgba(245, 234, 216, 0.09) !important;
+  color: #fffdf8 !important;
+}
