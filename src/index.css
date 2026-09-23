@@ -4331,3 +4331,24 @@ html.brown [class*="bg-zinc-100"] {
   background-color: #29231f !important;
   color: #fffaf2 !important;
 }
+
+
+/* =============================================================
+   GEN-0FI BROWN MODE v11
+   Final AI prompt label contrast
+   ============================================================= */
+html.brown .gen-ai-try-asking {
+  color: #f0e3d5 !important;
+  opacity: 1 !important;
+  text-shadow: 0 0 12px rgba(245,234,216,.08);
+}
+
+html.brown .gen-ai-try-asking + div button,
+html.brown .gen-ai-try-asking ~ div button {
+  color: #eadfd4 !important;
+}
+
+html.brown .gen-ai-try-asking + div button:hover,
+html.brown .gen-ai-try-asking ~ div button:hover {
+  color: #fffaf2 !important;
+}
