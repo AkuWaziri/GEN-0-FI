@@ -3632,3 +3632,147 @@ html.brown svg {
 html.brown .text-muted-foreground {
   color: #aaa095 !important;
 }
+
+
+/* =============================================================
+   GEN-0FI WARM DARK v6
+   High-contrast typography pass
+   ============================================================= */
+
+html.brown {
+  color-scheme: dark;
+}
+
+html.brown body,
+html.brown #root {
+  color: #f7f3ec !important;
+}
+
+/* Core light/warm text */
+html.brown .text-white,
+html.brown .text-stone-50,
+html.brown .text-stone-100,
+html.brown .text-neutral-50,
+html.brown .text-neutral-100,
+html.brown .text-gray-50,
+html.brown .text-gray-100 {
+  color: #fffaf2 !important;
+}
+
+/* Main readable text */
+html.brown .text-stone-200,
+html.brown .text-stone-300,
+html.brown .text-neutral-200,
+html.brown .text-neutral-300,
+html.brown .text-gray-200,
+html.brown .text-gray-300 {
+  color: #eee5da !important;
+}
+
+/* Secondary text, deliberately brighter than the previous pass */
+html.brown .text-stone-400,
+html.brown .text-neutral-400,
+html.brown .text-gray-400,
+html.brown .text-slate-400 {
+  color: #d4c8ba !important;
+}
+
+/* Muted labels must still be readable */
+html.brown .text-stone-500,
+html.brown .text-neutral-500,
+html.brown .text-gray-500,
+html.brown .text-slate-500 {
+  color: #b8ab9d !important;
+}
+
+/* Very dark utility text must never become near-invisible */
+html.brown .text-stone-600,
+html.brown .text-neutral-600,
+html.brown .text-gray-600,
+html.brown .text-slate-600,
+html.brown .text-zinc-600 {
+  color: #a79a8d !important;
+}
+
+/* Common opacity utilities can make otherwise readable text disappear. */
+html.brown .text-white\/30,
+html.brown .text-white\/40,
+html.brown .text-white\/50,
+html.brown .text-white\/60,
+html.brown .text-white\/70 {
+  color: #c9beb1 !important;
+}
+
+html.brown .text-white\/80,
+html.brown .text-white\/90 {
+  color: #eee5da !important;
+}
+
+/* Placeholders */
+html.brown input::placeholder,
+html.brown textarea::placeholder {
+  color: #a99d90 !important;
+  opacity: 1 !important;
+}
+
+/* Links remain distinguishable without becoming fluorescent. */
+html.brown a {
+  text-decoration-color: rgba(103,232,249,.35);
+}
+
+html.brown a:not([class*="text-"]) {
+  color: #c9f6ff;
+}
+
+/* Improve contrast for labels and captions inside cards. */
+html.brown label,
+html.brown small,
+html.brown caption {
+  color: #c8bcb0 !important;
+}
+
+/* Icons inherit the same readable foreground as their surrounding text. */
+html.brown svg {
+  opacity: 1 !important;
+}
+
+/* Keep semantic colors vivid and readable. */
+html.brown .text-blue-300,
+html.brown .text-blue-400,
+html.brown .text-blue-500 { color: #7db7ff !important; }
+
+html.brown .text-cyan-300,
+html.brown .text-cyan-400,
+html.brown .text-cyan-500 { color: #72e7f5 !important; }
+
+html.brown .text-violet-300,
+html.brown .text-violet-400,
+html.brown .text-violet-500,
+html.brown .text-purple-300,
+html.brown .text-purple-400 { color: #b99cff !important; }
+
+html.brown .text-lime-300,
+html.brown .text-lime-400,
+html.brown .text-lime-500 { color: #c9f36b !important; }
+
+html.brown .text-emerald-300,
+html.brown .text-emerald-400,
+html.brown .text-emerald-500 { color: #69e0c5 !important; }
+
+html.brown .text-amber-300,
+html.brown .text-amber-400,
+html.brown .text-amber-500 { color: #ffd166 !important; }
+
+html.brown .text-red-300,
+html.brown .text-red-400,
+html.brown .text-red-500 { color: #ff8195 !important; }
+
+/* Brown/tan text should not blend into the warm background. */
+html.brown .text-yellow-300,
+html.brown .text-yellow-400,
+html.brown .text-orange-300,
+html.brown .text-orange-400,
+html.brown .text-stone-300,
+html.brown .text-stone-400 {
+  color: #e5d7c8 !important;
+}
