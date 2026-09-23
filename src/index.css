@@ -370,8 +370,8 @@ html.light textarea:focus {
 html.grey .bg-white.text-black,
 html.grey button.bg-white.text-black,
 html.grey a.bg-white.text-black,
-html.light .bg-white.text-black,
-html.light button.bg-white.text-black,
+html.grey .bg-white.text-black,
+html.grey button.bg-white.text-black,
 html.light a.bg-white.text-black {
   background-color: #ffffff !important;
   color: #0f172a !important;
@@ -384,27 +384,27 @@ html.grey .bg-white.text-black span,
 html.grey button.bg-white.text-black *,
 html.grey button.bg-white.text-black svg,
 html.grey button.bg-white.text-black span,
-html.light .bg-white.text-black *,
-html.light .bg-white.text-black svg,
-html.light .bg-white.text-black span,
-html.light button.bg-white.text-black *,
-html.light button.bg-white.text-black svg,
-html.light button.bg-white.text-black span {
+html.grey .bg-white.text-black *,
+html.grey .bg-white.text-black svg,
+html.grey .bg-white.text-black span,
+html.grey button.bg-white.text-black *,
+html.grey button.bg-white.text-black svg,
+html.grey button.bg-white.text-black span {
   color: #0f172a !important;
 }
 
 html.grey .bg-white.text-black:hover,
 html.grey button.bg-white.text-black:hover,
 html.grey a.bg-white.text-black:hover,
-html.light .bg-white.text-black:hover,
-html.light button.bg-white.text-black:hover,
+html.grey .bg-white.text-black:hover,
+html.grey button.bg-white.text-black:hover,
 html.light a.bg-white.text-black:hover {
   background-color: #f3f4f6 !important;
   color: #0f172a !important;
 }
 
 html.grey .bg-white.text-black:hover *,
-html.light .bg-white.text-black:hover * {
+html.grey .bg-white.text-black:hover * {
   color: #0f172a !important;
 }
 
@@ -485,7 +485,7 @@ html.light .glow-blue-tab {
 }
 
 html.grey [role="tab"][aria-selected="true"],
-html.light [role="tab"][aria-selected="true"] {
+html.grey [role="tab"][aria-selected="true"] {
   color: #60a5fa !important;
 }
 
@@ -3988,20 +3988,20 @@ html.brown [data-radix-select-item][data-state="checked"] {
 
 /* Grey mode: keep every tab container and selected state on graphite. */
 html.grey [role="tablist"],
-html.light [role="tablist"] {
+html.grey [role="tablist"] {
   background: #1c1e23 !important;
   border-color: #2e313a !important;
 }
 
 html.grey [role="tab"],
-html.light [role="tab"] {
+html.grey [role="tab"] {
   background-color: transparent !important;
   color: #b8bec9 !important;
   border-color: transparent !important;
 }
 
 html.grey [role="tab"][aria-selected="true"],
-html.light [role="tab"][aria-selected="true"] {
+html.grey [role="tab"][aria-selected="true"] {
   background: #30343d !important;
   color: #ffffff !important;
   border-color: #454b58 !important;
@@ -4009,7 +4009,7 @@ html.light [role="tab"][aria-selected="true"] {
 }
 
 html.grey [role="tab"]:hover,
-html.light [role="tab"]:hover {
+html.grey [role="tab"]:hover {
   background: #272a31 !important;
   color: #f3f4f6 !important;
 }
@@ -4017,8 +4017,8 @@ html.light [role="tab"]:hover {
 /* Grey mode: white utility surfaces must never hide dark text on dark canvas. */
 html.grey .bg-white,
 html.grey [class*="bg-white/"],
-html.light .bg-white,
-html.light [class*="bg-white/"] {
+html.grey .bg-white,
+html.grey [class*="bg-white/"] {
   background-color: #292c34 !important;
   color: #ffffff !important;
   border-color: #3a3e48 !important;
@@ -4027,9 +4027,9 @@ html.light [class*="bg-white/"] {
 html.grey .bg-white .text-black,
 html.grey .bg-white [class*="text-gray-9"],
 html.grey .bg-white [class*="text-zinc-9"],
-html.light .bg-white .text-black,
-html.light .bg-white [class*="text-gray-9"],
-html.light .bg-white [class*="text-zinc-9"] {
+html.grey .bg-white .text-black,
+html.grey .bg-white [class*="text-gray-9"],
+html.grey .bg-white [class*="text-zinc-9"] {
   color: #ffffff !important;
 }
 
@@ -4078,21 +4078,114 @@ html.brown [class*="bg-white/"] [class*="text-black"] {
 /* Buttons/controls that accidentally inherit a light surface stay readable. */
 html.brown button,
 html.grey button,
-html.light button {
+html.grey button {
   color: inherit;
 }
 
 html.brown button[class*="bg-white"],
 html.grey button[class*="bg-white"],
-html.light button[class*="bg-white"] {
+html.grey button[class*="bg-white"] {
   background-color: #29231f !important;
   color: #fffaf2 !important;
   border-color: rgba(205,190,169,.18) !important;
 }
 
 html.grey button[class*="bg-white"],
-html.light button[class*="bg-white"] {
+html.grey button[class*="bg-white"] {
   background-color: #292c34 !important;
   color: #ffffff !important;
   border-color: #3a3e48 !important;
+}
+
+
+/* =============================================================
+   GEN-0FI BROWN MODE v9
+   Eliminate pale section surfaces without flattening semantic color.
+   ============================================================= */
+
+html.brown [class*="bg-gray-100"],
+html.brown [class*="bg-gray-200"],
+html.brown [class*="bg-zinc-100"],
+html.brown [class*="bg-zinc-200"],
+html.brown [class*="bg-slate-100"],
+html.brown [class*="bg-slate-200"],
+html.brown [class*="bg-stone-100"],
+html.brown [class*="bg-stone-200"],
+html.brown [class*="bg-neutral-100"],
+html.brown [class*="bg-neutral-200"] {
+  background-color: #29231f !important;
+  color: #fffaf2 !important;
+  border-color: rgba(205,190,169,.18) !important;
+}
+
+html.brown [class*="border-gray-200"],
+html.brown [class*="border-zinc-200"],
+html.brown [class*="border-slate-200"],
+html.brown [class*="border-stone-200"],
+html.brown [class*="border-neutral-200"] {
+  border-color: rgba(205,190,169,.18) !important;
+}
+
+html.brown [class*="text-gray-900"],
+html.brown [class*="text-zinc-900"],
+html.brown [class*="text-slate-900"],
+html.brown [class*="text-stone-900"],
+html.brown [class*="text-neutral-900"],
+html.brown .text-black {
+  color: #fffaf2 !important;
+}
+
+html.brown [role="tablist"],
+html.brown [data-radix-tabs-list] {
+  background: rgba(38,32,28,.96) !important;
+  color: #fffaf2 !important;
+}
+
+html.brown [role="tab"],
+html.brown [data-radix-tabs-trigger] {
+  color: #d5c7b9 !important;
+}
+
+html.brown [role="tab"][aria-selected="true"],
+html.brown [data-state="active"] {
+  background: rgba(245,234,216,.12) !important;
+  color: #fffdf8 !important;
+}
+
+html.brown select,
+html.brown option,
+html.brown [role="listbox"],
+html.brown [role="menu"],
+html.brown [data-radix-popper-content-wrapper] > * {
+  background-color: #29231f !important;
+  color: #fffaf2 !important;
+}
+
+html.brown input,
+html.brown textarea {
+  background-color: rgba(41,35,31,.92) !important;
+  color: #fffaf2 !important;
+  border-color: rgba(205,190,169,.18) !important;
+}
+
+html.brown input::placeholder,
+html.brown textarea::placeholder {
+  color: #bdaea0 !important;
+}
+
+html.brown table,
+html.brown thead,
+html.brown tbody,
+html.brown tr {
+  border-color: rgba(205,190,169,.16) !important;
+}
+
+html.brown [data-radix-dialog-content],
+html.brown [data-radix-popover-content],
+html.brown [data-radix-dropdown-menu-content],
+html.brown [data-radix-select-content] {
+  background: #29231f !important;
+  color: #fffaf2 !important;
+  border-color: rgba(205,190,169,.20) !important;
+  opacity: 1 !important;
 }
