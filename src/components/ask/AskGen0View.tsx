@@ -12,7 +12,9 @@ import {
   Bot,
 } from 'lucide-react';
 
-interface AskGen0ViewProps { embedded?: boolean; }\n\nexport const AskGen0View: React.FC<AskGen0ViewProps> = ({ embedded = false }) => {
+interface AskGen0ViewProps { embedded?: boolean; }
+
+export const AskGen0View: React.FC<AskGen0ViewProps> = ({ embedded = false }) => {
   const { address, shortAddress, isConnected, walletSummary, transactions, balanceUSDC } = useWallet();
 
   // Synchronized active balance: uses whichever source holds the live verified balance
