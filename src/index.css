@@ -3059,3 +3059,114 @@ html.dark .text-cyan-300, html.dark .text-cyan-400, html.brown .text-cyan-300, h
 @media(max-width:640px) {
   html.dark body::before, html.brown body::before { opacity:.16; background-size:34px 34px; }
 }
+
+
+/* =============================================================
+   GEN-0FI COLOR SYSTEM v2
+   Midnight Aurora + Warm Aurora
+   Semantic color roles: finance / onchain / intelligence / GM
+   ============================================================= */
+
+:root {
+  --gen-finance: #3b82f6;
+  --gen-onchain: #22d3ee;
+  --gen-intelligence: #8b5cf6;
+  --gen-gm: #a3e635;
+  --gen-positive: #2dd4bf;
+  --gen-warning: #fbbf24;
+  --gen-negative: #fb7185;
+  --gen-text: #f8fafc;
+}
+
+/* Dark: premium midnight aurora */
+html.dark,
+html.dark body,
+html.dark #root {
+  background:
+    radial-gradient(780px 520px at 6% -8%, rgba(34,211,238,.16), transparent 60%),
+    radial-gradient(720px 520px at 96% 4%, rgba(139,92,246,.16), transparent 60%),
+    radial-gradient(680px 480px at 50% 112%, rgba(59,130,246,.12), transparent 62%),
+    linear-gradient(145deg,#050711 0%,#07101d 44%,#08091a 100%) !important;
+}
+
+/* Fine aurora light, intentionally low contrast */
+html.dark body::after {
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:-1;
+  background:
+    radial-gradient(500px 340px at 22% 30%, rgba(34,211,238,.035), transparent 72%),
+    radial-gradient(560px 380px at 78% 70%, rgba(139,92,246,.035), transparent 72%);
+}
+
+/* Warm light theme: ivory + cool neon accents */
+html.brown,
+html.brown body,
+html.brown #root {
+  background:
+    radial-gradient(820px 520px at 4% -8%, rgba(34,211,238,.11), transparent 60%),
+    radial-gradient(760px 500px at 96% 4%, rgba(139,92,246,.10), transparent 62%),
+    radial-gradient(700px 480px at 52% 110%, rgba(214,167,87,.10), transparent 64%),
+    linear-gradient(145deg,#f7f2ea 0%,#eee6da 46%,#f5eee5 100%) !important;
+}
+
+/* Semantic neon text */
+html.dark .gen-accent-finance { color:#60a5fa !important; }
+html.dark .gen-accent-onchain { color:#67e8f9 !important; }
+html.dark .gen-accent-intelligence { color:#a78bfa !important; }
+html.dark .gen-accent-gm { color:#bef264 !important; }
+html.dark .gen-accent-positive { color:#5eead4 !important; }
+html.dark .gen-accent-warning { color:#fcd34d !important; }
+html.dark .gen-accent-negative { color:#fb7185 !important; }
+
+html.brown .gen-accent-finance { color:#2563eb !important; }
+html.brown .gen-accent-onchain { color:#0891b2 !important; }
+html.brown .gen-accent-intelligence { color:#7c3aed !important; }
+html.brown .gen-accent-gm { color:#65a30d !important; }
+html.brown .gen-accent-positive { color:#0f766e !important; }
+html.brown .gen-accent-warning { color:#b45309 !important; }
+html.brown .gen-accent-negative { color:#e11d48 !important; }
+
+/* Signature gradient utilities */
+.gen-gradient-finance {
+  background: linear-gradient(135deg,#3b82f6 0%,#22d3ee 100%) !important;
+}
+.gen-gradient-intelligence {
+  background: linear-gradient(135deg,#6366f1 0%,#a855f7 100%) !important;
+}
+.gen-gradient-gm {
+  background: linear-gradient(135deg,#a3e635 0%,#22d3ee 100%) !important;
+}
+
+/* Make the semantic accent glows consistent across both themes */
+.gen-glow-finance {
+  box-shadow: 0 0 24px rgba(59,130,246,.18), 0 0 56px rgba(34,211,238,.07);
+}
+.gen-glow-intelligence {
+  box-shadow: 0 0 24px rgba(139,92,246,.18), 0 0 56px rgba(99,102,241,.07);
+}
+.gen-glow-gm {
+  box-shadow: 0 0 24px rgba(163,230,53,.18), 0 0 56px rgba(34,211,238,.07);
+}
+
+/* Warm theme preserves the same semantic language without becoming sepia */
+html.brown .gen-gradient-finance {
+  background: linear-gradient(135deg,#2563eb 0%,#0891b2 100%) !important;
+}
+html.brown .gen-gradient-intelligence {
+  background: linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%) !important;
+}
+html.brown .gen-gradient-gm {
+  background: linear-gradient(135deg,#65a30d 0%,#0891b2 100%) !important;
+}
+
+/* Accessible glow: bright enough to signal, never used as body text */
+@media (prefers-reduced-motion: reduce) {
+  .gen-glow-finance,
+  .gen-glow-intelligence,
+  .gen-glow-gm {
+    box-shadow: none;
+  }
+}
