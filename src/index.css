@@ -975,6 +975,43 @@ html.white a {
   }
 }
 
+
+/* Light mode: token + chain selectors use a soft grey field */
+html.white .token-select,
+html.white .chain-select,
+html.white [data-token-select],
+html.white [data-chain-select],
+html.white select[name*="token" i],
+html.white select[name*="chain" i] {
+  background-color: #eef1f4 !important;
+  color: #111111 !important;
+  border-color: #d1d5db !important;
+}
+
+html.white .token-select:hover,
+html.white .chain-select:hover,
+html.white [data-token-select]:hover,
+html.white [data-chain-select]:hover,
+html.white select[name*="token" i]:hover,
+html.white select[name*="chain" i]:hover {
+  background-color: #e5e7eb !important;
+}
+
+/* Light mode: GM Streak navigation tab uses a calm light-blue treatment */
+html.white .gm-streak-tab,
+html.white [data-tab="gm-streak"],
+html.white [aria-label*="GM Streak" i] {
+  background-color: #dbeafe !important;
+  color: #2563eb !important;
+  border-color: #bfdbfe !important;
+}
+
+html.white .gm-streak-tab:hover,
+html.white [data-tab="gm-streak"]:hover,
+html.white [aria-label*="GM Streak" i]:hover {
+  background-color: #bfdbfe !important;
+  color: #1d4ed8 !important;
+}
 /* =============================================================
    GEN-0FI BROWN MODE
    NEON BLACK SYSTEM
