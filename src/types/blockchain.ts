@@ -49,6 +49,10 @@ export interface WalletSummary {
   activeContractsCount: number; // alias
   uniqueCounterpartiesCount: number;
   latestActivityTime?: number;
+  firstActivityTime?: number;
+  failedTransactionCount?: number;
+  topProtocolUsed?: string;
+  tokenApprovalsCount?: number;
   isDataAvailable: boolean;
   historyStatus?: 'complete' | 'incomplete' | 'unavailable';
   historyStatusNote?: string;
