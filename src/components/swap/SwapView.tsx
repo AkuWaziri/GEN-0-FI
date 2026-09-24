@@ -401,8 +401,12 @@ export const SwapView: React.FC = () => {
       // Arc native USDC remains backed by the authoritative Arc balance endpoint
       // for display, but it is never blocked by a second RPC balance check.
       if (fromToken && required > 0n) {
+        const isArcNativeUsdc = fromChainId === 5042 && fromToken.address.toLowerCase() === ARC_USDC_PREDEPLOY.toLowerCase();
         const balanceItem = tokenBalanceFor(balances, fromChainId, fromToken);
-        if (balanceItem?.amount && BigInt(balanceItem.amount) < required) {
+        const availableRaw = isArcNativeUsdc
+          ? (arcNativeBalance !== null ? BigInt(arcNativeBalance) : null)
+          : (balanceItem?.amount ? BigInt(balanceItem.amount) : null);
+        if (availableRaw !== null && availableRaw < required) {
           throw new Error(`Insufficient ${fromToken.symbol} balance for this ${fromChainId === toChainId ? 'swap' : 'bridge'}.`);
         }
       }
@@ -658,9 +662,14 @@ export const SwapView: React.FC = () => {
                     {formatBalance(quote.estimate?.toAmount, toToken?.decimals || 18)} {toToken?.symbol}
                   </span>
                 </div>
-                <div className="mt-2 text-xs text-zinc-500">
-                  Route: {quote.toolDetails?.name || quote.tool || 'LI.FI'}
-
+                <div className="mt-2 space-y-1 text-xs text-zinc-500">
+                  <div>Route: {quote.toolDetails?.name || quote.tool || 'LI.FI'}</div>
+                  {quote.gen0fiFee?.percent !== undefined && (
+                    <div className="flex items-center justify-between gap-4">
+                      <span>GEN-0FI fee</span>
+                      <span className="text-blue-300">{Number(quote.gen0fiFee.percent).toFixed(2)}%</span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -752,7 +761,9 @@ function TokenPanel(props: {
       : 'border-blue-400/30 bg-[#0f1724] text-white';
 
   const tokenWalletBalance = (token: LiFiToken) => {
-    if (props.chainId === 5042 && token.symbol?.toUpperCase() === 'USDC' && props.arcNativeBalance !== null) return formatBalance(props.arcNativeBalance, 18);
+    if (props.chainId === 5042 && token.address.toLowerCase() === ARC_USDC_PREDEPLOY.toLowerCase() && props.arcNativeBalance !== null) {
+      return formatBalance(props.arcNativeBalance, 18);
+    }
     const item = tokenBalanceFor(props.balances, props.chainId, token);
     return item?.amount ? formatBalance(item.amount, token.decimals || 18) : '0';
   };
