@@ -187,7 +187,7 @@ export const WalletView: React.FC = () => {
         <div>
           <p className="text-[10px] uppercase tracking-[0.25em] text-blue-400 font-mono">Wallet</p>
           <h1 className="mt-1 text-2xl sm:text-3xl font-bold text-white tracking-tight">Send & Receive</h1>
-          <p className="mt-2 text-sm text-zinc-400">Move USDC directly from your connected Arc wallet.</p>
+          <p className="mt-2 text-sm text-zinc-400">Move USDC, EURC directly from your connected wallet on Arc. Network.</p>
         </div>
 
         <div className="grid grid-cols-2 gap-2 p-1.5 rounded-2xl bg-zinc-900 border border-zinc-800 max-w-sm">
