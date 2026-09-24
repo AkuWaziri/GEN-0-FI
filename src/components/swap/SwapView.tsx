@@ -457,7 +457,9 @@ export const SwapView: React.FC = () => {
       }
 
       const approvalAddress = quote?.estimate?.approvalAddress;
-      if (fromToken && fromToken.address.toLowerCase() !== NATIVE && approvalAddress && quote?.estimate?.fromAmount) {
+      // Arc mainnet USDC is the native gas/settlement asset, not an ERC-20 allowance flow.
+      // Never call allowance() or approve() against the Arc USDC predeploy.
+      if (fromToken && fromToken.address.toLowerCase() !== NATIVE && fromToken.address.toLowerCase() !== ARC_USDC_PREDEPLOY && approvalAddress && quote?.estimate?.fromAmount) {
         let allowance: bigint;
         try {
           allowance = await publicClient.readContract({
