@@ -495,6 +495,7 @@ export const FXView: React.FC = () => {
           </div>
 
         </div>
+        )}
       </div>
     </div>
   );
