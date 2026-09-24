@@ -442,9 +442,28 @@ export const SwapView: React.FC = () => {
         }
       }
 
-      // Native gas is required for ERC-20 approvals and source-chain transactions.
-      // We only display a clean warning here. No transaction is submitted by this check.
-      if (fromToken && fromToken.address.toLowerCase() !== NATIVE && !(isArcUsdc && arcNativeBalance !== null)) {
+      // Arc mainnet uses native USDC for both settlement and network gas.
+      // Never call eth_getBalance on Arc for this path. The authoritative Arc balance
+      // endpoint reads the real 18-decimal native USDC balance from Arc RPC.
+      if (fromToken && isArcUsdc) {
+        let arcGasBalance = arcNativeBalance;
+        if (arcGasBalance === null) {
+          try {
+            const response = await fetchJson('/api/blockchain/arc/balance/' + address);
+            arcGasBalance = response?.rawBalance ?? null;
+            if (arcGasBalance !== null) setArcNativeBalance(arcGasBalance);
+          } catch (gasError) {
+            throw new Error(cleanSwapError(gasError, 'gas'));
+          }
+        }
+        if (arcGasBalance === null) {
+          throw new Error('Unable to verify your Arc USDC balance right now. Please try again.');
+        }
+        if (BigInt(arcGasBalance) <= 0n) {
+          throw new Error('Insufficient USDC balance to pay Arc network fees.');
+        }
+      } else if (fromToken && fromToken.address.toLowerCase() !== NATIVE) {
+        // Other EVM chains use their native gas asset for ERC-20 source transactions.
         try {
           const nativeBalance = await publicClient.getBalance({ address: address as `0x${string}` });
           if (nativeBalance === 0n) {
