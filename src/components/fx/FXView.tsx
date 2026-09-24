@@ -414,9 +414,9 @@ export const FXView: React.FC = () => {
               </div>
               {showRecipient && <input value={receiveAddress} onChange={(e) => { setReceiveAddress(e.target.value); setQuote(null); }} placeholder="0x... receive address" className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3.5 py-3 text-sm font-mono text-white outline-none focus:border-blue-500/50" />}
               <div className="grid sm:grid-cols-3 gap-3 text-xs">
-                <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3"><div className="text-[10px] text-zinc-600 uppercase tracking-widest">GEN-0FI fee</div><div className="mt-1 font-semibold text-white">{fmt(feeAmount)} {from}</div></div>
-                <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3"><div className="text-[10px] text-zinc-600 uppercase tracking-widest">Rate</div><div className="mt-1 font-semibold text-white">{rate === null ? '—' : '1 ' + from + ' ≈ ' + fmt(rate) + ' ' + to}</div></div>
-                <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3"><div className="text-[10px] text-zinc-600 uppercase tracking-widest">Source balance</div><div className="mt-1 font-semibold text-white">{sourceBalance === null ? '—' : fmt(Number(sourceBalance)) + ' ' + from}</div></div>
+                <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3"><div className="text-[10px] text-zinc-600 uppercase tracking-widest">GEN-0FI fee</div><div className="mt-1 font-semibold text-white">{formatValue(feeAmount)} {from}</div></div>
+                <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3"><div className="text-[10px] text-zinc-600 uppercase tracking-widest">Rate</div><div className="mt-1 font-semibold text-white">{rate === null ? '—' : '1 ' + from + ' ≈ ' + formatValue(rate) + ' ' + to}</div></div>
+                <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3"><div className="text-[10px] text-zinc-600 uppercase tracking-widest">Source balance</div><div className="mt-1 font-semibold text-white">{sourceBalance === null ? '—' : formatValue(Number(sourceBalance)) + ' ' + from}</div></div>
               </div>
             </div>
           )}
@@ -440,7 +440,7 @@ export const FXView: React.FC = () => {
 
           {quote?.estimate?.toAmount && toToken && (
             <div className="mt-4 rounded-xl border border-green-500/20 bg-green-500/[0.04] p-4 space-y-2 text-xs">
-              <div className="flex justify-between gap-3"><span className="text-zinc-500">Executable receive</span><span className="font-semibold text-white">{fmt(Number(formatUnits(BigInt(quote.estimate.toAmount), toToken.decimals)))} {to}</span></div>
+              <div className="flex justify-between gap-3"><span className="text-zinc-500">Executable receive</span><span className="font-semibold text-white">{formatValue(Number(formatUnits(BigInt(quote.estimate.toAmount), toToken.decimals)))} {to}</span></div>
               <div className="flex justify-between gap-3"><span className="text-zinc-500">Route</span><span className="text-zinc-300">{quote.toolDetails?.name || quote.tool || 'LI.FI'}</span></div>
               <div className="flex justify-between gap-3"><span className="text-zinc-500">Quote</span><span className="text-zinc-300">{quoteUpdatedAt ? new Date(quoteUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'}</span></div>
             </div>
