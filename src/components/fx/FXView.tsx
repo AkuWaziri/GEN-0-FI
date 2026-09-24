@@ -272,10 +272,10 @@ export const FXView: React.FC = () => {
       if (connectedChainId !== ARC_CHAIN_ID) await switchToArc();
       if (quote?.estimate?.approvalAddress && fromToken && publicClient && fromToken.address.toLowerCase() !== ARC_USDC_PREDEPLOY.toLowerCase()) {
         const required = BigInt(quote.estimate.fromAmount || '0');
-        const allowance = await publicClient.readContract({ address: fromToken.address, abi: ERC20_APPROVE_ABI, functionName: 'allowance', args: [address, quote.estimate.approvalAddress] });
+        const allowance = BigInt(await publicClient.readContract({ address: fromToken.address as any, abi: ERC20_APPROVE_ABI, functionName: 'allowance', args: [address as any, quote.estimate.approvalAddress as any] }) as any);
         if (allowance < required) {
           const approvalData = encodeFunctionData({ abi: ERC20_APPROVE_ABI, functionName: 'approve', args: [quote.estimate.approvalAddress, required] });
-          const approvalHash = await walletClient.sendTransaction({ account: address, to: fromToken.address, data: approvalData, value: 0n, chainId: ARC_CHAIN_ID });
+          const approvalHash = await walletClient.sendTransaction({ account: address, to: fromToken.address, data: approvalData, value: 0n, chainId: ARC_CHAIN_ID } as any);
           setExecutionStage('confirming');
           const approvalReceipt = await publicClient.waitForTransactionReceipt({ hash: approvalHash });
           if (approvalReceipt.status !== 'success') throw new Error('Token approval failed.');
