@@ -62,7 +62,37 @@ async function fetchJson(url: string, timeoutMs = 15_000): Promise<any> {
 }
 
 async function fetchAddressTransactions(address: string): Promise<any[]> {
+  // Arcscan's typed address transaction index is the canonical mainnet source.
+  // It is cursor-paginated and includes the complete address history from block 0.
   const all: any[] = [];
+  let cursor = '';
+
+  for (let page = 0; page < 500; page++) {
+    const url = new URL(ARCSCAN_V1_BASE + '/address/' + address + '/txs');
+    url.searchParams.set('limit', '100');
+    if (cursor) url.searchParams.set('cursor', cursor);
+
+    const data = await fetchJson(url.toString());
+    const rows = Array.isArray(data?.items)
+      ? data.items
+      : Array.isArray(data?.transactions)
+        ? data.transactions
+        : Array.isArray(data?.result)
+          ? data.result
+          : [];
+
+    all.push(...rows);
+
+    const next = data?.page?.next ?? data?.next_cursor ?? data?.nextCursor;
+    if (!next || rows.length === 0) break;
+    cursor = String(next);
+  }
+
+  if (all.length > 0) return all;
+
+  // Compatibility fallback. Arcscan documents the Etherscan-shaped txlist
+  // endpoint as equivalent to the typed address transaction index.
+  const legacy: any[] = [];
   const offset = 100;
 
   for (let page = 1; page <= 500; page++) {
@@ -85,13 +115,12 @@ async function fetchAddressTransactions(address: string): Promise<any[]> {
     }
 
     const rows = Array.isArray(data.result) ? data.result : [];
-    all.push(...rows);
+    legacy.push(...rows);
     if (rows.length < offset) break;
   }
 
-  return all;
+  return legacy;
 }
-
 function toRawTransaction(tx: any): RawTxInput {
   const gasUsed = tx.gasUsed !== undefined && tx.gasUsed !== '' ? BigInt(tx.gasUsed) : undefined;
   const gasPrice = tx.gasPrice !== undefined && tx.gasPrice !== '' ? BigInt(tx.gasPrice) : undefined;
