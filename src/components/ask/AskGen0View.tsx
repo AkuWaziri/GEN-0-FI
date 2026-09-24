@@ -129,7 +129,7 @@ export const AskGen0View: React.FC<AskGen0ViewProps> = ({ embedded = false }) =>
 
   const [inputPrompt, setInputPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [activeModel, setActiveModel] = useState<string>('gemini-3.1-pro-preview');
+  const [activeModel, setActiveModel] = useState<string>('deterministic-verifier');
   const [copilotContext, setCopilotContext] = useState<CopilotContext>({
     gm: { currentStreak: null, longestStreak: null, totalGmDays: null, points: null, checkedInToday: null, rank: null, totalRankedWallets: null },
     points: { swapCount: null, bridgeCount: null, swapPoints: null, bridgePoints: null, totalPoints: null, rank: null, totalRankedWallets: null },
