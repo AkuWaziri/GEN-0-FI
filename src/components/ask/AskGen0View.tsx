@@ -278,7 +278,7 @@ export const AskGen0View: React.FC<AskGen0ViewProps> = ({ embedded = false }) =>
         {
           id: `ai-err-${Date.now()}`,
           role: 'assistant',
-          content: 'GEN-0 AI is temporarily unavailable. Your wallet data is still available in Financial Overview.',
+          content: 'COPILOT is temporarily unavailable. Your wallet data is still available in Financial Overview.',
           timestamp: Date.now(),
           isError: true,
         },
@@ -309,11 +309,11 @@ export const AskGen0View: React.FC<AskGen0ViewProps> = ({ embedded = false }) =>
               <Sparkles className="w-3.5 h-3.5" />
             </div>
             <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
-              GEN-0 AI
+              COPILOT
             </h1>
             <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-[10px] font-mono text-blue-400">
               <Cpu className="w-2.5 h-2.5" />
-              {activeModel === 'deterministic-verifier' || activeModel === 'deterministic-exact' || activeModel === 'deterministic-gen0' ? 'GEN-0 Verified Engine' : activeModel === 'gemini-3.1-pro-preview' ? 'Gemini 3.1 Pro' : activeModel}
+              {loadingCopilotContext ? 'Syncing wallet context…' : (activeModel === 'deterministic-verifier' || activeModel === 'deterministic-exact' || activeModel === 'deterministic-gen0' || activeModel === 'deterministic-copilot' ? 'GEN-0 Verified Engine' : activeModel === 'gemini-3.1-pro-preview' ? 'Gemini 3.1 Pro' : activeModel)}
             </span>
           </div>
         </div>
