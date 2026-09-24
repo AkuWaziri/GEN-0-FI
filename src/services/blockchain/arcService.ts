@@ -191,8 +191,8 @@ function toRawTransaction(tx: any): RawTxInput {
   return {
     hash: String(tx.hash ?? tx.tx_hash ?? ''),
     blockNumber: bigintFromValue(blockNumberValue),
-    from: String(tx.from ?? ''),
-    to: tx.to ? String(tx.to) : null,
+    from: addressOf(tx.from) || '',
+    to: addressOf(tx.to),
     value: rawValueParsed?.raw ?? 0n,
     fee,
     gas: tx.gas !== undefined && tx.gas !== null
@@ -208,7 +208,7 @@ function toRawTransaction(tx: any): RawTxInput {
     contractName: tx.contractName ?? tx.contract_name ?? tx.toName ?? tx.to_name ?? tx.contract?.name ?? '',
     timestamp: timestampMs(timestampValue),
     status,
-    contractAddress: tx.contractAddress ?? tx.created_contract ?? null,
+    contractAddress: addressOf(tx.contractAddress) || addressOf(tx.created_contract),
   };
 }
 
@@ -300,7 +300,7 @@ function addressOf(value: any): string | null {
   if (!value) return null;
   const candidate = typeof value === 'string'
     ? value
-    : value.address ?? value.checksum ?? value.value ?? value.from ?? value.to;
+    : value.address ?? value.checksum ?? value.hash ?? value.value ?? value.from ?? value.to;
   if (typeof candidate !== 'string') return null;
   const normalized = candidate.toLowerCase();
   return /^0x[a-f0-9]{40}$/.test(normalized) ? normalized : null;
