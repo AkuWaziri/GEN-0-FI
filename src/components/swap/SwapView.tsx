@@ -391,7 +391,7 @@ export const SwapView: React.FC = () => {
         throw new Error('LI.FI returned an incomplete route. Refresh the quote before submitting.');
       }
 
-      const publicClient = getDirectPublicClient(fromChainId, fromChain);
+      const publicClient: any = getDirectPublicClient(fromChainId, fromChain);
       const required = BigInt(quote.estimate.fromAmount || '0');
 
       // LI.FI already provides the wallet balance dataset used by this screen.
