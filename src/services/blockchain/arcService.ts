@@ -122,26 +122,48 @@ async function fetchAddressTransactions(address: string): Promise<any[]> {
   return legacy;
 }
 function toRawTransaction(tx: any): RawTxInput {
-  const gasUsed = tx.gasUsed !== undefined && tx.gasUsed !== '' ? BigInt(tx.gasUsed) : undefined;
-  const gasPrice = tx.gasPrice !== undefined && tx.gasPrice !== '' ? BigInt(tx.gasPrice) : undefined;
-  const fee = gasUsed !== undefined && gasPrice !== undefined ? gasUsed * gasPrice : undefined;
+  const blockNumberValue = tx.blockNumber ?? tx.block_number ?? '0';
+  const timestampValue = tx.timeStamp ?? tx.timestamp ?? tx.block_timestamp;
+  const gasUsedValue = tx.gasUsed ?? tx.gas_used;
+  const gasPriceValue = tx.gasPrice ?? tx.gas_price ?? tx.effective_gas_price_raw;
+  const rawValueValue = tx.rawValue ?? tx.value_18dec ?? tx.value_raw ?? tx.value ?? '0';
+  const feeValue = tx.fee_18dec ?? tx.fee_raw;
+  const gasUsed = gasUsedValue !== undefined && gasUsedValue !== '' ? BigInt(gasUsedValue) : undefined;
+  const gasPrice = gasPriceValue !== undefined && gasPriceValue !== '' ? BigInt(gasPriceValue) : undefined;
+  const fee = feeValue !== undefined && feeValue !== ''
+    ? BigInt(feeValue)
+    : gasUsed !== undefined && gasPrice !== undefined
+      ? gasUsed * gasPrice
+      : undefined;
+
+  const statusValue = tx.status ?? tx.tx_status ?? tx.execution_status;
+  const legacyStatus = tx.isError === '1' || tx.txreceipt_status === '0'
+    ? 0
+    : tx.isError === '0' || tx.txreceipt_status === '1'
+      ? 1
+      : undefined;
+  const status = typeof statusValue === 'string'
+    ? (['success', '1', '0x1'].includes(statusValue.toLowerCase()) ? 1 : ['failed', 'fail', '0', '0x0'].includes(statusValue.toLowerCase()) ? 0 : undefined)
+    : typeof statusValue === 'number'
+      ? (statusValue === 1 ? 1 : statusValue === 0 ? 0 : undefined)
+      : legacyStatus;
 
   return {
-    hash: String(tx.hash || ''),
-    blockNumber: BigInt(tx.blockNumber || '0'),
-    from: String(tx.from || ''),
+    hash: String(tx.hash ?? tx.tx_hash ?? ''),
+    blockNumber: BigInt(blockNumberValue),
+    from: String(tx.from ?? ''),
     to: tx.to ? String(tx.to) : null,
-    value: BigInt(tx.value || '0'),
+    value: BigInt(rawValueValue),
     fee,
-    gas: tx.gas ? BigInt(tx.gas) : undefined,
+    gas: tx.gas ? BigInt(tx.gas) : tx.gas_limit ? BigInt(tx.gas_limit) : undefined,
     gasPrice,
     gasUsed,
     input: tx.input || '0x',
-    methodId: tx.methodId || '',
-    functionName: tx.functionName || '',
-    timestamp: tx.timeStamp ? Number(tx.timeStamp) * 1000 : 0,
-    status: tx.isError === '1' || tx.txreceipt_status === '0' ? 0 : tx.isError === '0' || tx.txreceipt_status === '1' ? 1 : undefined,
-    contractAddress: tx.contractAddress || null,
+    methodId: tx.methodId ?? tx.method_id ?? '',
+    functionName: tx.functionName ?? tx.function_name ?? '',
+    timestamp: timestampValue ? (Number(timestampValue) > 1e12 ? Number(timestampValue) : Number(timestampValue) * 1000) : 0,
+    status,
+    contractAddress: tx.contractAddress ?? tx.created_contract ?? null,
   };
 }
 
