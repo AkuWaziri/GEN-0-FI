@@ -17,16 +17,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
+          bun-version: 1.4.0
 
       - name: Install dependencies
-        run: npm install --ignore-scripts
+        run: bun install --frozen-lockfile
 
       - name: Typecheck
-        run: npm run lint
+        run: bun run lint
+
+      - name: Production build
+        run: bun run build
 
       - name: Dependency audit
-        run: npm audit --audit-level=high
+        run: bun audit
