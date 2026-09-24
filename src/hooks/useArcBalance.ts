@@ -76,37 +76,8 @@ export function useArcBalance(address: `0x${string}` | string | undefined, isArc
         // Direct Viem RPC balance query failed, try fallbacks
       }
 
-      // 2. Direct ArcScan Blockscout API v2 address lookup (high speed CORS-enabled fallback)
-      try {
-        const scanRes = await fetch(`https://testnet.arcscan.app/api/v2/addresses/${targetAddr}`, {
-          cache: 'no-store',
-          headers: {
-            'Accept': 'application/json',
-            'Cache-Control': 'no-cache',
-            Pragma: 'no-cache',
-          },
-          signal: AbortSignal.timeout(3000),
-        });
-        if (scanRes.ok) {
-          const scanData = await scanRes.json();
-          if (isMatchingAddress(targetAddr) && scanData && scanData.coin_balance !== undefined && scanData.coin_balance !== null) {
-            const balanceWei = BigInt(scanData.coin_balance);
-            setRaw(balanceWei);
-            const rawUnits = formatUnits(balanceWei, 18);
-            const num = parseFloat(rawUnits);
-            const displayStr = isNaN(num) ? '0.00' : num === 0 ? '0.00' : num.toLocaleString('en-US', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 4,
-            });
-            setFormatted(displayStr);
-            setIsLoading(false);
-            return;
-          }
-        }
-      } catch {
-        // Direct ArcScan lookup unavailable, proceed to backend proxy
-      }
-
+      // Mainnet balance is authoritative. Do not fall back to Arc testnet.
+      
       // 3. Server-side API endpoint fallback (Express / Vercel serverless proxy)
       try {
         const res = await fetch(`/api/blockchain/arc/balance/${targetAddr}`, {
