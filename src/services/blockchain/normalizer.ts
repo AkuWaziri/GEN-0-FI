@@ -18,6 +18,7 @@ export interface RawTxInput {
   contractAddress?: string | null;
   methodId?: string;
   functionName?: string;
+  contractName?: string;
   isContractTarget?: boolean;
 }
 
@@ -124,6 +125,7 @@ export function normalizeTransaction(raw: RawTxInput, userAddress: string): Norm
     isContractInteraction: isContractTarget && !isContractCreation,
     contractAddress: raw.contractAddress || (isContractTarget && raw.to ? raw.to : undefined),
     methodName: raw.functionName || undefined,
+    contractName: raw.contractName || undefined,
     classification,
     classificationLabel,
     summary,
