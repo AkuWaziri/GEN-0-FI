@@ -13,11 +13,48 @@ import {
   Wallet,
   ArrowDownLeft,
   ArrowUpRight,
+  CalendarClock,
+  CircleX,
+  Landmark,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface OverviewViewProps {
   onSelectTab: (tab: TabType) => void;
   onOpenConnect: () => void;
+}
+
+function MetricCard({
+  label,
+  value,
+  detail,
+  icon: Icon,
+  compact = false,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  icon: React.ComponentType<{ className?: string }>;
+  compact?: boolean;
+}) {
+  return (
+    <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 glow-blue-card-hover flex flex-col justify-between shadow-sm group">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-medium group-hover:text-zinc-300 transition-colors">
+          {label}
+        </span>
+        <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 group-hover:border-blue-500/40 group-hover:text-blue-300 flex items-center justify-center text-zinc-400 transition-colors">
+          <Icon className="w-4 h-4" />
+        </div>
+      </div>
+      <div className={compact ? 'mt-2 text-base sm:text-lg font-bold text-white truncate' : 'mt-2 text-lg sm:text-xl font-bold text-white font-mono truncate'}>
+        {value}
+      </div>
+      <div className="text-[11px] text-zinc-500 font-mono mt-1 truncate">
+        {detail}
+      </div>
+    </div>
+  );
 }
 
 export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenConnect }) => {
@@ -111,6 +148,27 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
   const contractInteractionsCount =
     walletSummary?.activeContractsCount ??
     transactions.filter((t) => t.isContractInteraction || t.direction === 'contract_interaction').length;
+
+  const walletAgeDisplay = useMemo(() => {
+    const firstActivity = walletSummary?.firstActivityTime;
+    if (!firstActivity || walletSummary?.historyStatus !== 'complete') return 'Unavailable';
+
+    const ageMs = Math.max(0, Date.now() - firstActivity);
+    const ageDays = Math.floor(ageMs / 86_400_000);
+    if (ageDays < 1) return 'Less than 1d';
+    if (ageDays < 30) return `${ageDays}d`;
+
+    const ageMonths = Math.floor(ageDays / 30.44);
+    if (ageMonths < 12) return `${ageMonths}mo`;
+
+    const years = Math.floor(ageMonths / 12);
+    const months = ageMonths % 12;
+    return months > 0 ? `${years}y ${months}mo` : `${years}y`;
+  }, [walletSummary?.firstActivityTime, walletSummary?.historyStatus]);
+
+  const failedTransactionCount = walletSummary?.failedTransactionCount ?? 0;
+  const topProtocolUsed = walletSummary?.topProtocolUsed || 'None';
+  const tokenApprovalsCount = walletSummary?.tokenApprovalsCount ?? 0;
 
   if (!isConnected || !address) {
     return (
@@ -220,6 +278,34 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
           <div className="flex items-center justify-between mb-2"><span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-medium group-hover:text-zinc-300 transition-colors">Contract Interactions</span><div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 group-hover:border-blue-500/40 group-hover:text-blue-300 flex items-center justify-center text-zinc-400 transition-colors"><Code2 className="w-4 h-4" /></div></div>
           <div className="mt-2">{isLoadingData ? <Skeleton className="h-7 w-16" /> : <div className="text-lg sm:text-xl font-bold text-white font-mono">{contractInteractionsCount}</div>}<div className="text-[11px] text-zinc-500 font-mono mt-1">Smart contracts</div></div>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+        <MetricCard
+          label="Wallet Age"
+          value={isLoadingData ? '…' : walletAgeDisplay}
+          detail={walletAgeDisplay === 'Unavailable' ? 'Lifetime index unavailable' : 'Since first indexed activity'}
+          icon={CalendarClock}
+        />
+        <MetricCard
+          label="Failed Transactions"
+          value={isLoadingData ? '…' : String(failedTransactionCount)}
+          detail="Reverted lifetime transactions"
+          icon={CircleX}
+        />
+        <MetricCard
+          label="Top Protocol Used"
+          value={isLoadingData ? '…' : topProtocolUsed}
+          detail="Most-used indexed contract"
+          icon={Landmark}
+          compact
+        />
+        <MetricCard
+          label="Token Approvals"
+          value={isLoadingData ? '…' : String(tokenApprovalsCount)}
+          detail="Indexed approve / permit calls"
+          icon={ShieldCheck}
+        />
       </div>
 
 
