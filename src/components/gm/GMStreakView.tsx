@@ -11,15 +11,35 @@ const short = (address: string) => `${address.slice(0, 6)}...${address.slice(-4)
 const PENDING_GM_TX_KEY = 'gen0fi:pending-gm-tx';
 
 const markConfirmedToday = (current: GMStats | null): GMStats => {
-  if (!current) return { currentStreak: 1, longestStreak: 1, totalGmDays: 1, points: 1, checkedInToday: true, lastCheckinDate: new Date().toISOString().slice(0, 10) };
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+
+  if (!current) {
+    return {
+      currentStreak: 1,
+      longestStreak: 1,
+      totalGmDays: 1,
+      points: 1,
+      checkedInToday: true,
+      lastCheckinDate: today,
+    };
+  }
+
+  if (current.checkedInToday) {
+    return { ...current, checkedInToday: true, lastCheckinDate: today };
+  }
+
+  const continuesStreak = current.lastCheckinDate === yesterday;
+  const nextStreak = continuesStreak ? current.currentStreak + 1 : 1;
+
   return {
     ...current,
-    currentStreak: current.checkedInToday ? current.currentStreak : current.currentStreak + 1,
-    longestStreak: current.checkedInToday ? current.longestStreak : Math.max(current.longestStreak, current.currentStreak + 1),
-    totalGmDays: current.checkedInToday ? current.totalGmDays : current.totalGmDays + 1,
-    points: current.checkedInToday ? current.points : current.currentStreak + 1,
+    currentStreak: nextStreak,
+    longestStreak: Math.max(current.longestStreak, nextStreak),
+    totalGmDays: current.totalGmDays + 1,
+    points: nextStreak,
     checkedInToday: true,
-    lastCheckinDate: new Date().toISOString().slice(0, 10),
+    lastCheckinDate: today,
   };
 };
 
