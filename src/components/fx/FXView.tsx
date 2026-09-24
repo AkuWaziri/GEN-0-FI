@@ -1,5 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowDownUp, Clock3, Coins, Globe2, Info, Loader2, RefreshCw, Search } from 'lucide-react';
+import {
+  ArrowDownUp,
+  Clock3,
+  Coins,
+  ExternalLink,
+  Globe2,
+  Info,
+  Loader2,
+  RefreshCw,
+  Search,
+} from 'lucide-react';
 
 type Kind = 'stable' | 'fiat';
 
@@ -15,9 +25,24 @@ type Fiat = {
   name: string;
 };
 
+type RateResult = {
+  rate: number;
+  date: string | null;
+  source: 'Frankfurter' | 'CBN';
+};
+
 const STABLES_URL = 'https://api.llama.fi/stablecoins?includePrices=true';
 const FIATS_URL = 'https://api.frankfurter.dev/v2/currencies';
-const RATES_URL = 'https://api.frankfurter.dev/v2/rates';
+const FRANKFURTER_URL = 'https://api.frankfurter.dev/v2';
+const CBN_RATES_URL = 'https://api.frankfurter.dev/v2/providers/cbn/rates';
+
+const POPULAR_PAIRS = [
+  { from: 'USDC', fromKind: 'stable' as Kind, to: 'USD', toKind: 'fiat' as Kind },
+  { from: 'EURC', fromKind: 'stable' as Kind, to: 'USD', toKind: 'fiat' as Kind },
+  { from: 'USD', fromKind: 'fiat' as Kind, to: 'NGN', toKind: 'fiat' as Kind },
+  { from: 'EUR', fromKind: 'fiat' as Kind, to: 'NGN', toKind: 'fiat' as Kind },
+  { from: 'GBP', fromKind: 'fiat' as Kind, to: 'USD', toKind: 'fiat' as Kind },
+];
 
 const formatNumber = (value: number, maxFraction = 6) => {
   if (!Number.isFinite(value)) return '—';
@@ -34,24 +59,27 @@ const formatRate = (value: number) => {
   return formatNumber(value, 8);
 };
 
+const stableLabel = (symbol: string, stables: Stablecoin[]) =>
+  stables.find((item) => item.symbol === symbol)?.name || 'Stablecoin';
+
 export const FXView: React.FC = () => {
   const [stables, setStables] = useState<Stablecoin[]>([]);
   const [fiats, setFiats] = useState<Fiat[]>([]);
-
   const [fromKind, setFromKind] = useState<Kind>('stable');
-  const [toKind, setToKind] = useState<Kind>('stable');
+  const [toKind, setToKind] = useState<Kind>('fiat');
   const [from, setFrom] = useState('USDC');
-  const [to, setTo] = useState('EURC');
+  const [to, setTo] = useState('USD');
   const [amount, setAmount] = useState('1');
-
   const [fromSearch, setFromSearch] = useState('');
   const [toSearch, setToSearch] = useState('');
-
   const [rate, setRate] = useState<number | null>(null);
   const [converted, setConverted] = useState<number | null>(null);
-
+  const [rateSource, setRateSource] = useState<'Frankfurter' | 'CBN' | 'DeFiLlama' | null>(null);
+  const [rateDate, setRateDate] = useState<string | null>(null);
   const [stableUpdatedAt, setStableUpdatedAt] = useState<number | null>(null);
   const [fiatDate, setFiatDate] = useState<string | null>(null);
+  const [cbnNgnRate, setCbnNgnRate] = useState<number | null>(null);
+  const [cbnDate, setCbnDate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [quoting, setQuoting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,26 +89,28 @@ export const FXView: React.FC = () => {
     [stables],
   );
 
-  const selectedFrom = fromKind === 'stable' ? stableMap.get(from) : null;
-  const selectedTo = toKind === 'stable' ? stableMap.get(to) : null;
+  const selectedFrom = fromKind === 'stable' ? stableMap.get(from) || null : null;
+  const selectedTo = toKind === 'stable' ? stableMap.get(to) || null : null;
 
   const loadAssets = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const [stableResponse, fiatResponse] = await Promise.all([
+      const [stableResponse, fiatResponse, cbnResponse] = await Promise.all([
         fetch(STABLES_URL, { cache: 'no-store' }),
         fetch(FIATS_URL, { cache: 'no-store' }),
+        fetch(CBN_RATES_URL + '?base=USD&quotes=NGN', { cache: 'no-store' }),
       ]);
 
       if (!stableResponse.ok || !fiatResponse.ok) {
-        throw new Error('FX market data is temporarily unavailable.');
+        throw new Error('FX reference data is temporarily unavailable.');
       }
 
-      const [stableJson, fiatJson] = await Promise.all([
+      const [stableJson, fiatJson, cbnJson] = await Promise.all([
         stableResponse.json(),
         fiatResponse.json(),
+        cbnResponse.ok ? cbnResponse.json() : Promise.resolve([]),
       ]);
 
       const nextStables = (Array.isArray(stableJson?.peggedAssets) ? stableJson.peggedAssets : [])
@@ -90,45 +120,48 @@ export const FXView: React.FC = () => {
           symbol: String(item.symbol || '').toUpperCase(),
           priceUSD: Number(item.price),
         }))
-        .filter((item: Stablecoin) => (
-          item.symbol &&
-          Number.isFinite(item.priceUSD) &&
-          item.priceUSD > 0
-        ))
+        .filter((item: Stablecoin) => item.symbol && Number.isFinite(item.priceUSD) && item.priceUSD > 0)
         .sort((a: Stablecoin, b: Stablecoin) => a.symbol.localeCompare(b.symbol));
 
       const nextFiats = Object.entries(fiatJson || {})
-        .map(([code, name]) => ({
-          code: code.toUpperCase(),
-          name: String(name),
-        }))
+        .map(([code, name]) => ({ code: code.toUpperCase(), name: String(name) }))
         .sort((a, b) => a.code.localeCompare(b.code));
 
-      if (!nextStables.length) {
-        throw new Error('No live stablecoin prices were returned.');
+      if (!nextFiats.some((item: Fiat) => item.code === 'USD')) {
+        nextFiats.unshift({ code: 'USD', name: 'United States Dollar' });
       }
+
+      if (!nextFiats.some((item: Fiat) => item.code === 'NGN')) {
+        nextFiats.push({ code: 'NGN', name: 'Nigerian Naira' });
+      }
+
+      if (!nextStables.length) throw new Error('No stablecoin market prices were returned.');
 
       setStables(nextStables);
       setFiats(nextFiats);
       setStableUpdatedAt(Date.now());
 
-      if (!nextStables.some((item: Stablecoin) => item.symbol === from)) {
-        setFrom(nextStables.some((item: Stablecoin) => item.symbol === 'USDC')
-          ? 'USDC'
-          : nextStables[0].symbol);
+      const latestCbn = Array.isArray(cbnJson)
+        ? cbnJson.find((row: any) => String(row?.quote || '').toUpperCase() === 'NGN')
+        : null;
+
+      if (latestCbn && Number.isFinite(Number(latestCbn.rate))) {
+        setCbnNgnRate(Number(latestCbn.rate));
+        setCbnDate(latestCbn.date ? String(latestCbn.date) : null);
+      } else {
+        setCbnNgnRate(null);
+        setCbnDate(null);
       }
 
-      if (!nextStables.some((item: Stablecoin) => item.symbol === to)) {
-        setTo(nextStables.some((item: Stablecoin) => item.symbol === 'EURC')
-          ? 'EURC'
-          : nextStables[0].symbol);
+      if (!nextStables.some((item) => item.symbol === from) && fromKind === 'stable') {
+        setFrom(nextStables.some((item) => item.symbol === 'USDC') ? 'USDC' : nextStables[0].symbol);
       }
 
-      if (!nextFiats.some((item: Fiat) => item.code === 'USD')) {
-        setFiats([{ code: 'USD', name: 'United States Dollar' }, ...nextFiats]);
+      if (!nextStables.some((item) => item.symbol === to) && toKind === 'stable') {
+        setTo(nextStables.some((item) => item.symbol === 'EURC') ? 'EURC' : nextStables[0].symbol);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load FX market data.');
+      setError(err instanceof Error ? err.message : 'Could not load FX reference data.');
     } finally {
       setLoading(false);
     }
@@ -138,34 +171,72 @@ export const FXView: React.FC = () => {
     void loadAssets();
   }, []);
 
-  const getUsdRates = async (codes: string[]) => {
-    const unique = [...new Set(codes.filter(Boolean))];
+  const getFiatToUsd = async (code: string): Promise<RateResult> => {
+    if (code === 'USD') return { rate: 1, date: null, source: 'Frankfurter' };
 
-    if (!unique.length) {
-      return { rates: {} as Record<string, number>, date: null as string | null };
+    if (code === 'NGN' && cbnNgnRate) {
+      return {
+        rate: 1 / cbnNgnRate,
+        date: cbnDate,
+        source: 'CBN',
+      };
     }
 
     const response = await fetch(
-      RATES_URL + '?base=USD&quotes=' + encodeURIComponent(unique.join(',')),
+      `${FRANKFURTER_URL}/rate/${encodeURIComponent(code.toLowerCase())}/usd`,
       { cache: 'no-store' },
     );
 
-    if (!response.ok) {
-      throw new Error('Fiat reference rate is temporarily unavailable.');
-    }
+    if (!response.ok) throw new Error(`Reference rate for ${code} is unavailable.`);
 
     const data = await response.json();
-    const rates: Record<string, number> = {};
 
-    for (const row of Array.isArray(data) ? data : []) {
-      if (row?.quote && Number.isFinite(Number(row.rate))) {
-        rates[String(row.quote).toUpperCase()] = Number(row.rate);
-      }
+    if (!Number.isFinite(Number(data?.rate)) || Number(data.rate) <= 0) {
+      throw new Error(`Reference rate for ${code} is unavailable.`);
     }
 
     return {
-      rates,
+      rate: Number(data.rate),
       date: data?.date ? String(data.date) : null,
+      source: 'Frankfurter',
+    };
+  };
+
+  const getPairRate = async (): Promise<{ result: number; source: RateResult['source'] | 'DeFiLlama'; date: string | null }> => {
+    if (fromKind === 'stable' && !selectedFrom) throw new Error('Selected stablecoin price is unavailable.');
+    if (toKind === 'stable' && !selectedTo) throw new Error('Selected stablecoin price is unavailable.');
+
+    const fromUsd = fromKind === 'stable'
+      ? Number(selectedFrom!.priceUSD)
+      : (await getFiatToUsd(from)).rate === 0
+        ? 0
+        : 1 / (await getFiatToUsd(from)).rate;
+
+    const toUsd = toKind === 'stable'
+      ? Number(selectedTo!.priceUSD)
+      : (await getFiatToUsd(to)).rate === 0
+        ? 0
+        : 1 / (await getFiatToUsd(to)).rate;
+
+    if (!fromUsd || !toUsd) throw new Error('Selected rate is unavailable.');
+
+    let source: RateResult['source'] | 'DeFiLlama' = 'DeFiLlama';
+    let date: string | null = null;
+
+    if (fromKind === 'fiat' || toKind === 'fiat') {
+      const fiatResults = await Promise.all([
+        fromKind === 'fiat' ? getFiatToUsd(from) : Promise.resolve(null),
+        toKind === 'fiat' ? getFiatToUsd(to) : Promise.resolve(null),
+      ]);
+
+      source = fiatResults.find(Boolean)?.source || 'Frankfurter';
+      date = fiatResults.find(Boolean)?.date || null;
+    }
+
+    return {
+      result: fromUsd / toUsd,
+      source,
+      date,
     };
   };
 
@@ -178,81 +249,38 @@ export const FXView: React.FC = () => {
       return;
     }
 
-    if (fromKind === 'stable' && !selectedFrom) {
-      setRate(null);
-      setConverted(null);
-      return;
-    }
-
-    if (toKind === 'stable' && !selectedTo) {
-      setRate(null);
-      setConverted(null);
-      return;
-    }
-
     setQuoting(true);
     setError(null);
 
     try {
-      const fiatCodes: string[] = [];
-
-      if (fromKind === 'fiat' && from !== 'USD') fiatCodes.push(from);
-      if (toKind === 'fiat' && to !== 'USD') fiatCodes.push(to);
-
-      const fiatData = await getUsdRates(fiatCodes);
-      setFiatDate(fiatData.date);
-
-      const getUsdValue = (kind: Kind, value: string, stable: Stablecoin | null) => {
-        if (kind === 'stable') {
-          if (!stable || !Number.isFinite(stable.priceUSD) || stable.priceUSD <= 0) {
-            throw new Error('Selected stablecoin rate is unavailable.');
-          }
-          return stable.priceUSD;
-        }
-
-        if (value === 'USD') return 1;
-
-        const usdRate = fiatData.rates[value];
-        if (!Number.isFinite(usdRate) || usdRate <= 0) {
-          throw new Error('Selected fiat rate is unavailable.');
-        }
-
-        return 1 / usdRate;
-      };
-
-      const fromUSD = getUsdValue(fromKind, from, selectedFrom);
-      const toUSD = getUsdValue(toKind, to, selectedTo);
-      const nextRate = fromUSD / toUSD;
-
-      setRate(nextRate);
-      setConverted(numericAmount * nextRate);
+      const pair = await getPairRate();
+      setRate(pair.result);
+      setConverted(numericAmount * pair.result);
+      setRateSource(pair.source);
+      setRateDate(pair.date);
     } catch (err) {
       setRate(null);
       setConverted(null);
-      setError(err instanceof Error ? err.message : 'Conversion rate is temporarily unavailable.');
+      setRateSource(null);
+      setRateDate(null);
+      setError(err instanceof Error ? err.message : 'Reference rate is temporarily unavailable.');
     } finally {
       setQuoting(false);
     }
   };
 
   useEffect(() => {
-    if (!loading) {
-      void calculateConversion();
-    }
-  }, [amount, from, to, fromKind, toKind, loading, stables.length, fiats.length]);
+    if (!loading && stables.length && fiats.length) void calculateConversion();
+  }, [amount, from, to, fromKind, toKind, loading, stables.length, fiats.length, cbnNgnRate]);
 
   useEffect(() => {
-    const refresh = window.setInterval(() => {
-      void loadAssets();
-    }, 60_000);
-
+    const refresh = window.setInterval(() => void loadAssets(), 60_000);
     return () => window.clearInterval(refresh);
   }, []);
 
   const swapCurrencies = () => {
     const previousFrom = from;
     const previousFromKind = fromKind;
-
     setFrom(to);
     setFromKind(toKind);
     setTo(previousFrom);
@@ -260,15 +288,9 @@ export const FXView: React.FC = () => {
   };
 
   const changeKind = (side: 'from' | 'to', kind: Kind) => {
-    const defaultStable = stables.some((item) => item.symbol === 'USDC')
-      ? 'USDC'
-      : stables[0]?.symbol || '';
-
-    const defaultFiat = fiats.some((item) => item.code === 'USD')
-      ? 'USD'
-      : fiats[0]?.code || 'USD';
-
-    const nextValue = kind === 'stable' ? defaultStable : defaultFiat;
+    const stableDefault = stables.some((item) => item.symbol === 'USDC') ? 'USDC' : stables[0]?.symbol || '';
+    const fiatDefault = fiats.some((item) => item.code === 'USD') ? 'USD' : 'USD';
+    const nextValue = kind === 'stable' ? stableDefault : fiatDefault;
 
     if (side === 'from') {
       setFromKind(kind);
@@ -281,34 +303,48 @@ export const FXView: React.FC = () => {
     }
   };
 
+  const selectPopularPair = (pair: typeof POPULAR_PAIRS[number]) => {
+    setFrom(pair.from);
+    setFromKind(pair.fromKind);
+    setTo(pair.to);
+    setToKind(pair.toKind);
+    setError(null);
+  };
+
   return (
     <div className="w-full min-h-[calc(100vh-3.5rem)] p-5 sm:p-8 lg:p-10">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <header className="flex items-end justify-between gap-4">
+      <div className="max-w-5xl mx-auto space-y-5">
+        <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.25em] text-blue-400 font-mono">
-              Live rate calculator
-            </p>
-            <h1 className="mt-1 text-2xl sm:text-3xl font-bold text-white tracking-tight">
-              FX
-            </h1>
-            <p className="mt-2 text-sm text-zinc-400">
-              Check current stablecoin and fiat conversion rates.
-            </p>
+            <p className="text-[10px] uppercase tracking-[0.25em] text-blue-400 font-mono">Reference rates</p>
+            <h1 className="mt-1 text-2xl sm:text-3xl font-bold text-white tracking-tight">FX</h1>
+            <p className="mt-2 text-sm text-zinc-400">Check current fiat reference rates and stablecoin market prices.</p>
           </div>
-
           <button
             type="button"
             onClick={() => void loadAssets()}
             disabled={loading}
-            className="p-2.5 rounded-xl border border-zinc-800 text-zinc-400 hover:text-white hover:border-blue-500/30 transition-colors"
-            aria-label="Refresh FX rates"
+            className="inline-flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3.5 py-2.5 text-xs font-semibold text-zinc-300 hover:text-white hover:border-blue-500/30 transition-colors"
           >
-            <RefreshCw className={loading ? 'w-4 h-4 animate-spin' : 'w-4 h-4'} />
+            <RefreshCw className={loading ? 'w-3.5 h-3.5 animate-spin' : 'w-3.5 h-3.5'} />
+            Refresh
           </button>
         </header>
 
         <section className="rounded-2xl border border-blue-500/20 bg-[#0d0f12] p-5 sm:p-7">
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            {POPULAR_PAIRS.map((pair) => (
+              <button
+                key={`${pair.from}-${pair.to}`}
+                type="button"
+                onClick={() => selectPopularPair(pair)}
+                className="rounded-full border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-[10px] font-mono text-zinc-400 hover:text-white hover:border-blue-500/30 transition-colors"
+              >
+                {pair.from}/{pair.to}
+              </button>
+            ))}
+          </div>
+
           <div className="grid lg:grid-cols-[1fr_auto_1fr] gap-3 items-end">
             <AssetPicker
               label="From"
@@ -348,92 +384,52 @@ export const FXView: React.FC = () => {
             />
           </div>
 
-          <div className="mt-5 grid sm:grid-cols-2 gap-3">
+          <div className="mt-4 grid sm:grid-cols-2 gap-3">
             <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-5">
-              <div className="text-[10px] uppercase tracking-widest text-zinc-600">
-                Current rate
-              </div>
+              <div className="text-[10px] uppercase tracking-widest text-zinc-600">Rate</div>
               <div className="mt-2 text-lg sm:text-xl font-semibold text-white">
-                {quoting ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : rate === null ? (
-                  'Unavailable'
-                ) : (
-                  <>1 {from} = {formatRate(rate)} {to}</>
-                )}
+                {quoting ? <Loader2 className="w-5 h-5 animate-spin" /> : rate === null ? 'Unavailable' : <>1 {from} = {formatRate(rate)} {to}</>}
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-zinc-600">
+                {rateSource && <span>{rateSource}{rateSource === 'DeFiLlama' ? ' market price' : ' reference rate'}</span>}
+                {rateDate && <span>· {rateDate}</span>}
               </div>
             </div>
 
             <div className="rounded-2xl border border-blue-500/20 bg-blue-500/[0.045] p-5">
-              <div className="text-[10px] uppercase tracking-widest text-blue-300/70">
-                Conversion
-              </div>
+              <div className="text-[10px] uppercase tracking-widest text-blue-300/70">Indicative conversion</div>
               <div className="mt-2 text-2xl sm:text-3xl font-bold text-blue-300">
-                {quoting ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : converted === null ? (
-                  '—'
-                ) : (
-                  <>{formatNumber(converted)} {to}</>
-                )}
+                {quoting ? <Loader2 className="w-5 h-5 animate-spin" /> : converted === null ? '—' : <>{formatNumber(converted)} {to}</>}
               </div>
-              <div className="mt-1 text-xs text-zinc-500">
-                {formatNumber(Number(amount) || 0)} {from}
-              </div>
+              <div className="mt-1 text-xs text-zinc-500">{formatNumber(Number(amount) || 0)} {from}</div>
             </div>
           </div>
 
           <div className="mt-4 grid sm:grid-cols-3 gap-3">
-            <Stat
-              label="Stablecoin data"
-              value={loading
-                ? 'Loading…'
-                : stableUpdatedAt
-                  ? new Date(stableUpdatedAt).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })
-                  : 'Unavailable'}
-            />
-            <Stat
-              label="Fiat data"
-              value={fiatDate || 'Latest reference'}
-            />
-            <Stat
-              label="Mode"
-              value="Rate display only"
-            />
+            <Stat label="Stablecoin market" value={stableUpdatedAt ? new Date(stableUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Unavailable'} />
+            <Stat label="Fiat reference" value={fiatDate || 'Latest published'} />
+            <Stat label="Mode" value="Display only" />
           </div>
 
-          {error && (
-            <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-xs text-red-300">
-              {error}
-            </div>
-          )}
+          {error && <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-xs text-red-300">{error}</div>}
 
-          <div className="mt-4 rounded-xl border border-blue-500/10 bg-blue-500/[0.03] px-4 py-3 flex items-start gap-2.5 text-[11px] text-zinc-500">
+          <div className="mt-4 rounded-xl border border-blue-500/10 bg-blue-500/[0.03] px-4 py-3 flex items-start gap-2.5 text-[11px] leading-5 text-zinc-500">
             <Info className="w-3.5 h-3.5 text-blue-400 mt-0.5 shrink-0" />
-            <span>
-              FX is informational for now. It does not connect to a wallet, execute swaps,
-              request approvals, move funds, or charge an FX fee.
-            </span>
+            <span>No wallet connection, swap, approval, fee, or fund movement happens here. Fiat numbers are published reference rates; stablecoin numbers are market prices.</span>
           </div>
         </section>
 
-        <div className="grid lg:grid-cols-[1.35fr_.65fr] gap-4">
+        <div className="grid lg:grid-cols-[1.25fr_.75fr] gap-4">
           <section className="rounded-2xl border border-zinc-800 bg-[#111317] p-5">
             <div className="flex items-center gap-3">
               <Coins className="w-5 h-5 text-blue-400" />
               <div>
-                <h2 className="text-sm font-semibold text-white">Stablecoin rates</h2>
-                <p className="text-[11px] text-zinc-500 mt-0.5">
-                  Current market prices used to calculate stablecoin conversions.
-                </p>
+                <h2 className="text-sm font-semibold text-white">Stablecoin market prices</h2>
+                <p className="text-[11px] text-zinc-500 mt-0.5">Market pricing used for indicative stablecoin conversions.</p>
               </div>
             </div>
-
             <div className="mt-4 grid sm:grid-cols-2 xl:grid-cols-3 gap-2">
-              {stables.slice(0, 24).map((item) => (
+              {stables.slice(0, 18).map((item) => (
                 <button
                   type="button"
                   key={item.id}
@@ -445,52 +441,45 @@ export const FXView: React.FC = () => {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs font-semibold text-white">{item.symbol}</span>
-                    <span className="text-[10px] text-zinc-500">
-                      {formatNumber(item.priceUSD, 6)} USD
-                    </span>
+                    <span className="text-[10px] text-zinc-500">{formatNumber(item.priceUSD, 6)} USD</span>
                   </div>
-                  <div className="mt-1 text-[10px] text-zinc-600 truncate">
-                    {item.name}
-                  </div>
+                  <div className="mt-1 text-[10px] text-zinc-600 truncate">{item.name}</div>
                 </button>
               ))}
             </div>
+            <div className="mt-4 flex items-center gap-2 text-[10px] text-zinc-600">
+              <ExternalLink className="w-3.5 h-3.5" />
+              Source: DeFiLlama stablecoin market data
+            </div>
           </section>
 
-          <section className="rounded-2xl border border-zinc-800 bg-[#111317] p-5">
+          <section className="rounded-2xl border border-zinc-800 bg-[#111317] p-5 space-y-4">
             <div className="flex items-center gap-3">
               <Globe2 className="w-5 h-5 text-blue-400" />
               <div>
-                <h2 className="text-sm font-semibold text-white">Fiat reference</h2>
-                <p className="text-[11px] text-zinc-500 mt-0.5">
-                  Published reference rates for supported fiat currencies.
-                </p>
+                <h2 className="text-sm font-semibold text-white">Official reference</h2>
+                <p className="text-[11px] text-zinc-500 mt-0.5">Published FX data for fiat currencies.</p>
               </div>
             </div>
 
-            <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-950/60 px-4 py-3">
-              <div className="text-2xl font-bold text-white">
-                {fiats.length || '—'}
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4">
+              <div className="text-[10px] uppercase tracking-widest text-zinc-600">CBN · USD / NGN</div>
+              <div className="mt-2 text-xl font-bold text-white">
+                {cbnNgnRate ? `₦${formatNumber(cbnNgnRate, 2)}` : 'Unavailable'}
               </div>
-              <div className="text-[11px] text-zinc-500 mt-1">
-                supported fiat currencies
-              </div>
+              <div className="mt-1 text-[10px] text-zinc-600">{cbnDate ? `Published ${cbnDate}` : 'Latest official reference'}</div>
             </div>
 
-            <div className="mt-4 space-y-2 text-[11px] text-zinc-500">
-              <div className="flex items-center gap-2">
-                <Clock3 className="w-3.5 h-3.5" />
-                Latest published reference data
-              </div>
-              <div className="flex items-center gap-2">
-                <Globe2 className="w-3.5 h-3.5" />
-                Searchable by currency code or name
-              </div>
-              <div className="flex items-center gap-2">
-                <Info className="w-3.5 h-3.5" />
-                No wallet transaction is created
-              </div>
+            <div className="space-y-2 text-[11px] text-zinc-500">
+              <div className="flex items-center gap-2"><Clock3 className="w-3.5 h-3.5" />Frankfurter aggregates official sources</div>
+              <div className="flex items-center gap-2"><Globe2 className="w-3.5 h-3.5" />206 supported currencies</div>
+              <div className="flex items-center gap-2"><Info className="w-3.5 h-3.5" />Rates are for reference, not execution</div>
             </div>
+
+            <a href="https://frankfurter.dev/providers/cbn/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-[10px] font-semibold text-blue-300 hover:text-blue-200">
+              View CBN source
+              <ExternalLink className="w-3 h-3" />
+            </a>
           </section>
         </div>
       </div>
@@ -516,22 +505,17 @@ function AssetPicker(props: {
   const list = props.kind === 'stable'
     ? props.stables.filter((item) => {
         const query = props.search.toLowerCase().trim();
-        return !query ||
-          item.symbol.toLowerCase().includes(query) ||
-          item.name.toLowerCase().includes(query);
+        return !query || item.symbol.toLowerCase().includes(query) || item.name.toLowerCase().includes(query);
       }).slice(0, 100)
     : props.fiats.filter((item) => {
         const query = props.search.toLowerCase().trim();
-        return !query ||
-          item.code.toLowerCase().includes(query) ||
-          item.name.toLowerCase().includes(query);
+        return !query || item.code.toLowerCase().includes(query) || item.name.toLowerCase().includes(query);
       }).slice(0, 100);
 
   return (
     <div className="space-y-2.5">
       <div className="flex items-center justify-between">
         <span className="text-[11px] text-zinc-500">{props.label}</span>
-
         {props.label === 'From' && (
           <input
             value={props.amount}
@@ -546,39 +530,15 @@ function AssetPicker(props: {
 
       <div className="flex gap-2">
         <div className="flex rounded-xl border border-zinc-800 bg-zinc-950 p-1 shrink-0">
-          <button
-            type="button"
-            onClick={() => props.onKindChange('stable')}
-            className={props.kind === 'stable'
-              ? 'rounded-lg px-2.5 py-2 text-[10px] font-semibold bg-blue-500/15 text-blue-300'
-              : 'rounded-lg px-2.5 py-2 text-[10px] font-semibold text-zinc-500 hover:text-zinc-200'}
-          >
-            Stable
-          </button>
-          <button
-            type="button"
-            onClick={() => props.onKindChange('fiat')}
-            className={props.kind === 'fiat'
-              ? 'rounded-lg px-2.5 py-2 text-[10px] font-semibold bg-blue-500/15 text-blue-300'
-              : 'rounded-lg px-2.5 py-2 text-[10px] font-semibold text-zinc-500 hover:text-zinc-200'}
-          >
-            Fiat
-          </button>
+          <button type="button" onClick={() => props.onKindChange('stable')} className={props.kind === 'stable' ? 'rounded-lg px-2.5 py-2 text-[10px] font-semibold bg-blue-500/15 text-blue-300' : 'rounded-lg px-2.5 py-2 text-[10px] font-semibold text-zinc-500 hover:text-zinc-200'}>Stable</button>
+          <button type="button" onClick={() => props.onKindChange('fiat')} className={props.kind === 'fiat' ? 'rounded-lg px-2.5 py-2 text-[10px] font-semibold bg-blue-500/15 text-blue-300' : 'rounded-lg px-2.5 py-2 text-[10px] font-semibold text-zinc-500 hover:text-zinc-200'}>Fiat</button>
         </div>
 
         <div className="relative flex-1">
-          <button
-            type="button"
-            onClick={() => setOpen((value) => !value)}
-            className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3.5 py-3 text-left hover:border-blue-500/30 transition-colors"
-          >
-            <span className="block text-sm font-semibold text-white">
-              {props.value || 'Select'}
-            </span>
+          <button type="button" onClick={() => setOpen((value) => !value)} className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3.5 py-3 text-left hover:border-blue-500/30 transition-colors">
+            <span className="block text-sm font-semibold text-white">{props.value || 'Select'}</span>
             <span className="block mt-0.5 text-[10px] text-zinc-600 truncate">
-              {props.kind === 'stable'
-                ? props.stables.find((item) => item.symbol === props.value)?.name || 'Stablecoin'
-                : props.fiats.find((item) => item.code === props.value)?.name || 'Fiat currency'}
+              {props.kind === 'stable' ? stableLabel(props.value, props.stables) : props.fiats.find((item) => item.code === props.value)?.name || 'Fiat currency'}
             </span>
           </button>
 
@@ -596,7 +556,6 @@ function AssetPicker(props: {
                   />
                 </div>
               </div>
-
               <div className="max-h-64 overflow-y-auto p-1.5">
                 {list.map((item: any) => (
                   <button
@@ -609,26 +568,13 @@ function AssetPicker(props: {
                     className="w-full rounded-lg px-3 py-2.5 text-left hover:bg-zinc-900 transition-colors"
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-xs font-semibold text-white">
-                        {props.kind === 'stable' ? item.symbol : item.code}
-                      </span>
-                      {props.kind === 'stable' && (
-                        <span className="text-[10px] text-zinc-500">
-                          {formatNumber(item.priceUSD, 6)} USD
-                        </span>
-                      )}
+                      <span className="text-xs font-semibold text-white">{props.kind === 'stable' ? item.symbol : item.code}</span>
+                      {props.kind === 'stable' && <span className="text-[10px] text-zinc-500">{formatNumber(item.priceUSD, 6)} USD</span>}
                     </div>
-                    <div className="text-[10px] text-zinc-600 mt-0.5 truncate">
-                      {item.name}
-                    </div>
+                    <div className="text-[10px] text-zinc-600 mt-0.5 truncate">{item.name}</div>
                   </button>
                 ))}
-
-                {!list.length && (
-                  <div className="px-3 py-6 text-center text-xs text-zinc-500">
-                    No matching currencies.
-                  </div>
-                )}
+                {!list.length && <div className="px-3 py-6 text-center text-xs text-zinc-500">No matching currencies.</div>}
               </div>
             </div>
           )}
