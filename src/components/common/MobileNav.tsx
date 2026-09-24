@@ -19,8 +19,8 @@ export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, onSelectTab }) 
       {navItems.map((item) => {
         const Icon = item.icon; const isActive = activeTab === item.id;
         return <button key={item.id} id={`mobile-nav-${item.id}`} role="tab" aria-selected={isActive} onClick={() => onSelectTab(item.id)}
-          className={`relative flex flex-col items-center justify-center gap-1 py-1 px-1.5 rounded-xl transition-all duration-200 ease-out cursor-pointer min-w-[48px] select-none ${isActive ? 'text-white font-semibold bg-blue-500/[0.09] border glow-blue-tab' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/40 border border-transparent font-medium'}`}>
-          <Icon className={`w-4 h-4 ${isActive ? 'text-blue-400' : 'text-zinc-500'}`} /><span className="text-[10px] tracking-tight">{item.label}</span>
+          className={`relative flex flex-col items-center justify-center gap-1 py-1 px-0.5 rounded-xl transition-all duration-200 ease-out cursor-pointer min-w-0 flex-1 select-none ${isActive ? 'text-white font-semibold bg-blue-500/[0.09] border glow-blue-tab' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/40 border border-transparent font-medium'}`}>
+          <Icon className={`w-4 h-4 ${isActive ? 'text-blue-400' : 'text-zinc-500'}`} /><span className="text-[9px] tracking-tight whitespace-nowrap">{item.label}</span>
         </button>;
       })}
     </nav>
