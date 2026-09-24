@@ -98,7 +98,7 @@ export const PlaymemesView: React.FC = () => {
               className="inline-flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950/70 px-3.5 py-2.5 text-xs font-semibold text-zinc-300 hover:text-white hover:border-blue-500/30 transition-colors"
             >
               Live launchpad
-              <ExternalLink className="w-3.5 h-3.5" />
+              
             </a>
             <a
               href="https://explorer.arc.io"
@@ -117,9 +117,9 @@ export const PlaymemesView: React.FC = () => {
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div className="flex items-center gap-4">
                 <Step active={activeSection === 'create'} number="01" label="Create" />
-                <ArrowRight className="w-4 h-4 text-zinc-700" />
+                <span className="text-zinc-700">→</span>
                 <Step active={activeSection === 'preview'} number="02" label="Preview" />
-                <ArrowRight className="w-4 h-4 text-zinc-700" />
+                <span className="text-zinc-700">→</span>
                 <Step active={reviewOpen} number="03" label="Review" />
               </div>
 
@@ -144,7 +144,7 @@ export const PlaymemesView: React.FC = () => {
                   onClick={() => setActiveSection(activeSection === 'create' ? 'preview' : 'create')}
                   className="xl:hidden inline-flex items-center gap-2 rounded-lg border border-zinc-800 px-3 py-2 text-[11px] font-semibold text-zinc-400 hover:text-white"
                 >
-                  {activeSection === 'create' ? 'Preview' : 'Edit'} <ArrowRight className="w-3 h-3" />
+                  {activeSection === 'create' ? 'Preview' : 'Edit'} 
                 </button>
               </div>
 
@@ -171,7 +171,7 @@ export const PlaymemesView: React.FC = () => {
               <div className="mt-5 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5 flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 border border-blue-500/20">
-                    <Info className="w-3.5 h-3.5 text-blue-300" />
+                    
                   </div>
                   <div className="min-w-0">
                     <div className="text-xs font-semibold text-zinc-200">Profile metadata</div>
@@ -184,12 +184,12 @@ export const PlaymemesView: React.FC = () => {
 
               <div className="mt-5">
                 <div className="flex items-center gap-2">
-                  <Link2 className="w-3.5 h-3.5 text-fuchsia-300" />
+                  
                   <span className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Optional links</span>
                 </div>
 
                 <div className="mt-3 grid md:grid-cols-3 gap-3">
-                  <Field icon={<Globe className="w-3.5 h-3.5" />} value={website} onChange={setWebsite} placeholder="Website" />
+                  <Field icon={} value={website} onChange={setWebsite} placeholder="Website" />
                   <Field icon={<span className="text-[11px] font-bold">X</span>} value={xUrl} onChange={setXUrl} placeholder="X profile" />
                   <Field icon={<span className="text-[11px] font-bold">TG</span>} value={telegramUrl} onChange={setTelegramUrl} placeholder="Telegram" />
                 </div>
@@ -239,9 +239,9 @@ export const PlaymemesView: React.FC = () => {
 
                   {(website || xUrl || telegramUrl) && (
                     <div className="mt-4 flex flex-wrap gap-2">
-                      {website && <PreviewLink icon={Globe} label="Web" />}
+                      {website && <PreviewLink  label="Web" />}
                       {xUrl && <PreviewLink label="X" />}
-                      {telegramUrl && <PreviewLink label="TG" />}
+                      {telegramUrl && <span className="rounded-lg border border-zinc-800 px-2.5 py-1.5">TG</span>}
                     </div>
                   )}
                 </div>
@@ -254,7 +254,7 @@ export const PlaymemesView: React.FC = () => {
                     <div className="mt-1 text-sm font-semibold text-white">{isReady ? 'Profile ready for review' : 'Complete required fields'}</div>
                   </div>
                   <div className={'h-8 w-8 rounded-full flex items-center justify-center border ' + (isReady ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-zinc-800 bg-zinc-950')}>
-                    <Check className={'w-4 h-4 ' + (isReady ? 'text-emerald-300' : 'text-zinc-700')} />
+                    <span className={'text-sm ' + (isReady ? 'text-emerald-300' : 'text-zinc-700')}>{isReady ? '✓' : '○'}</span>
                   </div>
                 </div>
 
@@ -270,7 +270,7 @@ export const PlaymemesView: React.FC = () => {
                 className="mt-4 w-full rounded-xl bg-gradient-to-r from-fuchsia-500 to-blue-500 py-3.5 text-xs font-extrabold text-white shadow-[0_0_30px_rgba(59,130,246,.18)] transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-35"
               >
                 {isReady ? 'Review launch' : 'Complete required fields'}
-                <ArrowRight className="inline-block ml-2 w-4 h-4" />
+                
               </button>
             </div>
           </div>
@@ -325,7 +325,7 @@ export const PlaymemesView: React.FC = () => {
               className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-xl border border-blue-500/15 bg-blue-500/[0.04] px-3.5 py-3 text-[11px] font-mono text-zinc-400 hover:text-white hover:border-blue-500/30 transition-colors"
             >
               <span className="truncate">ref: ${{PLAYMEMES_ARC.referrer}</span>
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-300 shrink-0" /> : <Copy className="w-3.5 h-3.5 text-blue-300 shrink-0" />}
+              {copied ?  : }
             </button>
           </div>
         </section>
@@ -335,7 +335,7 @@ export const PlaymemesView: React.FC = () => {
             <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
               <div className="flex items-start gap-3">
                 <div className="h-10 w-10 shrink-0 rounded-xl border border-emerald-500/20 bg-emerald-500/10 flex items-center justify-center">
-                  <Check className="w-5 h-5 text-emerald-300" />
+                  <span className="text-emerald-300 text-lg">✓</span>
                 </div>
                 <div>
                   <div className="text-[10px] uppercase tracking-[0.22em] text-emerald-300 font-mono">03 · Launch review</div>
@@ -347,7 +347,7 @@ export const PlaymemesView: React.FC = () => {
               </div>
 
               <button type="button" onClick={() => setReviewOpen(false)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-800 px-3.5 py-2.5 text-xs font-semibold text-zinc-500 hover:text-zinc-200">
-                <X className="w-3.5 h-3.5" />
+                
                 Close review
               </button>
             </div>
@@ -407,7 +407,7 @@ function ImagePicker({ value, hasImage, onChange }: { value: string; hasImage: b
           <img src={value} alt="" className="h-full w-full object-cover" />
         ) : (
           <div className="text-center px-2">
-            <ImagePlus className="w-5 h-5 text-fuchsia-300 mx-auto" />
+            <Sparkles className="w-5 h-5 text-fuchsia-300 mx-auto" />
             <div className="mt-1 text-[9px] text-zinc-600">paste image URL</div>
           </div>
         )}
