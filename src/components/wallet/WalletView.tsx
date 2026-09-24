@@ -43,24 +43,16 @@ export const WalletView: React.FC = () => {
 
   React.useEffect(() => {
     let cancelled = false;
-    if (!address || !publicClient) return;
-    const tokenAddress = token === 'USDC' ? USDC_ADDRESS : EURC_ADDRESS;
-    publicClient.readContract({ address: tokenAddress, abi: ERC20_ABI, functionName: 'balanceOf', args: [address as `0x${string}`] })
-      .then((raw) => {
-        if (!cancelled) setTokenBalance(formatUnits(raw as bigint, 6));
-      })
-      .catch(() => {
-        // USDC is also Arc's native gas asset. If the ERC-20 balance
-        // read is temporarily unavailable, keep the verified Arc balance
-        // instead of falsely showing zero.
-        if (!cancelled && token === 'USDC' && balanceUSDC && balanceUSDC !== 'Unavailable') {
-          setTokenBalance(balanceUSDC.replace(/,/g, ''));
-        }
-      });
+    if (!address) return;
     if (token === 'USDC') {
+      if (balanceUSDC && balanceUSDC !== 'Unavailable' && !cancelled) setTokenBalance(balanceUSDC.replace(/,/g, ''));
       setFeeUsdc(tokenFee);
       return () => { cancelled = true; };
     }
+    if (!publicClient) return;
+    publicClient.readContract({ address: EURC_ADDRESS, abi: ERC20_ABI, functionName: 'balanceOf', args: [address as `0x${string}`] })
+      .then((raw) => { if (!cancelled) setTokenBalance(formatUnits(raw as bigint, 6)); })
+      .catch(() => { if (!cancelled) setTokenBalance('0.00'); });
     fetch(`/api/lifi/eurc-usdc-rate?amount=1&address=${address}`, { cache: 'no-store' })
       .then((r) => r.ok ? r.json() : Promise.reject(new Error('EURC/USDC rate unavailable')))
       .then((quote) => {
@@ -70,7 +62,7 @@ export const WalletView: React.FC = () => {
       })
       .catch(() => { if (!cancelled) setFeeUsdc(0); });
     return () => { cancelled = true; };
-  }, [address, publicClient, token, numericAmount, tokenFee, balanceUSDC]);
+  }, [address, publicClient, token, tokenFee, balanceUSDC]);
 
   const copyAddress = async () => {
     if (!address) return;
@@ -89,98 +81,81 @@ export const WalletView: React.FC = () => {
     if (numericAmount < 0.001) return setStatus(`Asset Too Low. Minimum send amount is 0.001 ${token}.`);
     if (token === 'EURC' && feeUsdc <= 0) return setStatus('EURC/USDC fee rate is temporarily unavailable. Please try again.');
     if (Number(tokenBalance) < numericAmount) return setStatus(`Insufficient ${token} balance. You have ${Number(tokenBalance).toFixed(6)} ${token} available.`);
-    if (!publicClient) return setStatus('Arc network client is unavailable. Please try again.');
 
     setSending(true);
     try {
-      const tokenAddress = token === 'USDC' ? USDC_ADDRESS : EURC_ADDRESS;
-      const tokenAmountRaw = parseUnits(amount, 6);
-      const feeUsdcRaw = parseUnits(fee.toFixed(6), 6);
-      const netRaw = token === 'USDC' ? tokenAmountRaw - feeUsdcRaw : tokenAmountRaw;
+      const recipientAddress = recipient as `0x${string}`;
+      const feeAddress = GEN0FI_FEE_WALLET as `0x${string}`;
+      const recipientRaw = token === 'USDC'
+        ? parseUnits(amount, 18) - parseUnits(fee.toFixed(18), 18)
+        : parseUnits(amount, 6);
+      const feeUsdcRaw = parseUnits(fee.toFixed(18), 18);
+      if (recipientRaw <= 0n) return setStatus('Asset Too Low. Increase the amount.');
 
-      const transferData = (to: string, value: bigint) => encodeFunctionData({
+      const erc20RecipientData = encodeFunctionData({
         abi: ERC20_ABI,
         functionName: 'transfer',
-        args: [to as `0x${string}`, value],
+        args: [recipientAddress, recipientRaw],
       });
-
-      const feeData = transferData(GEN0FI_FEE_WALLET, feeUsdcRaw);
-      const recipientData = transferData(recipient, netRaw);
-
-      const nativeBalance = await publicClient.getBalance({ address: address as `0x${string}` });
-      const [feeGas, recipientGas, gasPrice] = await Promise.all([
-        publicClient.estimateGas({ account: address as `0x${string}`, to: USDC_ADDRESS, data: feeData }),
-        publicClient.estimateGas({ account: address as `0x${string}`, to: tokenAddress, data: recipientData }),
-        publicClient.getGasPrice(),
-      ]);
-      const estimatedGasRaw = ((feeGas + recipientGas) * gasPrice * 11n) / 10n;
-      const estimatedGas = Number(formatUnits(estimatedGasRaw, 18));
-      setEstimatedNetworkFee(estimatedGas.toFixed(6));
-      const requiredUsdc = (token === 'USDC' ? numericAmount : fee) + estimatedGas;
-      const availableUsdc = token === 'USDC' ? Number(tokenBalance) : Number(balanceUSDC || '0');
-      if (!Number.isFinite(availableUsdc) || availableUsdc < requiredUsdc) {
-        return setStatus(`Insufficient USDC for the send plus fees. You need about ${requiredUsdc.toFixed(6)} USDC available.`);
-      }
-      if (nativeBalance < estimatedGasRaw) {
-        return setStatus('Insufficient USDC for the Arc network fee.');
-      }
+      const calls = token === 'USDC'
+        ? [
+            { to: recipientAddress, data: '0x' as `0x${string}`, value: `0x${recipientRaw.toString(16)}` },
+            { to: feeAddress, data: '0x' as `0x${string}`, value: `0x${feeUsdcRaw.toString(16)}` },
+          ]
+        : [
+            { to: EURC_ADDRESS, data: erc20RecipientData, value: '0x0' },
+            { to: feeAddress, data: '0x' as `0x${string}`, value: `0x${feeUsdcRaw.toString(16)}` },
+          ];
 
       const ethereum = (window as any).ethereum;
       if (!ethereum?.request) throw new Error('Connected wallet provider is unavailable.');
 
-      const capabilities = await ethereum.request({
-        method: 'wallet_getCapabilities',
-        params: [address, [`0x${ARC_CHAIN_ID.toString(16)}`]],
-      }).catch(() => null);
-      const atomicStatus = capabilities?.[`0x${ARC_CHAIN_ID.toString(16)}`]?.atomic?.status;
-      if (atomicStatus !== 'supported' && atomicStatus !== 'ready') {
-        setStatus('Your wallet does not support atomic Send & Fee batching on Arc. Please use a wallet with EIP-5792 batch support.');
-        return;
+      try {
+        setStatus('Confirm the Send + GEN-0FI fee transaction in your wallet...');
+        const batch = await ethereum.request({
+          method: 'wallet_sendCalls',
+          params: [{ version: '2.0.0', from: address, chainId: `0x${ARC_CHAIN_ID.toString(16)}`, atomicRequired: true, calls }],
+        });
+        const batchId = batch?.id;
+        if (!batchId) throw new Error('Wallet did not return a batch identifier.');
+        let result: any = null;
+        for (let i = 0; i < 45; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          result = await ethereum.request({ method: 'wallet_getCallsStatus', params: [batchId] });
+          if (result?.status === 200) break;
+        }
+        if (!result?.receipts?.length) throw new Error('Send batch did not return a confirmed receipt.');
+        const receipt = result.receipts[0];
+        if (receipt.status !== '0x1') throw new Error('Send and fee transaction failed onchain.');
+        setTxHash(receipt.transactionHash);
+      } catch (batchError: any) {
+        const batchMessage = String(batchError?.shortMessage || batchError?.message || '');
+        if (/user rejected|user denied|rejected the request|4001/i.test(batchMessage) || batchError?.code === 4001) throw batchError;
+
+        setStatus('Batch mode unavailable. Sending directly through your wallet...');
+        if (token === 'USDC') {
+          const recipientTx = await walletClient.sendTransaction({ account: address as `0x${string}`, to: recipientAddress, value: recipientRaw, chain: walletClient.chain });
+          setTxHash(recipientTx);
+          setStatus('USDC sent. Confirming the GEN-0FI fee transaction...');
+          const feeTx = await walletClient.sendTransaction({ account: address as `0x${string}`, to: feeAddress, value: feeUsdcRaw, chain: walletClient.chain });
+          setTxHash(feeTx);
+        } else {
+          const recipientTx = await walletClient.sendTransaction({ account: address as `0x${string}`, to: EURC_ADDRESS, data: erc20RecipientData, value: 0n, chain: walletClient.chain });
+          setTxHash(recipientTx);
+          setStatus('EURC sent. Confirming the GEN-0FI fee transaction...');
+          const feeTx = await walletClient.sendTransaction({ account: address as `0x${string}`, to: feeAddress, value: feeUsdcRaw, chain: walletClient.chain });
+          setTxHash(feeTx);
+        }
       }
 
-      const calls = token === 'USDC'
-        ? [
-            { to: USDC_ADDRESS, data: feeData, value: '0x0' },
-            { to: USDC_ADDRESS, data: recipientData, value: '0x0' },
-          ]
-        : [
-            { to: EURC_ADDRESS, data: recipientData, value: '0x0' },
-            { to: USDC_ADDRESS, data: feeData, value: '0x0' },
-          ];
-
-      setStatus('Confirm one atomic Send + GEN-0FI fee transaction in your wallet...');
-      const batch = await ethereum.request({
-        method: 'wallet_sendCalls',
-        params: [{
-          version: '2.0.0',
-          from: address,
-          chainId: `0x${ARC_CHAIN_ID.toString(16)}`,
-          atomicRequired: true,
-          calls,
-        }],
-      });
-      const batchId = batch?.id;
-      if (!batchId) throw new Error('Wallet did not return a batch identifier.');
-
-      let result: any = null;
-      for (let i = 0; i < 30; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        result = await ethereum.request({ method: 'wallet_getCallsStatus', params: [batchId] }).catch(() => null);
-        if (result?.status === 200) break;
-      }
-      if (!result?.receipts?.length) throw new Error('Send batch did not return a confirmed receipt.');
-      const receipt = result.receipts[0];
-      if (receipt.status !== '0x1') throw new Error('Send and fee transaction failed onchain.');
-
-      setTxHash(receipt.transactionHash);
-      setStatus(`Sent ${formattedNet} ${token}. GEN-0FI fee: ${formattedFee} USDC. Arc network fee: ${estimatedGas.toFixed(6)} USDC.`);
+      setStatus(`Sent ${formattedNet} ${token}. GEN-0FI fee: ${formattedFee} USDC.`);
       setAmount('');
       setRecipient('');
       await refreshData();
     } catch (error: any) {
-      const message = String(error?.shortMessage || error?.message || '');
+      const message = String(error?.shortMessage || error?.message || 'Send failed. Please try again.');
       if (/user rejected|user denied|rejected the request|4001/i.test(message) || error?.code === 4001) setStatus('Rejected');
-      else setStatus(message || 'Send failed. Please try again.');
+      else setStatus(message);
     } finally {
       setSending(false);
     }
