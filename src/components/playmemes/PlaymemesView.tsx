@@ -15,7 +15,6 @@ import {
   Rocket,
   ShieldCheck,
   Sparkles,
-  Twitter,
   WalletCards,
   X,
 } from 'lucide-react';
@@ -191,7 +190,7 @@ export const PlaymemesView: React.FC = () => {
 
                 <div className="mt-3 grid md:grid-cols-3 gap-3">
                   <Field icon={<Globe className="w-3.5 h-3.5" />} value={website} onChange={setWebsite} placeholder="Website" />
-                  <Field icon={<Twitter className="w-3.5 h-3.5" />} value={xUrl} onChange={setXUrl} placeholder="X profile" />
+                  <Field icon={<span className="text-[11px] font-bold">X</span>} value={xUrl} onChange={setXUrl} placeholder="X profile" />
                   <Field icon={<span className="text-[11px] font-bold">TG</span>} value={telegramUrl} onChange={setTelegramUrl} placeholder="Telegram" />
                 </div>
               </div>
@@ -241,7 +240,7 @@ export const PlaymemesView: React.FC = () => {
                   {(website || xUrl || telegramUrl) && (
                     <div className="mt-4 flex flex-wrap gap-2">
                       {website && <PreviewLink icon={Globe} label="Web" />}
-                      {xUrl && <PreviewLink icon={Twitter} label="X" />}
+                      {xUrl && <PreviewLink label="X" />}
                       {telegramUrl && <PreviewLink label="TG" />}
                     </div>
                   )}
