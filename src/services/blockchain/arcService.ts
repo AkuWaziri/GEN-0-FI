@@ -177,6 +177,7 @@ function toRawTransaction(tx: any): RawTxInput {
     input: tx.input || '0x',
     methodId: tx.methodId ?? tx.method_id ?? '',
     functionName: tx.functionName ?? tx.function_name ?? '',
+    contractName: tx.contractName ?? tx.contract_name ?? tx.toName ?? tx.to_name ?? tx.contract?.name ?? '',
     timestamp: timestampValue
       ? (Number(typeof timestampValue === 'object' ? timestampValue.value ?? timestampValue.raw : timestampValue) > 1e12
         ? Number(typeof timestampValue === 'object' ? timestampValue.value ?? timestampValue.raw : timestampValue)
@@ -564,6 +565,12 @@ async function fetchGasAndValueFallback(address: string, transactions: Normalize
   let gas = 0n;
 
   for (const tx of transactions) {
+    if (tx.timestamp > 0 && (firstActivityTime === undefined || tx.timestamp < firstActivityTime)) {
+      firstActivityTime = tx.timestamp;
+    }
+    if (tx.status === 'reverted') failedTransactionCount++;
+    if (isApprovalTransaction(tx)) tokenApprovalsCount++;
+
     try {
       gas += BigInt(Math.round(Number(tx.gasCostUSDC || '0') * 1e18));
       const value = BigInt(tx.rawValue || '0');
@@ -714,6 +721,29 @@ export async function fetchTransactionsForAddress(
   }
 }
 
+function shortContractLabel(address: string): string {
+  const value = String(address || '').toLowerCase();
+  if (/^0x[a-f0-9]{40}$/.test(value)) return `Contract ${value.slice(0, 6)}…${value.slice(-4)}`;
+  return 'Unknown protocol';
+}
+
+function protocolLabelForTransaction(tx: NormalizedTransaction): string {
+  const decoded = String(tx.contractName || '').trim();
+  if (decoded) return decoded;
+
+  const to = tx.contractAddress || tx.to || '';
+  return shortContractLabel(to);
+}
+
+function isApprovalTransaction(tx: NormalizedTransaction): boolean {
+  const method = String(tx.methodName || '').toLowerCase().replace(/[\s_-]+/g, '');
+  return method === 'approve'
+    || method === 'increaseallowance'
+    || method === 'decreaseallowance'
+    || method === 'setapprovalforall'
+    || method.includes('permit');
+}
+
 export function computeWalletSummary(
   address: string,
   balanceFormatted: string,
@@ -728,6 +758,10 @@ export function computeWalletSummary(
   const counterparties = new Set<string>();
   let incomingCount = 0;
   let outgoingCount = 0;
+  let failedTransactionCount = 0;
+  let tokenApprovalsCount = 0;
+  let firstActivityTime: number | undefined;
+  const protocolCounts = new Map<string, number>();
 
   if (!transferTotals) {
     for (const tx of transactions) {
@@ -752,12 +786,18 @@ export function computeWalletSummary(
     // this wallet whose destination was contract bytecode at that block.
     // Contract creation is tracked as a transaction, but is not an interaction
     // with an existing contract.
-    if (tx.isContractInteraction && tx.status === 'success') contracts++;
+    if (tx.isContractInteraction && tx.status === 'success') {
+      contracts++;
+      const label = protocolLabelForTransaction(tx);
+      protocolCounts.set(label, (protocolCounts.get(label) || 0) + 1);
+    }
     if (tx.from) counterparties.add(tx.from.toLowerCase());
     if (tx.to) counterparties.add(tx.to.toLowerCase());
   }
 
   const historyStatus = isHistoryUnavailable ? 'unavailable' : 'complete';
+  const topProtocolUsed = [...protocolCounts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] || 'None';
 
   return {
     address,
@@ -778,6 +818,10 @@ export function computeWalletSummary(
     historyStatusNote: isHistoryUnavailable
       ? 'Arc Mainnet indexed history is unavailable. No lifetime activity values are inferred.'
       : 'Lifetime Arc Mainnet indexed transaction history was retrieved from Arcscan; received/sent totals are calculated from USDC value-flow records only.',
+    firstActivityTime,
+    failedTransactionCount,
+    topProtocolUsed,
+    tokenApprovalsCount,
     incomingTransfersCount: incomingCount,
     outgoingTransfersCount: outgoingCount,
   };
@@ -792,6 +836,10 @@ export interface CompleteWalletState {
   totalTransactions: number;
   contractInteractions: number;
   recentTransactions: NormalizedTransaction[];
+  firstActivityTime?: number;
+  failedTransactionCount: number;
+  topProtocolUsed: string;
+  tokenApprovalsCount: number;
   historyStatus: 'complete' | 'unavailable';
   historyStatusNote: string;
 }
@@ -812,6 +860,10 @@ export async function fetchCompleteWalletState(address: string): Promise<Complet
       totalTransactions: 0,
       contractInteractions: 0,
       recentTransactions: [],
+      firstActivityTime: undefined,
+      failedTransactionCount: 0,
+      topProtocolUsed: 'None',
+      tokenApprovalsCount: 0,
       historyStatus: 'unavailable',
       historyStatusNote: 'Arc Mainnet indexed history is unavailable. Live balance remains independently verified when available.',
     };
@@ -849,6 +901,10 @@ export async function fetchCompleteWalletState(address: string): Promise<Complet
     totalTransactions: summary.txCount,
     contractInteractions: summary.contractInteractionsCount,
     recentTransactions: history.transactions,
+    firstActivityTime: summary.firstActivityTime,
+    failedTransactionCount: summary.failedTransactionCount ?? 0,
+    topProtocolUsed: summary.topProtocolUsed ?? 'None',
+    tokenApprovalsCount: summary.tokenApprovalsCount ?? 0,
     historyStatus: 'complete',
     historyStatusNote: summary.historyStatusNote || '',
   };
