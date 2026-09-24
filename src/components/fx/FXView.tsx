@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowDownUp, CheckCircle2, Coins, ExternalLink, Globe2, Info, Loader2, RefreshCw, Search, TrendingUp, WalletCards } from 'lucide-react';
-import { encodeFunctionData, formatUnits, isAddress, parseUnits } from 'viem';
-import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
-import { ARC_CHAIN_ID, ARC_MAINNET_EXPLORER_URL } from '../../config/arc';
+import { createPublicClient, encodeFunctionData, formatUnits, http, isAddress, parseUnits } from 'viem';
+import { useAccount, useWalletClient } from 'wagmi';
+import { ARC_CHAIN_ID, ARC_MAINNET_EXPLORER_URL, ARC_MAINNET_RPC_URL, arcChain } from '../../config/arc';
 import { useWallet } from '../../context/WalletContext';
 
 type Kind = 'stable' | 'fiat';
@@ -42,7 +42,7 @@ export const FXView: React.FC = () => {
   const { address, isConnected, connectWallet, refreshData } = useWallet();
   const { chainId: connectedChainId } = useAccount();
   const { data: walletClient } = useWalletClient();
-  const publicClient = usePublicClient({ chainId: ARC_CHAIN_ID });
+  const publicClient = useMemo(() => createPublicClient({ chain: arcChain, transport: http(ARC_MAINNET_RPC_URL) }), []);
   const [receiveAddress, setReceiveAddress] = useState('');
   const [showRecipient, setShowRecipient] = useState(false);
   const [quote, setQuote] = useState<any>(null);
