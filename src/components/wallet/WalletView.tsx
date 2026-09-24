@@ -81,8 +81,9 @@ export const WalletView: React.FC = () => {
     if (chainId !== ARC_CHAIN_ID) return setStatus('Switch to Arc Mainnet before sending.');
     if (!isAddress(recipient)) return setStatus('Enter a valid recipient address.');
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) return setStatus('Enter an amount greater than zero.');
+    if (numericAmount < 0.001) return setStatus(`Asset Too Low. Minimum send amount is 0.001 ${token}.`);
     if (token === 'EURC' && feeUsdc <= 0) return setStatus('EURC/USDC fee rate is temporarily unavailable. Please try again.');
-    if (Number(tokenBalance) < numericAmount) return setStatus(`Asset Too Low. Increase your available ${token} balance.`);
+    if (Number(tokenBalance) < numericAmount) return setStatus(`Insufficient ${token} balance. You have ${Number(tokenBalance).toFixed(6)} ${token} available.`);
     if (!publicClient) return setStatus('Arc network client is unavailable. Please try again.');
 
     setSending(true);
@@ -113,10 +114,10 @@ export const WalletView: React.FC = () => {
       const requiredUsdc = (token === 'USDC' ? numericAmount : fee) + estimatedGas;
       const availableUsdc = token === 'USDC' ? Number(tokenBalance) : Number(balanceUSDC || '0');
       if (!Number.isFinite(availableUsdc) || availableUsdc < requiredUsdc) {
-        return setStatus(`Asset Too Low. You need about ${requiredUsdc.toFixed(6)} USDC available for the fee and Arc network cost.`);
+        return setStatus(`Insufficient USDC for the send plus fees. You need about ${requiredUsdc.toFixed(6)} USDC available.`);
       }
       if (nativeBalance < estimatedGasRaw) {
-        return setStatus('Asset Too Low. Not enough USDC remains for Arc network gas.');
+        return setStatus('Insufficient USDC for the Arc network fee.');
       }
 
       const ethereum = (window as any).ethereum;
