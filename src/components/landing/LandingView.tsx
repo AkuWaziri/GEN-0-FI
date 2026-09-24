@@ -11,7 +11,7 @@ interface LandingViewProps {
 
 export const LandingView: React.FC<LandingViewProps> = ({ onOpenConnect, onOpenGmStreak }) => {
   const { theme } = useTheme();
-  const isWhite = theme === 'white';
+  const isWhite = theme === 'light';
 
   return (
     <div className="min-h-screen bg-[#000000] text-zinc-100 flex flex-col justify-between selection:bg-white selection:text-black">
