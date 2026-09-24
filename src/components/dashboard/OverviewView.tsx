@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useWallet } from '../../context/WalletContext';
 import { Skeleton } from '../common/Skeleton';
 import { TabType } from '../common/Sidebar';
-import { AskGen0View } from '../ask/AskGen0View';
 import {
   Code2,
   Flame,
@@ -246,20 +245,6 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
           <div className="text-[11px] text-zinc-500 font-mono mt-1">Indexed NFT holdings</div>
         </div>
       </div>
-
-      <div className="rounded-2xl border border-violet-400/15 bg-[radial-gradient(ellipse_at_top_right,rgba(139,92,246,0.08),transparent_58%),radial-gradient(ellipse_at_bottom_left,rgba(34,211,238,0.05),transparent_65%)] p-4 sm:p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <div className="text-[10px] font-mono uppercase tracking-wider text-violet-300/80">Onchain Intelligence</div>
-            <h2 className="text-base sm:text-lg font-bold text-white tracking-tight mt-0.5">GEN-0 AI</h2>
-            <p className="text-xs text-zinc-500 mt-1">Ask about your wallet, Arc, transactions, fees, holdings, or GEN-0FI.</p>
-          </div>
-          <div className="hidden sm:flex w-9 h-9 rounded-xl bg-violet-400/10 border border-violet-300/20 items-center justify-center text-violet-300 shadow-[0_0_18px_rgba(139,92,246,0.16)]">
-            <span className="text-sm font-bold">✦</span>
-          </div>
-        </div>
-        <AskGen0View embedded />
-      </div>\n\n
 
 
 
