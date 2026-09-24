@@ -133,13 +133,13 @@ export const GMStreakView: React.FC = () => {
     setTxHash(null);
 
     try {
-      const hash = await writeContractAsync({
+      const hash = await writeContractAsync(({
         address: GM_CONTRACT_ADDRESS as `0x${string}`,
         abi: GM_CONTRACT_ABI,
         functionName: 'checkIn',
         value: GM_FEE_WEI,
         chainId: ARC_CHAIN_ID,
-      });
+      } as any);
 
       setTxHash(hash);
       window.localStorage.setItem(PENDING_GM_TX_KEY, hash);
