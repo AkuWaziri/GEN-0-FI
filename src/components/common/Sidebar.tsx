@@ -3,9 +3,9 @@ import { Logo } from './Logo';
 import { NetworkBadge } from './NetworkBadge';
 import { AddressBadge } from './AddressBadge';
 import { useWallet } from '../../context/WalletContext';
-import { LayoutDashboard, History, Settings, Wallet, ArrowLeftRight, Trophy, Flame } from 'lucide-react';
+import { LayoutDashboard, History, Settings, Wallet, ArrowLeftRight, Trophy, Flame, Send } from 'lucide-react';
 
-export type TabType = 'overview' | 'ask' | 'swap' | 'gm' | 'activity' | 'points' | 'settings';
+export type TabType = 'overview' | 'ask' | 'swap' | 'wallet' | 'gm' | 'activity' | 'points' | 'settings';
 
 interface SidebarProps {
   activeTab: TabType;
@@ -19,6 +19,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
   const navItems = [
     { id: 'overview' as TabType, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'swap' as TabType, label: 'Swap & Bridge', icon: ArrowLeftRight },
+    { id: 'wallet' as TabType, label: 'Send & Receive', icon: Send },
     { id: 'points' as TabType, label: 'Leaderboard', icon: Trophy },
     { id: 'gm' as TabType, label: 'GM Streak', icon: Flame },
     { id: 'activity' as TabType, label: 'Activity', icon: History },
