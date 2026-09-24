@@ -145,8 +145,8 @@ function cleanSwapError(error: unknown, context: 'balance' | 'allowance' | 'gas'
   const message = error instanceof Error ? error.message : String(error || '');
   const lower = message.toLowerCase();
 
-  if (/user rejected|user denied|rejected the request|request rejected|4001/.test(lower)) {
-    return 'Cancelled';
+  if (/user rejected|user denied|rejected the request|request rejected|4001|userrejectedrequesterror/.test(lower) || (error as any)?.code === 4001) {
+    return 'Rejected';
   }
 
   if (context === 'balance') {
@@ -488,8 +488,7 @@ export const SwapView: React.FC = () => {
         // The transaction remains confirmed even if points sync is temporarily unavailable.
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err || '');
-      setError(message || cleanSwapError(err));
+      setError(cleanSwapError(err));
       setExecutionStage(null);
       setExecuting(false);
     }
