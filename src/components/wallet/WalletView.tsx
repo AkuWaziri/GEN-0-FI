@@ -1,14 +1,18 @@
 import React, { useMemo, useState } from 'react';
 import { Check, Copy, Send, ArrowDownToLine, WalletCards, ExternalLink, Loader2 } from 'lucide-react';
-import { parseUnits, isAddress } from 'viem';
+import { encodeFunctionData, formatUnits, parseUnits, isAddress } from 'viem';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { ARC_CHAIN_ID, ARC_MAINNET_EXPLORER_URL } from '../../config/arc';
 import { useWallet } from '../../context/WalletContext';
 
 const GEN0FI_FEE_RATE = 0.005;
 const GEN0FI_FEE_WALLET = '0x5Bce25397eEfbc76f6479e6838c00a5115dbEA4c';
+const USDC_ADDRESS = '0x3600000000000000000000000000000000000000' as `0x${string}`;
+const EURC_ADDRESS = '0xbEf5f6d51CB62b58e6A8f77868681825C6fe21c1' as `0x${string}`;
+const ERC20_ABI = [{ type: 'function', name: 'balanceOf', stateMutability: 'view', inputs: [{ name: 'account', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] }, { type: 'function', name: 'transfer', stateMutability: 'nonpayable', inputs: [{ name: 'to', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }] }] as const;
 
 type Mode = 'send' | 'receive';
+type Token = 'USDC' | 'EURC';
 
 export const WalletView: React.FC = () => {
   const { address, balanceUSDC, refreshData } = useWallet();
@@ -17,6 +21,9 @@ export const WalletView: React.FC = () => {
   const publicClient = usePublicClient({ chainId: ARC_CHAIN_ID });
 
   const [mode, setMode] = useState<Mode>('send');
+  const [token, setToken] = useState<Token>('USDC');
+  const [tokenBalance, setTokenBalance] = useState('0.00');
+  const [feeUsdc, setFeeUsdc] = useState(0);
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
   const [status, setStatus] = useState<string | null>(null);
@@ -26,11 +33,39 @@ export const WalletView: React.FC = () => {
   const [estimatedNetworkFee, setEstimatedNetworkFee] = useState('0.000000');
 
   const numericAmount = Number(amount);
-  const fee = Number.isFinite(numericAmount) && numericAmount > 0 ? numericAmount * GEN0FI_FEE_RATE : 0;
-  const netAmount = Number.isFinite(numericAmount) && numericAmount > fee ? numericAmount - fee : 0;
+  const tokenFee = Number.isFinite(numericAmount) && numericAmount > 0 ? numericAmount * GEN0FI_FEE_RATE : 0;
+  const fee = token === 'USDC' ? tokenFee : feeUsdc;
+  const netAmount = token === 'USDC' && Number.isFinite(numericAmount) && numericAmount > fee ? numericAmount - fee : numericAmount;
 
-  const formattedFee = useMemo(() => fee > 0 ? fee.toFixed(6) : '0.000000', [fee]);
+  const formattedFee = useMemo(() => fee > 0 ? fee.toFixed(6) : '0.000000', [fee, token]);
   const formattedNet = useMemo(() => netAmount > 0 ? netAmount.toFixed(6) : '0.000000', [netAmount]);
+
+
+  React.useEffect(() => {
+    let cancelled = false;
+    if (!address || !publicClient) return;
+    const tokenAddress = token === 'USDC' ? USDC_ADDRESS : EURC_ADDRESS;
+    publicClient.readContract({ address: tokenAddress, abi: ERC20_ABI, functionName: 'balanceOf', args: [address as `0x${string}`] })
+      .then((raw) => {
+        if (!cancelled) setTokenBalance(formatUnits(raw as bigint, 6));
+      })
+      .catch(() => {
+        if (!cancelled) setTokenBalance('0.00');
+      });
+    if (token === 'USDC') {
+      setFeeUsdc(tokenFee);
+      return () => { cancelled = true; };
+    }
+    fetch(`/api/lifi/eurc-usdc-rate?amount=1&address=${address}`, { cache: 'no-store' })
+      .then((r) => r.ok ? r.json() : Promise.reject(new Error('EURC/USDC rate unavailable')))
+      .then((quote) => {
+        const oneEurcInUsdc = Number(formatUnits(BigInt(quote.toAmount), 6));
+        if (!Number.isFinite(oneEurcInUsdc) || oneEurcInUsdc <= 0) throw new Error('Invalid EURC/USDC rate');
+        if (!cancelled) setFeeUsdc(tokenFee * oneEurcInUsdc);
+      })
+      .catch(() => { if (!cancelled) setFeeUsdc(0); });
+    return () => { cancelled = true; };
+  }, [address, publicClient, token, numericAmount, tokenFee]);
 
   const copyAddress = async () => {
     if (!address) return;
@@ -42,105 +77,104 @@ export const WalletView: React.FC = () => {
   const send = async () => {
     setStatus(null);
     setTxHash(null);
-
-    if (!address || !walletClient) {
-      setStatus('Connect your wallet first.');
-      return;
-    }
-    if (chainId !== ARC_CHAIN_ID) {
-      setStatus('Switch to Arc Mainnet before sending.');
-      return;
-    }
-    if (!isAddress(recipient)) {
-      setStatus('Enter a valid recipient address.');
-      return;
-    }
-    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
-      setStatus('Enter an amount greater than zero.');
-      return;
-    }
-    if (netAmount <= 0) {
-      setStatus('Amount is too low to cover the 0.5% GEN-0FI fee.');
-      return;
-    }
-
-    const available = Number(String(balanceUSDC || '0').replace(/,/g, ''));
-    if (Number.isFinite(available) && numericAmount > available) {
-      setStatus('Asset Too Low. Increase your available USDC balance.');
-      return;
-    }
-
-    if (!publicClient) {
-      setStatus('Arc network client is unavailable. Please try again.');
-      return;
-    }
+    if (!address || !walletClient) return setStatus('Connect your wallet first.');
+    if (chainId !== ARC_CHAIN_ID) return setStatus('Switch to Arc Mainnet before sending.');
+    if (!isAddress(recipient)) return setStatus('Enter a valid recipient address.');
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) return setStatus('Enter an amount greater than zero.');
+    if (token === 'EURC' && feeUsdc <= 0) return setStatus('EURC/USDC fee rate is temporarily unavailable. Please try again.');
+    if (Number(tokenBalance) < numericAmount) return setStatus(`Asset Too Low. Increase your available ${token} balance.`);
+    if (!publicClient) return setStatus('Arc network client is unavailable. Please try again.');
 
     setSending(true);
     try {
-      const grossRaw = parseUnits(amount, 18);
-      const feeRaw = (grossRaw * 5n) / 1000n;
-      const netRaw = grossRaw - feeRaw;
+      const tokenAddress = token === 'USDC' ? USDC_ADDRESS : EURC_ADDRESS;
+      const tokenAmountRaw = parseUnits(amount, 6);
+      const feeUsdcRaw = parseUnits(fee.toFixed(6), 6);
+      const netRaw = token === 'USDC' ? tokenAmountRaw - feeUsdcRaw : tokenAmountRaw;
 
-      // Reserve both Arc native transfers before collecting the GEN-0FI fee.
-      // This prevents a successful fee transfer from being followed by a
-      // recipient transfer that fails because the wallet cannot cover gas.
+      const transferData = (to: string, value: bigint) => encodeFunctionData({
+        abi: ERC20_ABI,
+        functionName: 'transfer',
+        args: [to as `0x${string}`, value],
+      });
+
+      const feeData = transferData(GEN0FI_FEE_WALLET, feeUsdcRaw);
+      const recipientData = transferData(recipient, netRaw);
+
+      const nativeBalance = await publicClient.getBalance({ address: address as `0x${string}` });
       const [feeGas, recipientGas, gasPrice] = await Promise.all([
-        publicClient.estimateGas({
-          account: address as `0x${string}`,
-          to: GEN0FI_FEE_WALLET as `0x${string}`,
-          value: feeRaw,
-        }),
-        publicClient.estimateGas({
-          account: address as `0x${string}`,
-          to: recipient as `0x${string}`,
-          value: netRaw,
-        }),
+        publicClient.estimateGas({ account: address as `0x${string}`, to: USDC_ADDRESS, data: feeData }),
+        publicClient.estimateGas({ account: address as `0x${string}`, to: tokenAddress, data: recipientData }),
         publicClient.getGasPrice(),
       ]);
       const estimatedGasRaw = ((feeGas + recipientGas) * gasPrice * 11n) / 10n;
-      const estimatedGas = Number(estimatedGasRaw) / 1e18;
+      const estimatedGas = Number(formatUnits(estimatedGasRaw, 18));
       setEstimatedNetworkFee(estimatedGas.toFixed(6));
-      if (Number.isFinite(available) && numericAmount + estimatedGas > available) {
-        setStatus(`Asset Too Low. You need about ${estimatedGas.toFixed(6)} USDC extra for Arc network fees.`);
+      const requiredUsdc = (token === 'USDC' ? numericAmount : fee) + estimatedGas;
+      const availableUsdc = token === 'USDC' ? Number(tokenBalance) : Number(balanceUSDC || '0');
+      if (!Number.isFinite(availableUsdc) || availableUsdc < requiredUsdc) {
+        return setStatus(`Asset Too Low. You need about ${requiredUsdc.toFixed(6)} USDC available for the fee and Arc network cost.`);
+      }
+      if (nativeBalance < estimatedGasRaw) {
+        return setStatus('Asset Too Low. Not enough USDC remains for Arc network gas.');
+      }
+
+      const ethereum = (window as any).ethereum;
+      if (!ethereum?.request) throw new Error('Connected wallet provider is unavailable.');
+
+      const capabilities = await ethereum.request({
+        method: 'wallet_getCapabilities',
+        params: [address, [`0x${ARC_CHAIN_ID.toString(16)}`]],
+      }).catch(() => null);
+      const atomicStatus = capabilities?.[`0x${ARC_CHAIN_ID.toString(16)}`]?.atomic?.status;
+      if (atomicStatus !== 'supported' && atomicStatus !== 'ready') {
+        setStatus('Your wallet does not support atomic Send & Fee batching on Arc. Please use a wallet with EIP-5792 batch support.');
         return;
       }
 
-      // Arc native USDC can only have one EOA recipient per native transfer.
-      // GEN-0FI therefore executes the fee and recipient transfer sequentially
-      // within one Send action rather than pretending they are one atomic tx.
-      setStatus('Collecting GEN-0FI fee...');
-      const feeHash = await walletClient.sendTransaction({
-        account: address as `0x${string}`,
-        to: GEN0FI_FEE_WALLET as `0x${string}`,
-        value: feeRaw,
-        chain: walletClient.chain,
+      const calls = token === 'USDC'
+        ? [
+            { to: USDC_ADDRESS, data: feeData, value: '0x0' },
+            { to: USDC_ADDRESS, data: recipientData, value: '0x0' },
+          ]
+        : [
+            { to: EURC_ADDRESS, data: recipientData, value: '0x0' },
+            { to: USDC_ADDRESS, data: feeData, value: '0x0' },
+          ];
+
+      setStatus('Confirm one atomic Send + GEN-0FI fee transaction in your wallet...');
+      const batch = await ethereum.request({
+        method: 'wallet_sendCalls',
+        params: [{
+          version: '2.0.0',
+          from: address,
+          chainId: `0x${ARC_CHAIN_ID.toString(16)}`,
+          atomicRequired: true,
+          calls,
+        }],
       });
+      const batchId = batch?.id;
+      if (!batchId) throw new Error('Wallet did not return a batch identifier.');
 
-      await publicClient.waitForTransactionReceipt({ hash: feeHash });
+      let result: any = null;
+      for (let i = 0; i < 30; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        result = await ethereum.request({ method: 'wallet_getCallsStatus', params: [batchId] }).catch(() => null);
+        if (result?.status === 200) break;
+      }
+      if (!result?.receipts?.length) throw new Error('Send batch did not return a confirmed receipt.');
+      const receipt = result.receipts[0];
+      if (receipt.status !== '0x1') throw new Error('Send and fee transaction failed onchain.');
 
-      setStatus('Sending USDC to recipient...');
-      const recipientHash = await walletClient.sendTransaction({
-        account: address as `0x${string}`,
-        to: recipient as `0x${string}`,
-        value: netRaw,
-        chain: walletClient.chain,
-      });
-
-      const receipt = await publicClient.waitForTransactionReceipt({ hash: recipientHash });
-      if (receipt.status !== 'success') throw new Error('Recipient transfer failed onchain.');
-
-      setTxHash(recipientHash);
-      setStatus(`Sent ${formattedNet} USDC. GEN-0FI fee: ${formattedFee} USDC.`);
+      setTxHash(receipt.transactionHash);
+      setStatus(`Sent ${formattedNet} ${token}. GEN-0FI fee: ${formattedFee} USDC. Arc network fee: ${estimatedGas.toFixed(6)} USDC.`);
       setAmount('');
       setRecipient('');
       await refreshData();
     } catch (error: any) {
       const message = String(error?.shortMessage || error?.message || '');
-      if (/user rejected|user denied|rejected the request|4001/i.test(message) || error?.code === 4001) {
-        setStatus('Rejected');
-      } else {
-        setStatus(message || 'Send failed. Please try again.');
-      }
+      if (/user rejected|user denied|rejected the request|4001/i.test(message) || error?.code === 4001) setStatus('Rejected');
+      else setStatus(message || 'Send failed. Please try again.');
     } finally {
       setSending(false);
     }
@@ -168,11 +202,19 @@ export const WalletView: React.FC = () => {
           <div className="max-w-xl rounded-2xl border border-blue-500/20 bg-[#0d0f12] p-5 sm:p-7 space-y-5">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs font-semibold text-white">Send USDC</div>
-                <div className="text-[11px] text-zinc-500 mt-1">Available: {balanceUSDC || '0.00'} USDC</div>
+                <div className="text-xs font-semibold text-white">Send {token}</div>
+                <div className="text-[11px] text-zinc-500 mt-1">Available: {tokenBalance || '0.00'} {token} · Gas/fee balance: {balanceUSDC || '0.00'} USDC</div>
               </div>
               <WalletCards className="w-5 h-5 text-blue-400" />
             </div>
+
+            <label className="block">
+              <span className="text-[11px] text-zinc-500">Asset</span>
+              <select value={token} onChange={(e) => setToken(e.target.value as Token)} className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3.5 py-3 text-sm text-white outline-none focus:border-blue-500/50">
+                <option value="USDC">USDC</option>
+                <option value="EURC">EURC</option>
+              </select>
+            </label>
 
             <label className="block">
               <span className="text-[11px] text-zinc-500">Recipient</span>
@@ -183,23 +225,24 @@ export const WalletView: React.FC = () => {
               <span className="text-[11px] text-zinc-500">Amount</span>
               <div className="mt-2 flex items-center rounded-xl border border-zinc-800 bg-zinc-950 px-3.5">
                 <input value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="0.00" inputMode="decimal" className="w-full bg-transparent py-3 text-lg font-mono text-white outline-none" />
-                <span className="text-xs font-semibold text-zinc-400">USDC</span>
+                <span className="text-xs font-semibold text-zinc-400">{token}</span>
               </div>
             </label>
 
             <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3.5 space-y-2 text-xs">
-              <div className="flex justify-between text-zinc-400"><span>Send amount</span><span>{amount || '0'} USDC</span></div>
+              <div className="flex justify-between text-zinc-400"><span>Send amount</span><span>{amount || '0'} {token}</span></div>
               <div className="flex justify-between text-lime-300"><span>GEN-0FI fee · 0.5%</span><span>{formattedFee} USDC</span></div>
-              <div className="flex justify-between text-zinc-300 font-semibold"><span>Recipient receives</span><span>{formattedNet} USDC</span></div>
+              <div className="flex justify-between text-zinc-300 font-semibold"><span>Recipient receives</span><span>{formattedNet} {token}</span></div>
               <div className="flex justify-between text-cyan-300"><span>Estimated Arc network fee</span><span>{estimatedNetworkFee} USDC</span></div>
-              <div className="pt-1 text-[10px] text-zinc-600">Arc network gas is charged separately by the network in USDC.</div>
+              <div className="flex justify-between text-cyan-300"><span>Arc network fee</span><span>{estimatedNetworkFee} USDC</span></div>
+              <div className="pt-1 text-[10px] text-zinc-600">GEN-0FI charges 0.5% in USDC. Arc network gas is also paid in USDC.</div>
             </div>
 
             {status && <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 px-3.5 py-3 text-xs text-zinc-300">{status}</div>}
 
             <button onClick={send} disabled={sending} className="w-full flex items-center justify-center gap-2 rounded-xl bg-white py-3 text-xs font-bold text-black hover:bg-zinc-200 disabled:opacity-50">
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              {sending ? 'Sending...' : 'Send USDC'}
+              {sending ? 'Sending...' : `Send ${token}`}
             </button>
 
             {txHash && <a href={`${ARC_MAINNET_EXPLORER_URL}/tx/${txHash}`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 text-[11px] text-blue-400 hover:text-blue-300"><ExternalLink className="w-3 h-3" /> View confirmed transfer</a>}
@@ -207,8 +250,8 @@ export const WalletView: React.FC = () => {
         ) : (
           <div className="max-w-xl rounded-2xl border border-cyan-400/20 bg-[#0d0f12] p-5 sm:p-7 space-y-5">
             <div>
-              <div className="text-xs font-semibold text-white">Receive USDC</div>
-              <div className="text-[11px] text-zinc-500 mt-1">Send USDC to this connected wallet on Arc Mainnet.</div>
+              <div className="text-xs font-semibold text-white">Receive USDC or EURC</div>
+              <div className="text-[11px] text-zinc-500 mt-1">Send supported Arc Mainnet USDC or EURC to this connected wallet.</div>
             </div>
             <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-center">
               <div className="text-[10px] uppercase tracking-widest text-zinc-600 font-mono mb-3">Your Arc address</div>
