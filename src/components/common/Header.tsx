@@ -15,6 +15,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onSelectTab, onOpenCo
       case 'activity': return 'Activity';
       case 'ask': return 'Ask GEN-0';
       case 'swap': return 'Swap & Bridge';
+      case 'wallet': return 'Send & Receive';
       case 'gm': return 'GM Streak';
       case 'settings': return 'Settings';
       default: return 'Dashboard';
@@ -26,16 +27,6 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onSelectTab, onOpenCo
         <div className="md:hidden flex items-center gap-2"><Logo size="sm" showText={true} /></div>
         <div className="hidden md:flex items-center gap-3">
           <span className="text-xs font-semibold text-white font-mono tracking-tight">{getTabTitle()}</span>
-          <nav aria-label="Desktop navigation" className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => onSelectTab?.('gm')}
-              className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${activeTab === 'gm' ? 'bg-blue-500/15 text-blue-300 border border-blue-400/20' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
-              aria-current={activeTab === 'gm' ? 'page' : undefined}
-            >
-              GM Streak
-            </button>
-          </nav>
         </div>
       </div>
       <div className="flex items-center gap-2 sm:gap-2.5">
