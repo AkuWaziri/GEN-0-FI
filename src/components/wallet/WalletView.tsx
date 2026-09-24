@@ -184,7 +184,7 @@ export const WalletView: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-xs font-semibold text-white">Send {token}</div>
-                <div className="text-[11px] text-zinc-500 mt-1">Available: {tokenBalance || '0.00'} {token} · Gas/fee balance: {balanceUSDC || '0.00'} USDC</div>
+                <div className="text-[11px] text-zinc-500 mt-1">Available: {tokenBalance || '0.00'} {token}</div>
               </div>
               <WalletCards className="w-5 h-5 text-blue-400" />
             </div>
