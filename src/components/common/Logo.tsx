@@ -9,12 +9,13 @@ interface LogoProps {
 
 export const ProjectLogoMark: React.FC<{ className?: string }> = ({ className = 'w-full h-full' }) => {
   const { theme } = useTheme();
+  const isLight = theme === 'light';
   return (
     <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
       <path
         d="M 12 18 H 54 A 32 32 0 0 1 86 50 A 32 32 0 0 1 54 82 H 12 A 6 6 0 0 1 6 76 V 24 A 6 6 0 0 1 12 18 Z"
         fill="currentColor"
-        className={`fill-current project-logo-mark transition-colors ${theme === 'white' ? 'text-[#f5ead8]' : 'text-white'}`}
+        className={`fill-current project-logo-mark transition-colors ${isLight ? 'text-[#111111]' : 'text-white'}`}
       />
     </svg>
   );
@@ -22,7 +23,7 @@ export const ProjectLogoMark: React.FC<{ className?: string }> = ({ className = 
 
 export const Logo: React.FC<LogoProps> = ({ size = 'md', showText = true, className = '' }) => {
   const { theme } = useTheme();
-  const isWhite = theme === 'white';
+  const isLight = theme === 'light';
 
   const iconSizeClass = { sm: 'w-8 h-8', md: 'w-10 h-10', lg: 'w-12 h-12' }[size];
   const textSizeClass = { sm: 'text-sm font-bold', md: 'text-base font-bold', lg: 'text-xl font-extrabold' }[size];
@@ -34,7 +35,7 @@ export const Logo: React.FC<LogoProps> = ({ size = 'md', showText = true, classN
       </div>
       {showText && (
         <div className="flex flex-col leading-none shrink-0 whitespace-nowrap">
-          <div className={`tracking-tight flex items-center gap-1.5 whitespace-nowrap ${isWhite ? 'text-[#f5ead8]' : 'text-white'} ${textSizeClass}`}>
+          <div className={`tracking-tight flex items-center gap-1.5 whitespace-nowrap ${isLight ? 'text-[#111111]' : 'text-white'} ${textSizeClass}`}>
             <span className={`font-extrabold tracking-tight whitespace-nowrap ${isWhite ? 'text-[#f5ead8]' : 'text-white'}`}>GEN-0</span>
             <span className="text-blue-400 font-bold font-mono text-[12px] px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/30 shrink-0">FI</span>
           </div>
