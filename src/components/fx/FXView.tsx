@@ -2,12 +2,15 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowDownUp, Coins, Globe2, Info, Loader2, RefreshCw, Search, TrendingUp } from 'lucide-react';
 
 type Kind = 'stable' | 'fiat';
-type Stablecoin = { id: number; name: string; symbol: string; price: number };
+type Stablecoin = { id: string; name: string; symbol: string; price: number; address: string; decimals: number };
 type Fiat = { code: string; name: string };
 
 const STABLES_URL = 'https://api.llama.fi/stablecoins?includePrices=true';
 const FIATS_URL = 'https://api.frankfurter.dev/v2/currencies';
 const RATES_URL = 'https://api.frankfurter.dev/v2/rates';
+const LI_FI_API = 'https://li.quest/v1';
+const ARC_USDC_PREDEPLOY = '0x3600000000000000000000000000000000000000';
+const FX_FEE_RATE = 0.01;
 
 const formatValue = (value: number) => {
   if (!Number.isFinite(value)) return '—';
@@ -31,10 +34,28 @@ export const FXView: React.FC = () => {
   const [fiatDate, setFiatDate] = useState<string | null>(null);
   const [stableUpdated, setStableUpdated] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const { address, isConnected, connectWallet, refreshData } = useWallet();
+  const { chainId: connectedChainId } = useAccount();
+  const { data: walletClient } = useWalletClient();
+  const publicClient = usePublicClient({ chainId: ARC_CHAIN_ID });
+  const [receiveAddress, setReceiveAddress] = useState('');
+  const [showRecipient, setShowRecipient] = useState(false);
+  const [quote, setQuote] = useState<any>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [executing, setExecuting] = useState(false);
+  const [executionHash, setExecutionHash] = useState<string | null>(null);
+  const [executionConfirmed, setExecutionConfirmed] = useState(false);
+  const [executionStage, setExecutionStage] = useState<'wallet' | 'confirming' | null>(null);
+  const [sourceBalance, setSourceBalance] = useState<string | null>(null);
+  const [quoteUpdatedAt, setQuoteUpdatedAt] = useState<number | null>(null);
   const [quoting, setQuoting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const stableMap = useMemo(() => new Map(stables.map((x) => [x.symbol, x])), [stables]);
+  const fromToken = fromKind === 'stable' ? stableMap.get(from) || null : null;
+  const toToken = toKind === 'stable' ? stableMap.get(to) || null : null;
+  const stableExecution = fromKind === 'stable' && toKind === 'stable';
+  const feeAmount = Number(amount) > 0 ? Number(amount) * FX_FEE_RATE : 0;
 
   const load = async () => {
     setLoading(true);
@@ -43,10 +64,12 @@ export const FXView: React.FC = () => {
       const [stableRes, fiatRes] = await Promise.all([
         fetch(STABLES_URL, { cache: 'no-store' }),
         fetch(FIATS_URL, { cache: 'no-store' }),
+        fetch(LI_FI_API + '/tokens?chains=' + ARC_CHAIN_ID + '&chainTypes=EVM', { cache: 'no-store' }),
       ]);
-      if (!stableRes.ok || !fiatRes.ok) throw new Error('FX data source is temporarily unavailable.');
+      if (!stableRes.ok || !fiatRes.ok || !tokenRes.ok) throw new Error('FX data source is temporarily unavailable.');
       const stableJson = await stableRes.json();
       const fiatJson = await fiatRes.json();
+      const tokenJson = await tokenRes.json();
 
       const nextStables = (Array.isArray(stableJson?.peggedAssets) ? stableJson.peggedAssets : [])
         .map((x: any) => ({
@@ -81,6 +104,10 @@ export const FXView: React.FC = () => {
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (address && !receiveAddress) setReceiveAddress(address);
+  }, [address, receiveAddress]);
 
   const getUsdRates = async (codes: string[]) => {
     const unique = [...new Set(codes.filter((x) => x && x !== 'USD'))];
@@ -155,6 +182,113 @@ export const FXView: React.FC = () => {
     if (!loading) convert();
   }, [amount, fromKind, toKind, from, to, loading, stables.length, fiats.length]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const loadBalance = async () => {
+      if (!address || !fromToken || !publicClient) { setSourceBalance(null); return; }
+      try {
+        if (fromToken.symbol === 'USDC' && fromToken.address.toLowerCase() === ARC_USDC_PREDEPLOY) {
+          const response = await fetch('/api/blockchain/arc/balance/' + address, { cache: 'no-store' });
+          if (!response.ok) throw new Error('balance unavailable');
+          const data = await response.json();
+          if (!cancelled) setSourceBalance(formatUnits(BigInt(data.rawBalance || '0'), 18));
+        } else {
+          const raw = await publicClient.readContract({ address: fromToken.address as any, abi: [{ type: 'function', name: 'balanceOf', stateMutability: 'view', inputs: [{ name: 'account', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] }] as const, functionName: 'balanceOf', args: [address as any] });
+          if (!cancelled) setSourceBalance(formatUnits(raw as bigint, fromToken.decimals));
+        }
+      } catch { if (!cancelled) setSourceBalance(null); }
+    };
+    loadBalance();
+    return () => { cancelled = true; };
+  }, [address, fromToken?.address, fromToken?.decimals, publicClient]);
+
+  const cleanFxError = (e: unknown) => {
+    const message = e instanceof Error ? e.message : String(e || '');
+    const lower = message.toLowerCase();
+    if (/user rejected|user denied|rejected the request|4001/.test(lower)) return 'Rejected';
+    if (/insufficient|not enough funds|exceeds balance|too small|minimum/.test(lower)) return 'Asset Too Low. Increase the amount.';
+    if (/failed to fetch|http request failed|network request|rpc/.test(lower)) return 'Network check failed. Please try again.';
+    return message || 'FX transaction failed. Please try again.';
+  };
+
+  const switchToArc = async () => {
+    const ethereum = (window as any).ethereum;
+    if (!ethereum?.request) throw new Error('Connected wallet provider is unavailable.');
+    try {
+      await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x13b2' }] });
+    } catch (switchError: any) {
+      if (switchError?.code !== 4902 && switchError?.code !== -32603) throw switchError;
+      await ethereum.request({ method: 'wallet_addEthereumChain', params: [{ chainId: '0x13b2', chainName: 'Arc Mainnet', nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 }, rpcUrls: ['https://rpc.mainnet.arc.io'], blockExplorerUrls: ['https://arcscan.app'] }] });
+      await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x13b2' }] });
+    }
+  };
+
+  const requestQuote = async () => {
+    if (!address || !fromToken || !toToken || !amount || Number(amount) <= 0) return;
+    if (!receiveAddress || !isAddress(receiveAddress)) { setError('Enter a valid receive wallet address.'); return; }
+    setQuoteLoading(true);
+    setQuote(null);
+    setExecutionConfirmed(false);
+    setExecutionHash(null);
+    setError(null);
+    try {
+      const rawAmount = parseUnits(amount, fromToken.decimals).toString();
+      const params = new URLSearchParams({
+        fromChain: String(ARC_CHAIN_ID),
+        toChain: String(ARC_CHAIN_ID),
+        fromToken: fromToken.address,
+        toToken: toToken.address,
+        fromAddress: address,
+        toAddress: receiveAddress,
+        fromAmount: rawAmount,
+        order: 'CHEAPEST',
+        fx: '1',
+      });
+      const response = await fetch('/api/lifi/quote?' + params.toString(), { cache: 'no-store', headers: { Accept: 'application/json' } });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.details?.message || data?.error || 'Unable to get executable FX quote.');
+      setQuote(data);
+      setQuoteUpdatedAt(Date.now());
+    } catch (e) {
+      setQuote(null);
+      setError(cleanFxError(e));
+    } finally {
+      setQuoteLoading(false);
+    }
+  };
+
+  const executeQuote = async () => {
+    if (!quote?.transactionRequest || !walletClient || !publicClient || !address) return;
+    setExecuting(true);
+    setExecutionStage('wallet');
+    setError(null);
+    try {
+      if (connectedChainId !== ARC_CHAIN_ID) await switchToArc();
+      const tx = quote.transactionRequest;
+      if (!tx?.to || !tx?.data) throw new Error('FX route is incomplete. Request a fresh quote.');
+      const txRequest: any = { account: address as any, to: tx.to, data: tx.data, value: tx.value ? BigInt(tx.value) : 0n, chainId: ARC_CHAIN_ID };
+      if (tx.gasLimit) txRequest.gas = BigInt(tx.gasLimit); else if (tx.gas) txRequest.gas = BigInt(tx.gas);
+      if (tx.maxFeePerGas) txRequest.maxFeePerGas = BigInt(tx.maxFeePerGas);
+      if (tx.maxPriorityFeePerGas) txRequest.maxPriorityFeePerGas = BigInt(tx.maxPriorityFeePerGas);
+      if (tx.gasPrice) txRequest.gasPrice = BigInt(tx.gasPrice);
+      const hash = await walletClient.sendTransaction(txRequest);
+      setExecutionHash(hash);
+      setExecutionStage('confirming');
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (receipt.status !== 'success') throw new Error('FX transaction reverted onchain.');
+      setExecutionConfirmed(true);
+      setExecutionStage(null);
+      setQuote(null);
+      setAmount('');
+      await refreshData();
+    } catch (e) {
+      setError(cleanFxError(e));
+      setExecutionStage(null);
+    } finally {
+      setExecuting(false);
+    }
+  };
+
   const swap = () => {
     const oldFrom = from;
     const oldFromKind = fromKind;
@@ -196,7 +330,15 @@ export const FXView: React.FC = () => {
           </button>
         </div>
 
-        <div className="rounded-2xl border border-blue-500/20 bg-[#0d0f12] p-5 sm:p-7">
+        {!isConnected || !address ? (
+          <div className="rounded-2xl border border-blue-500/20 bg-[#0d0f12] p-8 text-center">
+            <WalletCards className="w-8 h-8 text-blue-400 mx-auto mb-3" />
+            <h2 className="text-lg font-semibold text-white">Connect your wallet</h2>
+            <p className="text-sm text-zinc-400 mt-1 mb-5">Connect the wallet that holds the stablecoin you want to convert.</p>
+            <button onClick={connectWallet} className="px-5 py-3 rounded-xl bg-white text-black text-sm font-bold hover:bg-zinc-200">Connect Wallet</button>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-blue-500/20 bg-[#0d0f12] p-5 sm:p-7">
           <div className="grid lg:grid-cols-[1fr_auto_1fr] gap-3 items-end">
             <Picker
               label="From"
@@ -245,11 +387,52 @@ export const FXView: React.FC = () => {
             </div>
           </div>
 
+          {stableExecution && (
+            <div className="mt-4 rounded-2xl border border-blue-500/15 bg-blue-500/[0.035] p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div><div className="text-xs font-semibold text-white">Receive wallet</div><div className="text-[10px] text-zinc-500 mt-0.5">Defaults to the connected wallet.</div></div>
+                <button onClick={() => setShowRecipient((v) => !v)} className="text-[11px] text-blue-400 hover:text-blue-300">{showRecipient ? 'Hide alternate wallet' : 'Use another wallet'}</button>
+              </div>
+              {showRecipient && <input value={receiveAddress} onChange={(e) => { setReceiveAddress(e.target.value); setQuote(null); }} placeholder="0x... receive address" className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3.5 py-3 text-sm font-mono text-white outline-none focus:border-blue-500/50" />}
+              <div className="grid sm:grid-cols-3 gap-3 text-xs">
+                <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3"><div className="text-[10px] text-zinc-600 uppercase tracking-widest">GEN-0FI fee</div><div className="mt-1 font-semibold text-white">{fmt(feeAmount)} {from}</div></div>
+                <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3"><div className="text-[10px] text-zinc-600 uppercase tracking-widest">Rate</div><div className="mt-1 font-semibold text-white">{rate === null ? '—' : '1 ' + from + ' ≈ ' + fmt(rate) + ' ' + to}</div></div>
+                <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3"><div className="text-[10px] text-zinc-600 uppercase tracking-widest">Source balance</div><div className="mt-1 font-semibold text-white">{sourceBalance === null ? '—' : fmt(Number(sourceBalance)) + ' ' + from}</div></div>
+              </div>
+            </div>
+          )}
+
           <div className="mt-4 grid sm:grid-cols-3 gap-3">
             <Stat label="Rate" value={rate === null ? 'Unavailable' : '1 ' + from + ' = ' + formatValue(rate) + ' ' + to} />
             <Stat label="Coverage" value={loading ? 'Loading…' : stables.length + ' stablecoins · ' + fiats.length + ' fiat currencies'} />
             <Stat label="Updated" value={fiatDate || (stableUpdated ? new Date(stableUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—')} />
           </div>
+
+          <div className="mt-4">
+            {stableExecution ? (
+              <button onClick={quote ? executeQuote : requestQuote} disabled={quoteLoading || executing || !amount || Number(amount) <= 0} className="w-full rounded-xl bg-blue-500 hover:bg-blue-400 disabled:opacity-40 text-white font-semibold py-3 transition flex items-center justify-center gap-2">
+                {(quoteLoading || executing) && <Loader2 className="w-4 h-4 animate-spin" />}
+                {executing ? (executionStage === 'confirming' ? 'Confirming onchain...' : 'Confirm in wallet...') : quote ? 'Execute FX Swap' : 'Get live FX quote'}
+              </button>
+            ) : (
+              <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 px-4 py-3 text-xs text-zinc-400">Fiat conversion is valuation-only here. Actual fiat settlement requires a regulated on/off-ramp or banking integration.</div>
+            )}
+          </div>
+
+          {quote?.estimate?.toAmount && toToken && (
+            <div className="mt-4 rounded-xl border border-green-500/20 bg-green-500/[0.04] p-4 space-y-2 text-xs">
+              <div className="flex justify-between gap-3"><span className="text-zinc-500">Executable receive</span><span className="font-semibold text-white">{fmt(Number(formatUnits(BigInt(quote.estimate.toAmount), toToken.decimals)))} {to}</span></div>
+              <div className="flex justify-between gap-3"><span className="text-zinc-500">Route</span><span className="text-zinc-300">{quote.toolDetails?.name || quote.tool || 'LI.FI'}</span></div>
+              <div className="flex justify-between gap-3"><span className="text-zinc-500">Quote</span><span className="text-zinc-300">{quoteUpdatedAt ? new Date(quoteUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'}</span></div>
+            </div>
+          )}
+
+          {executionConfirmed && executionHash && (
+            <div className="mt-4 rounded-xl border border-green-500/25 bg-green-500/[0.05] px-4 py-3 text-xs text-green-300 flex items-center justify-between gap-3">
+              <span className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> FX swap confirmed on Arc Mainnet.</span>
+              <a href={ARC_MAINNET_EXPLORER_URL + '/tx/' + executionHash} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300"><ExternalLink className="w-3.5 h-3.5" /> View</a>
+            </div>
+          )}
 
           {error && <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-xs text-red-300">{error}</div>}
 
@@ -287,6 +470,11 @@ export const FXView: React.FC = () => {
               <div className="flex items-center gap-2"><Info className="w-3.5 h-3.5" /> No hard-coded exchange rate is used.</div>
             </div>
           </div>
+          <div className="mt-4 rounded-xl border border-blue-500/10 bg-blue-500/[0.03] px-4 py-3 text-[11px] text-zinc-500">
+            <Info className="w-3.5 h-3.5 inline mr-2 text-blue-400" />
+            Stablecoin execution uses LI.FI routing on Arc Mainnet. GEN-0FI charges 1.00% on executed FX swaps. Fiat amounts are valuation references and do not create a fiat wallet balance.
+          </div>
+
         </div>
       </div>
     </div>
