@@ -161,8 +161,8 @@ function cleanSwapError(error: unknown, context: 'balance' | 'allowance' | 'gas'
     return 'Unable to verify network gas balance right now. Please try again.';
   }
 
-  if (/insufficient funds|insufficient balance|exceeds balance|not enough funds|gas required exceeds allowance|intrinsic gas too low/.test(lower)) {
-    return 'Insufficient funds for this transaction.';
+  if (/insufficient funds|insufficient balance|exceeds balance|not enough funds|gas required exceeds allowance|intrinsic gas too low|insufficient liquidity|amount too low|below minimum|minimum amount|too small/.test(lower)) {
+    return 'Asset Too Low. Increase the amount to cover the required network cost.';
   }
 
   if (/failed to fetch|http request failed|rpc|network request/.test(lower)) {
@@ -361,7 +361,7 @@ export const SwapView: React.FC = () => {
       const data = await fetchJson(`${QUOTE_API}?${params.toString()}`);
       setQuote(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No LI.FI route is available for this selection.');
+      setError(cleanSwapError(err));
     } finally {
       setQuoting(false);
     }
