@@ -3,9 +3,9 @@ import { Logo } from './Logo';
 import { NetworkBadge } from './NetworkBadge';
 import { AddressBadge } from './AddressBadge';
 import { useWallet } from '../../context/WalletContext';
-import { LayoutDashboard, History, Settings, Wallet, ArrowLeftRight, Trophy, Flame, Send, Sparkles, Coins } from 'lucide-react';
+import { LayoutDashboard, History, Settings, Wallet, ArrowLeftRight, Trophy, Flame, Send, Sparkles, Coins, PiggyBank } from 'lucide-react';
 
-export type TabType = 'overview' | 'copilot' | 'swap' | 'wallet' | 'fx' | 'gm' | 'activity' | 'points' | 'settings';
+export type TabType = 'overview' | 'copilot' | 'swap' | 'wallet' | 'savings' | 'fx' | 'gm' | 'activity' | 'points' | 'settings';
 
 interface SidebarProps {
   activeTab: TabType;
@@ -20,6 +20,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
     { id: 'overview' as TabType, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'swap' as TabType, label: 'Swap & Bridge', icon: ArrowLeftRight },
     { id: 'wallet' as TabType, label: 'Send & Receive', icon: Send },
+    { id: 'savings' as TabType, label: 'Savings', icon: PiggyBank },
     { id: 'fx' as TabType, label: 'FX', icon: Coins },
     { id: 'copilot' as TabType, label: 'COPILOT', icon: Sparkles },
     { id: 'points' as TabType, label: 'Leaderboard', icon: Trophy },
