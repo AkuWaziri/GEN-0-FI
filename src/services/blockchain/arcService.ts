@@ -207,6 +207,12 @@ async function resolveContractTargets(rawTransactions: RawTxInput[], userAddress
     const results = await Promise.all(batch.map(async tx => {
       const txHash = tx.hash.toLowerCase();
 
+      // Prefer exact historical bytecode when the RPC supports archive reads.
+      // Arc mainnet does not currently expose a trace index, so some historical
+      // eth_getCode calls can be unavailable. In that case use Arcscan's decoded
+      // calldata markers already present on the transaction record. A non-empty
+      // method selector/function name is strong evidence that the wallet called
+      // a contract, while a plain 0x transfer remains a normal send.
       for (const client of [arcClient, arcScanClient]) {
         try {
           const code = await client.getCode({
@@ -215,6 +221,17 @@ async function resolveContractTargets(rawTransactions: RawTxInput[], userAddress
           });
           return [txHash, Boolean(code && code !== '0x')] as const;
         } catch {}
+      }
+
+      const input = String(tx.input || '0x').toLowerCase();
+      const hasCalldata = input !== '0x' && input.length > 2;
+      const hasDecodedMethod = Boolean(
+        String(tx.methodId || '').trim() ||
+        String(tx.functionName || '').trim()
+      );
+
+      if (hasCalldata || hasDecodedMethod) {
+        return [txHash, true] as const;
       }
 
       return [txHash, null] as const;
