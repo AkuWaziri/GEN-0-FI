@@ -315,9 +315,9 @@ export const FXView: React.FC = () => {
       <div className="max-w-5xl mx-auto space-y-5">
         <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.25em] text-blue-400 font-mono">Reference rates</p>
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] font-mono"><span className="text-fuchsia-300">FX router</span><span className="text-zinc-700">•</span><span className="text-blue-300">reference mode</span></div>
             <h1 className="mt-1 text-2xl sm:text-3xl font-bold text-white tracking-tight">FX</h1>
-            <p className="mt-2 text-sm text-zinc-400">Check current fiat reference rates and stablecoin market prices.</p>
+            <p className="mt-2 text-sm leading-6 text-zinc-400">Route an indicative conversion across fiat reference rates and stablecoin market prices.</p>
           </div>
           <button
             type="button"
@@ -330,8 +330,8 @@ export const FXView: React.FC = () => {
           </button>
         </header>
 
-        <section className="rounded-2xl border border-blue-500/20 bg-[#0d0f12] p-5 sm:p-7">
-          <div className="flex flex-wrap items-center gap-2 mb-4">
+        <section className="rounded-3xl border border-blue-500/20 bg-[radial-gradient(circle_at_15%_0%,rgba(232,121,249,.10),transparent_35%),radial-gradient(circle_at_85%_0%,rgba(59,130,246,.14),transparent_38%),#0b0e12] p-3 sm:p-5 shadow-[0_18px_70px_rgba(0,0,0,.35)]">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-2 pb-4"><div><div className="text-[10px] uppercase tracking-[0.22em] text-blue-300 font-mono">Indicative route</div><div className="mt-1 text-sm font-semibold text-white">Find the current reference path</div></div><div className="text-[10px] font-mono text-zinc-600">display-only · no execution</div></div><div className="flex flex-wrap gap-2 mb-4">
             {POPULAR_PAIRS.map((pair) => (
               <button
                 key={`${pair.from}-${pair.to}`}
@@ -396,7 +396,7 @@ export const FXView: React.FC = () => {
             </div>
 
             <div className="rounded-2xl border border-blue-500/20 bg-blue-500/[0.045] p-5">
-              <div className="text-[10px] uppercase tracking-widest text-blue-300/70">Indicative conversion</div>
+              <div className="text-[10px] uppercase tracking-[0.18em] text-blue-300/70 font-mono">Router output</div>
               <div className="mt-2 text-2xl sm:text-3xl font-bold text-blue-300">
                 {quoting ? <Loader2 className="w-5 h-5 animate-spin" /> : converted === null ? '—' : <>{formatNumber(converted)} {to}</>}
               </div>
@@ -418,13 +418,48 @@ export const FXView: React.FC = () => {
           </div>
         </section>
 
+        <section className="grid lg:grid-cols-[1.05fr_.95fr] gap-4 mb-4">
+          <div className="rounded-2xl border border-zinc-800 bg-[#111317] p-5 sm:p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.22em] text-fuchsia-300 font-mono">Route breakdown</div>
+                <h2 className="mt-1 text-lg font-semibold text-white">How GEN-0FI builds the quote</h2>
+              </div>
+              <div className="text-[10px] text-zinc-600 font-mono">LIVE REFERENCE</div>
+            </div>
+            <div className="mt-5 space-y-2">
+              <RouteStep number="01" title={fromKind === 'stable' ? from + ' market price' : from + ' reference rate'} detail={fromKind === 'stable' ? 'DeFiLlama market price' : from === 'NGN' ? 'CBN provider via Frankfurter' : 'Frankfurter reference data'} />
+              <div className="ml-5 h-4 border-l border-dashed border-blue-500/25" />
+              <RouteStep number="02" title="USD normalization" detail="Normalize both sides to a common USD basis." />
+              <div className="ml-5 h-4 border-l border-dashed border-blue-500/25" />
+              <RouteStep number="03" title={toKind === 'stable' ? to + ' market price' : to + ' reference rate'} detail={toKind === 'stable' ? 'DeFiLlama market price' : to === 'NGN' ? 'CBN provider via Frankfurter' : 'Frankfurter reference data'} />
+              <div className="ml-5 h-4 border-l border-dashed border-blue-500/25" />
+              <RouteStep number="04" title="Indicative output" detail={converted === null ? 'Waiting for a valid quote.' : formatNumber(converted) + ' ' + to} accent />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-800 bg-[#111317] p-5 sm:p-6">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-blue-300 font-mono">Router status</div>
+            <h2 className="mt-1 text-lg font-semibold text-white">Execution state</h2>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <RouterStat label="Execution" value="Disabled" />
+              <RouterStat label="Wallet" value="Not required" />
+              <RouterStat label="Approvals" value="None" />
+              <RouterStat label="Fund movement" value="None" />
+            </div>
+            <div className="mt-4 rounded-xl border border-blue-500/10 bg-blue-500/[0.03] p-3.5 text-[11px] leading-5 text-zinc-500">
+              FX is currently a reference router. It prices the route, but it does not submit trades or move assets.
+            </div>
+          </div>
+        </section>
+
         <div className="grid lg:grid-cols-[1.25fr_.75fr] gap-4">
           <section className="rounded-2xl border border-zinc-800 bg-[#111317] p-5">
             <div className="flex items-center gap-3">
               <Coins className="w-5 h-5 text-blue-400" />
               <div>
-                <h2 className="text-sm font-semibold text-white">Stablecoin market prices</h2>
-                <p className="text-[11px] text-zinc-500 mt-0.5">Market pricing used for indicative stablecoin conversions.</p>
+                <h2 className="text-sm font-semibold text-white">Stablecoin liquidity universe</h2>
+                <p className="text-[11px] text-zinc-500 mt-0.5">Choose a market asset and feed it into the router.</p>
               </div>
             </div>
             <div className="mt-4 grid sm:grid-cols-2 xl:grid-cols-3 gap-2">
@@ -456,8 +491,8 @@ export const FXView: React.FC = () => {
             <div className="flex items-center gap-3">
               <Globe2 className="w-5 h-5 text-blue-400" />
               <div>
-                <h2 className="text-sm font-semibold text-white">Official reference</h2>
-                <p className="text-[11px] text-zinc-500 mt-0.5">Published FX data for fiat currencies.</p>
+                <h2 className="text-sm font-semibold text-white">Reference sources</h2>
+                <p className="text-[11px] text-zinc-500 mt-0.5">Published fiat data used to build indicative routes.</p>
               </div>
             </div>
 
@@ -578,6 +613,29 @@ function AssetPicker(props: {
             </div>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function RouterStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-950/55 px-3.5 py-3">
+      <div className="text-[9px] uppercase tracking-widest text-zinc-600">{label}</div>
+      <div className="mt-1 text-[11px] font-semibold text-white truncate">{value}</div>
+    </div>
+  );
+}
+
+function RouteStep({ number, title, detail, accent = false }: { number: string; title: string; detail: string; accent?: boolean }) {
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-950/45 p-3.5">
+      <div className={'h-8 w-8 shrink-0 rounded-lg border flex items-center justify-center text-[9px] font-mono ' + (accent ? 'border-fuchsia-500/25 bg-fuchsia-500/10 text-fuchsia-300' : 'border-blue-500/25 bg-blue-500/10 text-blue-300')}>
+        {number}
+      </div>
+      <div className="min-w-0">
+        <div className="text-xs font-semibold text-white">{title}</div>
+        <div className="mt-1 text-[10px] leading-4 text-zinc-600">{detail}</div>
       </div>
     </div>
   );
