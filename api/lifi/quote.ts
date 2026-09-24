@@ -23,7 +23,8 @@ export default async function handler(req: any, res: any) {
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const fee = getFee();
+    const fxMode = String(req.query?.fx || '') === '1';
+    const fee = fxMode ? 0.01 : getFee();
     const feeWallet = GEN0FI_FEE_WALLET;
     const query = new URLSearchParams();
 
