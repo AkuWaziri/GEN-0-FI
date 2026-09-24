@@ -459,7 +459,6 @@ export const FXView: React.FC = () => {
             <Info className="w-3.5 h-3.5 text-blue-400 mt-0.5 shrink-0" />
             <span>Stablecoin prices use live DeFiLlama market data. Fiat rates use Frankfurter daily reference data from central-bank and official sources. These are valuation rates, not execution quotes.</span>
           </div>
-        </div>
 
         <div className="grid lg:grid-cols-[1.35fr_.65fr] gap-4">
           <div className="rounded-2xl border border-zinc-800 bg-[#111317] p-5">
