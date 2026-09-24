@@ -37,7 +37,15 @@ VERIFIED PROTOCOL & PRODUCT KNOWLEDGE BASE:
      - Arc Docs index: https://docs.arc.network/llms.txt
   10. Source Freshness: Arc-related answers must use live web grounding when the question could depend on current documentation, recent announcements, deployed features, supported integrations, ecosystem status, network parameters, or other changing information. Prefer official Arc sources over third-party summaries.
   11. Source Attribution: When an answer materially relies on an official Arc document or blog, briefly identify the relevant source or include its official link when useful. Do not invent links or source titles.
-  12. Zero Hallucination Guarantee: Strict blockchain data layer grounding. When data is outside scanned blocks or unavailable, it explicitly states: "I can't verify that from the available onchain data."
+  12. COPILOT PRODUCT SCOPE:
+- COPILOT is the interactive GEN-0FI assistant for the connected wallet.
+- It can explain verified Arc wallet activity, balances, transfers, gas, contract interactions, holdings, transactions, and product behavior.
+- Swap & Bridge uses LI.FI routing for supported swap and cross-chain bridge routes. Current chain/token availability is route-dependent and must not be invented.
+- Send & Receive supports direct Arc Mainnet USDC and EURC wallet transfers. Arc uses native USDC for gas. Basic sends are not LI.FI swaps.
+- GM Streak is an Arc Mainnet onchain check-in feature indexed by GEN-0FI for streaks and points.
+- The Points Leaderboard tracks confirmed swap and bridge activity, currently 5 points per confirmed swap and 10 points per confirmed bridge.
+- COPILOT may explain future GEN-0FI integrations, but must clearly distinguish shipped features from roadmap concepts and must never present an unshipped feature as live.
+  13. Zero Hallucination Guarantee: Strict blockchain data layer grounding. When data is outside scanned blocks or unavailable, it explicitly states: "I can't verify that from the available onchain data."
 `;
 
 /**
@@ -511,6 +519,10 @@ export async function handleAiAskPayload(payload: {
   walletData?: any;
   walletSummary?: any;
   summary?: any;
+  copilotContext?: {
+    gm?: any;
+    points?: any;
+  };
 }): Promise<{
   answer: string;
   referencedTxHashes: string[];
@@ -525,6 +537,7 @@ export async function handleAiAskPayload(payload: {
     walletDataRaw.address ||
     '';
   const { message, history } = payload;
+  const copilotContext = payload.copilotContext || null;
 
   if (!message || typeof message !== 'string') {
     throw new Error('Message is required');
@@ -611,6 +624,34 @@ export async function handleAiAskPayload(payload: {
       if (pattern.test(exactQuestion)) {
         return { answer, referencedTxHashes: [], model: 'deterministic-exact' };
       }
+    }
+
+    const asksRewardStatus =
+      /^(what('s| is) )?(my )?(gm|gm streak|gm status|gm points)\??$/.test(exactQuestion) ||
+      /^(what('s| is) )?my gm streak\??$/.test(exactQuestion) ||
+      /^(what('s| is) )?my rank\??$/.test(exactQuestion) ||
+      /^where do i rank\??$/.test(exactQuestion) ||
+      /^leaderboard rank\??$/.test(exactQuestion) ||
+      /^(what('s| is) )?my points\??$/.test(exactQuestion);
+
+    if (asksRewardStatus) {
+      const gm = copilotContext?.gm || {};
+      const points = copilotContext?.points || {};
+      const lines: string[] = [];
+      if (gm.currentStreak != null) lines.push('GM streak: ' + gm.currentStreak + ' day(s)');
+      if (gm.longestStreak != null) lines.push('Longest GM streak: ' + gm.longestStreak + ' day(s)');
+      if (gm.points != null) lines.push('GM points: ' + gm.points);
+      if (gm.checkedInToday != null) lines.push('GM today: ' + (gm.checkedInToday ? 'done' : 'not yet'));
+      if (gm.rank != null) lines.push('GM leaderboard rank: #' + gm.rank + (gm.totalRankedWallets ? ' of ' + gm.totalRankedWallets : ''));
+      if (points.totalPoints != null) lines.push('Swap & Bridge points: ' + points.totalPoints);
+      if (points.swapCount != null) lines.push('Confirmed swaps: ' + points.swapCount + ' (' + (points.swapPoints ?? 0) + ' points)');
+      if (points.bridgeCount != null) lines.push('Confirmed bridges: ' + points.bridgeCount + ' (' + (points.bridgePoints ?? 0) + ' points)');
+      if (points.rank != null) lines.push('Swap & Bridge leaderboard rank: #' + points.rank + (points.totalRankedWallets ? ' of ' + points.totalRankedWallets : ''));
+      return {
+        answer: lines.length ? lines.join('\n') : 'The current GEN-0FI rewards and leaderboard snapshot is unavailable. I cannot verify your rank right now.',
+        referencedTxHashes: [],
+        model: 'deterministic-copilot',
+      };
     }
 
     const asksRecent =
@@ -728,7 +769,7 @@ MODE 1: WALLET INTELLIGENCE
 - Fallback requirement: If the user asks about an event, address, or transaction that does not exist in the provided onchain data, or if historical data is incomplete, clearly state:
   "I can't verify that from the available onchain data."
 
-MODE 2: GEN-0 AI (CHAT) & ARC PROTOCOL INTELLIGENCE
+MODE 2: COPILOT PRODUCT, GEN-0FI & ARC PROTOCOL INTELLIGENCE
 - Answer broad English questions about Arc, including its architecture, EVM compatibility, consensus/finality, native USDC gas, chain/network parameters, transaction lifecycle, blocks, accounts, addresses, tokens, NFTs, smart contracts, RPCs, explorers, payments, stablecoin settlement, interoperability, privacy, developer tooling, SDKs, ecosystem projects, integrations, grants/builders programs, and current Arc announcements.
 - For Arc protocol questions, use Google Search grounding actively. Prefer official Arc documentation and official Arc sources first: docs.arc.network, arc.network, and community.arc.network.
 - If the official Arc docs/blog contain the answer, base the response on them rather than guessing from general blockchain knowledge. For implementation questions, prefer the relevant current Arc documentation page.
@@ -751,6 +792,9 @@ CRITICAL FORMATTING MANDATES:
     : '';
 
   const promptContent = `${VERIFIED_ARC_PROTOCOL_KNOWLEDGE}
+
+GEN-0FI COPILOT APP CONTEXT (REWARD/FEATURE INDEX SNAPSHOT, NOT A SUBSTITUTE FOR LIVE BLOCKCHAIN DATA):
+${JSON.stringify(copilotContext || { gm: null, points: null }, null, 2)}
 
 VERIFIED LIVE ONCHAIN WALLET DATA (AUTHORITATIVE SOURCE OF TRUTH):
 - Target Wallet Address: ${address || 'Not connected'}
