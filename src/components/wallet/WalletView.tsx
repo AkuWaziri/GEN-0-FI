@@ -232,11 +232,7 @@ export const WalletView: React.FC = () => {
 
             <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3.5 space-y-2 text-xs">
               <div className="flex justify-between text-zinc-400"><span>Send amount</span><span>{amount || '0'} {token}</span></div>
-              <div className="flex justify-between text-lime-300"><span>GEN-0FI fee · 0.5%</span><span>{formattedFee} USDC</span></div>
               <div className="flex justify-between text-zinc-300 font-semibold"><span>Recipient receives</span><span>{formattedNet} {token}</span></div>
-              <div className="flex justify-between text-cyan-300"><span>Estimated Arc network fee</span><span>{estimatedNetworkFee} USDC</span></div>
-              <div className="flex justify-between text-cyan-300"><span>Arc network fee</span><span>{estimatedNetworkFee} USDC</span></div>
-              <div className="pt-1 text-[10px] text-zinc-600">GEN-0FI charges 0.5% in USDC. Arc network gas is also paid in USDC.</div>
             </div>
 
             {status && <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 px-3.5 py-3 text-xs text-zinc-300">{status}</div>}
