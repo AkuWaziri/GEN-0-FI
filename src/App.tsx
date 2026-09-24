@@ -63,7 +63,7 @@ const AppContent: React.FC = () => {
         <main className="flex-1 overflow-y-auto flex flex-col justify-between">
           <div>
             {activeTab === 'overview' && <OverviewView onSelectTab={setActiveTab} onOpenConnect={() => setIsIdentityModalOpen(true)} />}
-            {activeTab === 'ask' && <AskGen0View />}
+            {activeTab === 'copilot' && <AskGen0View />}
             {activeTab === 'swap' && <SwapView />}
             {activeTab === 'wallet' && <WalletView />}
             {activeTab === 'gm' && <GMStreakView />}
@@ -71,7 +71,7 @@ const AppContent: React.FC = () => {
             {activeTab === 'points' && <PointsLeaderboardView />}
             {activeTab === 'settings' && <SettingsView />}
           </div>
-          {activeTab !== 'ask' && <Footer />}
+          {activeTab !== 'copilot' && <Footer />}
         </main>
       </div>
       <MobileNav activeTab={activeTab} onSelectTab={setActiveTab} />
