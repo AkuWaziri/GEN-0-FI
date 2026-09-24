@@ -21,6 +21,7 @@ export default async function handler(req: any, res: any) {
       decimals: 18,
       network: 'Arc',
       isTestnet: false,
+      isVerified: true,
     });
   } catch (error: any) {
     console.error(`[Balance API] Error for ${address}:`, error);
