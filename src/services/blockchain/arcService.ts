@@ -61,6 +61,38 @@ async function fetchJson(url: string, timeoutMs = 15_000): Promise<any> {
   return response.json();
 }
 
+function scalarString(value: any, fallback = ''): string {
+  if (value === undefined || value === null) return fallback;
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'bigint') return String(value);
+  if (typeof value === 'object') {
+    for (const key of ['value', 'raw', 'amount', 'blockNumber', 'block_number', 'timestamp', 'timeStamp']) {
+      if (value[key] !== undefined) {
+        const nested = scalarString(value[key], '');
+        if (nested !== '') return nested;
+      }
+    }
+  }
+  return fallback;
+}
+
+function bigintFromValue(value: any, fallback = 0n): bigint {
+  const scalar = scalarString(value, '').trim();
+  if (!scalar) return fallback;
+  try {
+    return BigInt(scalar);
+  } catch {
+    return fallback;
+  }
+}
+
+function timestampMs(value: any): number {
+  const scalar = scalarString(value, '').trim();
+  if (!scalar) return 0;
+  const numeric = Number(scalar);
+  if (!Number.isFinite(numeric)) return 0;
+  return numeric > 1e12 ? numeric : numeric * 1000;
+}
+
 async function fetchAddressTransactions(address: string): Promise<any[]> {
   // Arcscan's typed address transaction index is the canonical mainnet source.
   // It is cursor-paginated and includes the complete address history from block 0.
@@ -158,19 +190,15 @@ function toRawTransaction(tx: any): RawTxInput {
 
   return {
     hash: String(tx.hash ?? tx.tx_hash ?? ''),
-    blockNumber: BigInt(
-      typeof blockNumberValue === 'object'
-        ? String(blockNumberValue.value ?? blockNumberValue.raw ?? 0)
-        : String(blockNumberValue)
-    ),
+    blockNumber: bigintFromValue(blockNumberValue),
     from: String(tx.from ?? ''),
     to: tx.to ? String(tx.to) : null,
     value: rawValueParsed?.raw ?? 0n,
     fee,
-    gas: tx.gas
-      ? BigInt(typeof tx.gas === 'object' ? String(tx.gas.raw ?? tx.gas.value ?? 0) : String(tx.gas))
-      : tx.gas_limit
-        ? BigInt(typeof tx.gas_limit === 'object' ? String(tx.gas_limit.raw ?? tx.gas_limit.value ?? 0) : String(tx.gas_limit))
+    gas: tx.gas !== undefined && tx.gas !== null
+      ? bigintFromValue(tx.gas)
+      : tx.gas_limit !== undefined && tx.gas_limit !== null
+        ? bigintFromValue(tx.gas_limit)
         : undefined,
     gasPrice,
     gasUsed,
@@ -178,11 +206,7 @@ function toRawTransaction(tx: any): RawTxInput {
     methodId: tx.methodId ?? tx.method_id ?? '',
     functionName: tx.functionName ?? tx.function_name ?? '',
     contractName: tx.contractName ?? tx.contract_name ?? tx.toName ?? tx.to_name ?? tx.contract?.name ?? '',
-    timestamp: timestampValue
-      ? (Number(typeof timestampValue === 'object' ? timestampValue.value ?? timestampValue.raw : timestampValue) > 1e12
-        ? Number(typeof timestampValue === 'object' ? timestampValue.value ?? timestampValue.raw : timestampValue)
-        : Number(typeof timestampValue === 'object' ? timestampValue.value ?? timestampValue.raw : timestampValue) * 1000)
-      : 0,
+    timestamp: timestampMs(timestampValue),
     status,
     contractAddress: tx.contractAddress ?? tx.created_contract ?? null,
   };
