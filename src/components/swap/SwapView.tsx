@@ -394,49 +394,16 @@ export const SwapView: React.FC = () => {
       const publicClient = getDirectPublicClient(fromChainId, fromChain);
       const required = BigInt(quote.estimate.fromAmount || '0');
 
-      // Preflight the real source balance before touching allowance or requesting a signature.
-      // This keeps low-balance attempts in the UI instead of exposing raw RPC errors.
-      const isArcUsdc = fromChainId === 5042 && fromToken?.address?.toLowerCase() === ARC_USDC_PREDEPLOY;
-
+      // LI.FI already provides the wallet balance dataset used by this screen.
+      // Do not run a separate balanceOf/getBalance preflight here. Different public
+      // RPCs can reject eth_call even when the LI.FI route is executable, which was
+      // causing the false "Unable to verify your token balance" error.
+      // Arc native USDC remains backed by the authoritative Arc balance endpoint
+      // for display, but it is never blocked by a second RPC balance check.
       if (fromToken && required > 0n) {
-        if (isArcUsdc && arcNativeBalance !== null) {
-          const nativeRaw = BigInt(arcNativeBalance);
-          const requiredNativeUnits = fromToken.decimals === 6 ? required * 10n ** 12n : required;
-          if (nativeRaw < requiredNativeUnits) {
-            throw new Error(`Insufficient ${fromToken.symbol} balance for this ${fromChainId === toChainId ? 'swap' : 'bridge'}.`);
-          }
-        } else if (fromToken.address.toLowerCase() !== NATIVE) {
-          const balanceItem = tokenBalanceFor(balances, fromChainId, fromToken);
-          if (balanceItem?.amount && BigInt(balanceItem.amount) < required) {
-            throw new Error(`Insufficient ${fromToken.symbol} balance for this ${fromChainId === toChainId ? 'swap' : 'bridge'}.`);
-          }
-
-          if (!balanceItem?.amount) {
-            try {
-              const onchainBalance = await publicClient.readContract({
-                address: fromToken.address as `0x${string}`,
-                abi: [{ type: 'function', name: 'balanceOf', stateMutability: 'view', inputs: [{ name: 'account', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] }] as const,
-                functionName: 'balanceOf',
-                args: [address as `0x${string}`],
-              });
-              if (onchainBalance < required) {
-                throw new Error(`Insufficient ${fromToken.symbol} balance for this ${fromChainId === toChainId ? 'swap' : 'bridge'}.`);
-              }
-            } catch (balanceError) {
-              if (balanceError instanceof Error && /^Insufficient /.test(balanceError.message)) throw balanceError;
-              throw new Error(cleanSwapError(balanceError, 'balance'));
-            }
-          }
-        } else {
-          try {
-            const nativeBalance = await publicClient.getBalance({ address: address as `0x${string}` });
-            if (nativeBalance < required) {
-              throw new Error(`Insufficient ${fromToken.symbol} balance for this ${fromChainId === toChainId ? 'swap' : 'bridge'}.`);
-            }
-          } catch (balanceError) {
-            if (balanceError instanceof Error && /^Insufficient /.test(balanceError.message)) throw balanceError;
-            throw new Error(cleanSwapError(balanceError, 'balance'));
-          }
+        const balanceItem = tokenBalanceFor(balances, fromChainId, fromToken);
+        if (balanceItem?.amount && BigInt(balanceItem.amount) < required) {
+          throw new Error(`Insufficient ${fromToken.symbol} balance for this ${fromChainId === toChainId ? 'swap' : 'bridge'}.`);
         }
       }
 
