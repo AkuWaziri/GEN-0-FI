@@ -247,7 +247,7 @@ export const WalletView: React.FC = () => {
         ) : (
           <div className="max-w-xl rounded-2xl border border-cyan-400/20 bg-[#0d0f12] p-5 sm:p-7 space-y-5">
             <div>
-              <div className="text-xs font-semibold text-white">Receive USDC or EURC</div>
+              <div className="text-xs font-semibold text-white">Send and Receive USDC, EURC directly on Arc.</div>
               <div className="text-[11px] text-zinc-500 mt-1">Send supported Arc Mainnet USDC or EURC to this connected wallet.</div>
             </div>
             <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-center">
