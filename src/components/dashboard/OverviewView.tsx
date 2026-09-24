@@ -186,7 +186,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
               <div className="w-7 h-7 rounded-lg bg-blue-400/10 border border-blue-300/25 flex items-center justify-center text-blue-300"><Wallet className="w-3.5 h-3.5" /></div>
               <div><h2 className="text-sm font-bold text-white">Wallet</h2><p className="text-[10px] text-blue-300/75 font-mono">Move funds from your connected wallet</p></div>
             </div>
-            <p className="text-xs text-zinc-500 leading-relaxed">Send USDC directly on Arc or open your receive address.</p>
+            <p className="text-xs text-zinc-500 leading-relaxed">Send USDC/EURC directly on Arc or open to receive.</p>
           </div>
           <div className="pt-4 mt-4 border-t border-blue-500/10 flex items-center gap-2">
             <button type="button" onClick={() => onSelectTab('wallet')} className="flex-1 py-2 rounded-lg bg-white text-[10px] font-bold text-black hover:bg-zinc-200 transition-colors">Send</button>
