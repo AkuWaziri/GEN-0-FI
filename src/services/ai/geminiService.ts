@@ -93,13 +93,13 @@ export function getGeminiClient(): GoogleGenAI | null {
 
 /**
  * Preferred model cascade for production:
- * 1. gemini-3.1-flash-lite (Fastest, sub-second latency, optimal for serverless budgets)
- * 2. gemini-flash-latest (Universal alias fallback)
- * 3. gemini-3.8-flash (Standard general task model)
+ * 1. gemini-3.8-flash (current stable production model)
+ * 2. gemini-3.1-pro-preview (deeper reasoning fallback)
+ * 3. gemini-3.1-flash-lite (cost-efficient fallback)
  */
 const CANDIDATE_MODELS = [
-  'gemini-3.1-pro-preview',
   'gemini-3.8-flash',
+  'gemini-3.1-pro-preview',
   'gemini-3.1-flash-lite',
 ];
 
@@ -450,7 +450,7 @@ export function generateDeterministicChatAnswer(
     q.includes('chain id')
   ) {
     return {
-      answer: `Arc is an institutional-grade, EVM-compatible Layer-1 blockchain engineered specifically for programmable finance and high-speed financial settlement. Arc is officially live on Mainnet.\n\nKey architectural pillars:\n- Native USDC Gas: Arc uses native USDC (with 18 decimals) as its base network token, meaning all transaction and execution fees are paid directly in USDC.\n- Network: Arc Mainnet (Chain ID: 5042)\n- Deterministic Finality: High throughput and sub-second block times designed for regulated capital markets and decentralized finance.\n- Explorer: ArcScan (https://arc.etherscan.io)\n- RPC: https://rpc.mainnet.arc.io`,
+      answer: `Arc is an institutional-grade, EVM-compatible Layer-1 blockchain engineered specifically for programmable finance and high-speed financial settlement. Arc is officially live on Mainnet.\n\nKey architectural pillars:\n- Native USDC Gas: Arc uses native USDC (with 18 decimals) as its base network token, meaning all transaction and execution fees are paid directly in USDC.\n- Network: Arc Mainnet (Chain ID: 5042)\n- Deterministic Finality: High throughput and sub-second block times designed for regulated capital markets and decentralized finance.\n- Explorer: Arc Explorer (https://explorer.arc.io)\n- RPC: https://rpc.mainnet.arc.io`,
       referencedTxHashes,
     };
   }
@@ -463,7 +463,7 @@ export function generateDeterministicChatAnswer(
     q.includes('how does arc use usdc')
   ) {
     return {
-      answer: `Unlike Ethereum or other Layer-1 networks where users must purchase and maintain volatile native coins (like ETH or MATIC) to execute transactions, Arc natively integrates USDC (18 decimals) at the protocol level as its base gas token.\n\nEvery transfer, contract deployment, and swap calculates and settles its gas execution fee directly in USDC. This eliminates volatile currency exposure and makes transaction fees completely predictable.`,
+      answer: `Unlike Ethereum or other Layer-1 networks where users must purchase and maintain volatile native coins (like ETH or MATIC) to execute transactions, Arc natively integrates USDC (18 decimals) at the protocol level as its base gas token.\n\nArc uses native USDC as the gas token, so execution fees are settled directly in USDC rather than a separate native coin.`,
       referencedTxHashes,
     };
   }
