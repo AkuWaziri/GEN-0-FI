@@ -565,12 +565,6 @@ async function fetchGasAndValueFallback(address: string, transactions: Normalize
   let gas = 0n;
 
   for (const tx of transactions) {
-    if (tx.timestamp > 0 && (firstActivityTime === undefined || tx.timestamp < firstActivityTime)) {
-      firstActivityTime = tx.timestamp;
-    }
-    if (tx.status === 'reverted') failedTransactionCount++;
-    if (isApprovalTransaction(tx)) tokenApprovalsCount++;
-
     try {
       gas += BigInt(Math.round(Number(tx.gasCostUSDC || '0') * 1e18));
       const value = BigInt(tx.rawValue || '0');
@@ -779,6 +773,12 @@ export function computeWalletSummary(
   }
 
   for (const tx of transactions) {
+    if (tx.timestamp > 0 && (firstActivityTime === undefined || tx.timestamp < firstActivityTime)) {
+      firstActivityTime = tx.timestamp;
+    }
+    if (tx.status === 'reverted') failedTransactionCount++;
+    if (isApprovalTransaction(tx)) tokenApprovalsCount++;
+
     try {
       if (tx.gasCostUSDC !== 'Unavailable') gas += BigInt(Math.round(Number(tx.gasCostUSDC) * 1e18));
     } catch {}
