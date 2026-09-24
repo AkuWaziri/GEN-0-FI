@@ -23,6 +23,7 @@ export const WalletView: React.FC = () => {
   const [txHash, setTxHash] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [sending, setSending] = useState(false);
+  const [estimatedNetworkFee, setEstimatedNetworkFee] = useState('0.000000');
 
   const numericAmount = Number(amount);
   const fee = Number.isFinite(numericAmount) && numericAmount > 0 ? numericAmount * GEN0FI_FEE_RATE : 0;
@@ -79,6 +80,30 @@ export const WalletView: React.FC = () => {
       const grossRaw = parseUnits(amount, 18);
       const feeRaw = (grossRaw * 5n) / 1000n;
       const netRaw = grossRaw - feeRaw;
+
+      // Reserve both Arc native transfers before collecting the GEN-0FI fee.
+      // This prevents a successful fee transfer from being followed by a
+      // recipient transfer that fails because the wallet cannot cover gas.
+      const [feeGas, recipientGas, gasPrice] = await Promise.all([
+        publicClient.estimateGas({
+          account: address as `0x${string}`,
+          to: GEN0FI_FEE_WALLET as `0x${string}`,
+          value: feeRaw,
+        }),
+        publicClient.estimateGas({
+          account: address as `0x${string}`,
+          to: recipient as `0x${string}`,
+          value: netRaw,
+        }),
+        publicClient.getGasPrice(),
+      ]);
+      const estimatedGasRaw = ((feeGas + recipientGas) * gasPrice * 11n) / 10n;
+      const estimatedGas = Number(estimatedGasRaw) / 1e18;
+      setEstimatedNetworkFee(estimatedGas.toFixed(6));
+      if (Number.isFinite(available) && numericAmount + estimatedGas > available) {
+        setStatus(`Asset Too Low. You need about ${estimatedGas.toFixed(6)} USDC extra for Arc network fees.`);
+        return;
+      }
 
       // Arc native USDC can only have one EOA recipient per native transfer.
       // GEN-0FI therefore executes the fee and recipient transfer sequentially
@@ -166,6 +191,7 @@ export const WalletView: React.FC = () => {
               <div className="flex justify-between text-zinc-400"><span>Send amount</span><span>{amount || '0'} USDC</span></div>
               <div className="flex justify-between text-lime-300"><span>GEN-0FI fee · 0.5%</span><span>{formattedFee} USDC</span></div>
               <div className="flex justify-between text-zinc-300 font-semibold"><span>Recipient receives</span><span>{formattedNet} USDC</span></div>
+              <div className="flex justify-between text-cyan-300"><span>Estimated Arc network fee</span><span>{estimatedNetworkFee} USDC</span></div>
               <div className="pt-1 text-[10px] text-zinc-600">Arc network gas is charged separately by the network in USDC.</div>
             </div>
 
