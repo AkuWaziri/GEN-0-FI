@@ -3,7 +3,7 @@ import { Logo } from './Logo';
 import { NetworkBadge } from './NetworkBadge';
 import { AddressBadge } from './AddressBadge';
 import { useWallet } from '../../context/WalletContext';
-import { LayoutDashboard, History, Settings, Wallet, ArrowLeftRight, Trophy } from 'lucide-react';
+import { LayoutDashboard, History, Settings, Wallet, ArrowLeftRight, Trophy, Flame } from 'lucide-react';
 
 export type TabType = 'overview' | 'ask' | 'swap' | 'gm' | 'activity' | 'points' | 'settings';
 
@@ -20,6 +20,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
     { id: 'overview' as TabType, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'swap' as TabType, label: 'Swap & Bridge', icon: ArrowLeftRight },
     { id: 'points' as TabType, label: 'Leaderboard', icon: Trophy },
+    { id: 'gm' as TabType, label: 'GM Streak', icon: Flame },
     { id: 'activity' as TabType, label: 'Activity', icon: History },
     { id: 'settings' as TabType, label: 'Settings', icon: Settings },
   ];
