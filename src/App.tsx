@@ -12,6 +12,7 @@ import { GMStreakView } from './components/gm/GMStreakView';
 import { WalletView } from './components/wallet/WalletView';
 import { FXView } from './components/fx/FXView';
 import { SavingsView } from './components/savings/SavingsView';
+import { PlaymemesView } from './components/playmemes/PlaymemesView';
 import { SettingsView } from './components/settings/SettingsView';
 import { PointsLeaderboardView } from './components/points/PointsLeaderboardView';
 import { SwapView } from './components/swap/SwapView';
@@ -66,6 +67,7 @@ const AppContent: React.FC = () => {
           <div>
             {activeTab === 'overview' && <OverviewView onSelectTab={setActiveTab} onOpenConnect={() => setIsIdentityModalOpen(true)} />}
             {activeTab === 'copilot' && <AskGen0View />}
+            {activeTab === 'playmemes' && <PlaymemesView />}
             {activeTab === 'swap' && <SwapView />}
             {activeTab === 'wallet' && <WalletView />}
             {activeTab === 'savings' && <SavingsView />}
