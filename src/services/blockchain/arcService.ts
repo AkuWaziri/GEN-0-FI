@@ -291,7 +291,7 @@ function isTransferLikeActivityRow(row: any): boolean {
   return /transfer|movement|value|internal|received|sent|native|usdc/.test(kind);
 }
 
-async function fetchActivityTotals(address: string): Promise<{ received: bigint; sent: bigint }> {
+async function fetchActivityTotals(address: string, fallbackTransactions: NormalizedTransaction[] = []): Promise<{ received: bigint; sent: bigint }> {
   const target = address.toLowerCase();
   let received = 0n;
   let sent = 0n;
@@ -299,6 +299,8 @@ async function fetchActivityTotals(address: string): Promise<{ received: bigint;
   const seenMovements = new Set<string>();
   let activityRows = 0;
 
+  // Arcscan's typed activity feed is the preferred source for merged native/ERC-20
+  // value flow. It is currently public and does not require an API key.
   for (let page = 0; page < 500; page++) {
     const url = new URL(`${ARCSCAN_V1_BASE}/address/${address}/activity`);
     url.searchParams.set('limit', '100');
@@ -318,8 +320,6 @@ async function fetchActivityTotals(address: string): Promise<{ received: bigint;
     for (const row of rows) {
       if (!isSuccessfulActivityRow(row) || !isTransferLikeActivityRow(row)) continue;
 
-      // GEN-0FI is a USDC financial monitor. Never interpret another token's
-      // amount as USDC. Arc has a native USDC face plus a 6-decimal ERC-20 face.
       const tokenAddress = activityTokenAddress(row);
       const symbol = activitySymbol(row);
       if (tokenAddress && tokenAddress !== ERC20_USDC) continue;
@@ -333,9 +333,6 @@ async function fetchActivityTotals(address: string): Promise<{ received: bigint;
         parseArcAmount(row?.value_18dec, 18) ||
         parseArcAmount(row?.amount_18dec, 18);
 
-      // Generic value/amount fields are accepted only for an explicitly
-      // transfer-like row. This prevents transaction metadata or unrelated
-      // activity values from becoming wallet cash-flow totals.
       const amount = explicitNativeAmount ||
         parseArcAmount(row?.value, Number(row?.decimals ?? row?.token?.decimals ?? row?.asset?.decimals ?? 18)) ||
         parseArcAmount(row?.amount, Number(row?.decimals ?? row?.token?.decimals ?? row?.asset?.decimals ?? 18)) ||
@@ -362,8 +359,6 @@ async function fetchActivityTotals(address: string): Promise<{ received: bigint;
       const normalized = to18Decimals(amount.raw, amount.decimals);
       if (normalized <= 0n) continue;
 
-      // Arc publishes native USDC and its ERC-20 face. Arcscan de-duplicates
-      // the same underlying movement in its transfer feed; do the same here.
       const txHash = String(
         row?.tx_hash ||
         row?.txHash ||
@@ -392,13 +387,89 @@ async function fetchActivityTotals(address: string): Promise<{ received: bigint;
     cursor = String(next);
   }
 
+  // If the typed activity stream returns no rows, fall back to Arcscan's
+  // Etherscan-compatible USDC transfer feed plus the already-indexed native
+  // transaction list. This prevents a temporary activity-feed gap from
+  // turning verified wallet totals into "Unavailable".
   if (activityRows === 0) {
+    received = 0n;
+    sent = 0n;
+    seenMovements.clear();
+
+    for (const tx of fallbackTransactions) {
+      if (tx.status !== 'success') continue;
+      const value = BigInt(tx.rawValue || '0');
+      if (value <= 0n) continue;
+
+      const from = addressOf(tx.from);
+      const to = addressOf(tx.to);
+      const incoming = to === target && from !== target;
+      const outgoing = from === target;
+      if (incoming === outgoing) continue;
+
+      const movementId = [tx.hash.toLowerCase(), from || '', to || '', incoming ? 'in' : 'out', value.toString()].join(':');
+      if (seenMovements.has(movementId)) continue;
+      seenMovements.add(movementId);
+
+      if (incoming) received += value;
+      else sent += value;
+    }
+
+    try {
+      const url = new URL(ARCSCAN_API_BASE);
+      url.searchParams.set('module', 'account');
+      url.searchParams.set('action', 'tokentx');
+      url.searchParams.set('address', address);
+      url.searchParams.set('contractaddress', ERC20_USDC);
+      url.searchParams.set('startblock', '0');
+      url.searchParams.set('endblock', '999999999');
+      url.searchParams.set('page', '1');
+      url.searchParams.set('offset', '10000');
+      url.searchParams.set('sort', 'desc');
+      url.searchParams.set('apikey', ARCSCAN_API_KEY);
+
+      const data = await fetchJson(url.toString());
+      const rows = Array.isArray(data?.result) ? data.result : [];
+
+      for (const row of rows) {
+        if (row?.isError === '1' || row?.txreceipt_status === '0') continue;
+        const from = addressOf(row?.from);
+        const to = addressOf(row?.to);
+        const incoming = to === target && from !== target;
+        const outgoing = from === target;
+        if (incoming === outgoing) continue;
+
+        const decimals = Number(row?.tokenDecimal ?? 6);
+        const raw = parseArcAmount(row?.value, decimals);
+        if (!raw) continue;
+        const normalized = to18Decimals(raw.raw, raw.decimals);
+        if (normalized <= 0n) continue;
+
+        const movementId = [
+          String(row?.hash || '').toLowerCase(),
+          from || '',
+          to || '',
+          incoming ? 'in' : 'out',
+          normalized.toString(),
+        ].join(':');
+
+        if (seenMovements.has(movementId)) continue;
+        seenMovements.add(movementId);
+
+        if (incoming) received += normalized;
+        else sent += normalized;
+      }
+    } catch (error) {
+      console.warn('[GEN-0FI] Arcscan USDC transfer fallback unavailable:', error);
+    }
+  }
+
+  if (activityRows === 0 && received === 0n && sent === 0n && fallbackTransactions.length === 0) {
     throw new Error('Arcscan activity returned no rows');
   }
 
   return { received, sent };
 }
-
 async function fetchGasAndValueFallback(address: string, transactions: NormalizedTransaction[]): Promise<{ received: bigint; sent: bigint; gas: bigint }> {
   let received = 0n;
   let sent = 0n;
@@ -663,7 +734,7 @@ export async function fetchCompleteWalletState(address: string): Promise<Complet
   // fetchActivityTotals de-duplicates the merged movement representations.
   let transferTotals: { received: bigint; sent: bigint };
   try {
-    transferTotals = await fetchActivityTotals(address);
+    transferTotals = await fetchActivityTotals(address, history.lifetimeTransactions);
   } catch (error) {
     console.warn('[GEN-0FI] Arc activity totals unavailable:', error);
     // Do not silently present an incomplete lifetime total as authoritative.
