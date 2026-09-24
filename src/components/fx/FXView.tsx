@@ -206,32 +206,31 @@ export const FXView: React.FC = () => {
     if (fromKind === 'stable' && !selectedFrom) throw new Error('Selected stablecoin price is unavailable.');
     if (toKind === 'stable' && !selectedTo) throw new Error('Selected stablecoin price is unavailable.');
 
+    const fiatResults = await Promise.all([
+      fromKind === 'fiat' ? getFiatToUsd(from) : Promise.resolve(null),
+      toKind === 'fiat' ? getFiatToUsd(to) : Promise.resolve(null),
+    ]);
+
+    const fromFiat = fiatResults[0];
+    const toFiat = fiatResults[1];
+
     const fromUsd = fromKind === 'stable'
       ? Number(selectedFrom!.priceUSD)
-      : (await getFiatToUsd(from)).rate === 0
-        ? 0
-        : 1 / (await getFiatToUsd(from)).rate;
+      : fromFiat?.rate
+        ? 1 / fromFiat.rate
+        : 0;
 
     const toUsd = toKind === 'stable'
       ? Number(selectedTo!.priceUSD)
-      : (await getFiatToUsd(to)).rate === 0
-        ? 0
-        : 1 / (await getFiatToUsd(to)).rate;
+      : toFiat?.rate
+        ? 1 / toFiat.rate
+        : 0;
 
     if (!fromUsd || !toUsd) throw new Error('Selected rate is unavailable.');
 
-    let source: RateResult['source'] | 'DeFiLlama' = 'DeFiLlama';
-    let date: string | null = null;
-
-    if (fromKind === 'fiat' || toKind === 'fiat') {
-      const fiatResults = await Promise.all([
-        fromKind === 'fiat' ? getFiatToUsd(from) : Promise.resolve(null),
-        toKind === 'fiat' ? getFiatToUsd(to) : Promise.resolve(null),
-      ]);
-
-      source = fiatResults.find(Boolean)?.source || 'Frankfurter';
-      date = fiatResults.find(Boolean)?.date || null;
-    }
+    const source: RateResult['source'] | 'DeFiLlama' =
+      fromFiat?.source || toFiat?.source || 'DeFiLlama';
+    const date = fromFiat?.date || toFiat?.date || null;
 
     return {
       result: fromUsd / toUsd,
