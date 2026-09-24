@@ -1,5 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowDownUp, Coins, Globe2, Info, Loader2, RefreshCw, Search, TrendingUp } from 'lucide-react';
+import { ArrowDownUp, CheckCircle2, Coins, ExternalLink, Globe2, Info, Loader2, RefreshCw, Search, TrendingUp, WalletCards } from 'lucide-react';
+import { encodeFunctionData, formatUnits, isAddress, parseUnits } from 'viem';
+import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
+import { ARC_CHAIN_ID, ARC_MAINNET_EXPLORER_URL } from '../../config/arc';
+import { useWallet } from '../../context/WalletContext';
 
 type Kind = 'stable' | 'fiat';
 type Stablecoin = { id: string; name: string; symbol: string; price: number; address: string; decimals: number };
@@ -11,6 +15,7 @@ const RATES_URL = 'https://api.frankfurter.dev/v2/rates';
 const LI_FI_API = 'https://li.quest/v1';
 const ARC_USDC_PREDEPLOY = '0x3600000000000000000000000000000000000000';
 const FX_FEE_RATE = 0.01;
+const ERC20_APPROVE_ABI = [{ type: 'function', name: 'approve', stateMutability: 'nonpayable', inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }] }, { type: 'function', name: 'allowance', stateMutability: 'view', inputs: [{ name: 'owner', type: 'address' } , { name: 'spender', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] }] as const;
 
 const formatValue = (value: number) => {
   if (!Number.isFinite(value)) return '—';
@@ -29,7 +34,7 @@ export const FXView: React.FC = () => {
   const [amount, setAmount] = useState('1');
   const [fromSearch, setFromSearch] = useState('');
   const [toSearch, setToSearch] = useState('');
-  const [quote, setQuote] = useState<number | null>(null);
+  const [indicativeQuote, setIndicativeQuote] = useState<number | null>(null);
   const [rate, setRate] = useState<number | null>(null);
   const [fiatDate, setFiatDate] = useState<string | null>(null);
   const [stableUpdated, setStableUpdated] = useState<number | null>(null);
@@ -61,7 +66,7 @@ export const FXView: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [stableRes, fiatRes] = await Promise.all([
+      const [stableRes, fiatRes, tokenRes] = await Promise.all([
         fetch(STABLES_URL, { cache: 'no-store' }),
         fetch(FIATS_URL, { cache: 'no-store' }),
         fetch(LI_FI_API + '/tokens?chains=' + ARC_CHAIN_ID + '&chainTypes=EVM', { cache: 'no-store' }),
@@ -71,14 +76,15 @@ export const FXView: React.FC = () => {
       const fiatJson = await fiatRes.json();
       const tokenJson = await tokenRes.json();
 
-      const nextStables = (Array.isArray(stableJson?.peggedAssets) ? stableJson.peggedAssets : [])
-        .map((x: any) => ({
-          id: Number(x.id),
-          name: String(x.name || x.symbol || 'Stablecoin'),
-          symbol: String(x.symbol || '').toUpperCase(),
-          price: Number(x.price),
-        }))
-        .filter((x: Stablecoin) => x.symbol && Number.isFinite(x.price) && x.price > 0)
+      const marketStables = (Array.isArray(stableJson?.peggedAssets) ? stableJson.peggedAssets : [])
+        .map((x: any) => ({ id: String(x.id), name: String(x.name || x.symbol || 'Stablecoin'), symbol: String(x.symbol || '').toUpperCase(), price: Number(x.price) }))
+        .filter((x: any) => x.symbol && Number.isFinite(x.price) && x.price > 0);
+      const tokenRows = Array.isArray(tokenJson) ? tokenJson : tokenJson?.tokens?.[String(ARC_CHAIN_ID)] || [];
+      const stableSymbols = new Set(marketStables.map((x: any) => x.symbol));
+      const nextStables = tokenRows
+        .filter((x: any) => x.address && x.symbol && stableSymbols.has(String(x.symbol).toUpperCase()))
+        .map((x: any) => { const symbol = String(x.symbol).toUpperCase(); const market = marketStables.find((m: any) => m.symbol === symbol); return { id: String(x.address).toLowerCase(), name: String(x.name || market?.name || symbol), symbol, price: Number(market?.price ?? x.priceUSD), address: String(x.address), decimals: Number(x.decimals ?? 6) }; })
+        .filter((x: Stablecoin) => isAddress(x.address) && Number.isFinite(x.price) && x.price > 0)
         .sort((a: Stablecoin, b: Stablecoin) => a.symbol.localeCompare(b.symbol));
 
       const nextFiats = Object.entries(fiatJson || {})
@@ -168,10 +174,10 @@ export const FXView: React.FC = () => {
 
       const nextRate = fromUsd / toUsd;
       setRate(nextRate);
-      setQuote(numericAmount * nextRate);
+      setIndicativeQuote(numericAmount * nextRate);
     } catch (e: any) {
       setRate(null);
-      setQuote(null);
+      setIndicativeQuote(null);
       setError(String(e?.message || 'Conversion rate is temporarily unavailable.'));
     } finally {
       setQuoting(false);
@@ -264,6 +270,19 @@ export const FXView: React.FC = () => {
     setError(null);
     try {
       if (connectedChainId !== ARC_CHAIN_ID) await switchToArc();
+      if (quote?.estimate?.approvalAddress && fromToken && publicClient && fromToken.address.toLowerCase() !== ARC_USDC_PREDEPLOY.toLowerCase()) {
+        const required = BigInt(quote.estimate.fromAmount || '0');
+        const allowance = await publicClient.readContract({ address: fromToken.address, abi: ERC20_APPROVE_ABI, functionName: 'allowance', args: [address, quote.estimate.approvalAddress] });
+        if (allowance < required) {
+          const approvalData = encodeFunctionData({ abi: ERC20_APPROVE_ABI, functionName: 'approve', args: [quote.estimate.approvalAddress, required] });
+          const approvalHash = await walletClient.sendTransaction({ account: address, to: fromToken.address, data: approvalData, value: 0n, chainId: ARC_CHAIN_ID });
+          setExecutionStage('confirming');
+          const approvalReceipt = await publicClient.waitForTransactionReceipt({ hash: approvalHash });
+          if (approvalReceipt.status !== 'success') throw new Error('Token approval failed.');
+          setExecutionStage('wallet');
+        }
+      }
+
       const tx = quote.transactionRequest;
       if (!tx?.to || !tx?.data) throw new Error('FX route is incomplete. Request a fresh quote.');
       const txRequest: any = { account: address as any, to: tx.to, data: tx.data, value: tx.value ? BigInt(tx.value) : 0n, chainId: ARC_CHAIN_ID };
@@ -382,7 +401,7 @@ export const FXView: React.FC = () => {
             <div className="flex items-center justify-between gap-3">
               <span className="text-xs text-zinc-500">You receive</span>
               <span className="text-2xl font-bold text-blue-400">
-                {quoting ? <Loader2 className="w-5 h-5 animate-spin" /> : quote === null ? '—' : formatValue(quote) + ' ' + to}
+                {quoting ? <Loader2 className="w-5 h-5 animate-spin" /> : stableExecution ? (quote?.estimate?.toAmount && toToken ? formatValue(Number(formatUnits(BigInt(quote.estimate.toAmount), toToken.decimals))) + ' ' + to : '—') : indicativeQuote === null ? '—' : formatValue(indicativeQuote) + ' ' + to}
               </span>
             </div>
           </div>
