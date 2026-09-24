@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Flame, Check, Trophy, CalendarDays, RefreshCw, ExternalLink } from 'lucide-react';
 import { useWallet } from '../../context/WalletContext';
-import { useWriteContract } from 'wagmi';
+import { usePublicClient, useWriteContract } from 'wagmi';
 import { GM_CONTRACT_ABI, GM_CONTRACT_ADDRESS, GM_FEE_WEI, isGMContractConfigured } from '../../config/gmContract';
 import { indexConfirmedGMDays, getGMLeaderboard, getGMStats, GMLeaderboardRow, GMStats } from '../../services/gm/gmService';
 import { isSupabaseConfigured } from '../../lib/supabase';
@@ -26,6 +26,7 @@ const markConfirmedToday = (current: GMStats | null): GMStats => {
 export const GMStreakView: React.FC = () => {
   const { address, isCorrectNetwork } = useWallet();
   const { writeContractAsync } = useWriteContract();
+  const publicClient = usePublicClient({ chainId: ARC_CHAIN_ID });
   const [stats, setStats] = useState<GMStats | null>(null);
   const [leaderboard, setLeaderboard] = useState<GMLeaderboardRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +53,47 @@ export const GMStreakView: React.FC = () => {
 
   const reconcileConfirmedToday = async (confirmedHash?: string) => {
     if (!address || !isGMContractConfigured) return false;
+
+    const todayDay = String(Math.floor(Date.now() / 86400000));
+
     try {
+      // The GM contract is the source of truth. Do not wait for the explorer
+      // indexer to prove a transaction that is already confirmed on Arc.
+      if (publicClient) {
+        const onchainDay = await publicClient.readContract({
+          address: GM_CONTRACT_ADDRESS as `0x${string}`,
+          abi: GM_CONTRACT_ABI,
+          functionName: 'lastCheckInDay',
+          args: [address as `0x${string}`],
+        });
+        const lastCheckInDay = String(onchainDay);
+        if (lastCheckInDay === todayDay) {
+          setOnchainConfirmedToday(true);
+          if (confirmedHash) {
+            setTxHash(confirmedHash);
+            window.localStorage.removeItem(PENDING_GM_TX_KEY);
+          }
+
+          try {
+            const repairedStats = await indexConfirmedGMDays(address, [lastCheckInDay]);
+            setStats(repairedStats);
+            setLeaderboard(await getGMLeaderboard(20));
+          } catch (indexError) {
+            // Keep the confirmed onchain state visible even if browser-side
+            // Supabase indexing is temporarily blocked or unavailable.
+            setStats((current) => markConfirmedToday(current));
+            void fetch(`/api/blockchain/arc/gm-debug?address=${encodeURIComponent(address)}`, {
+              headers: { accept: 'application/json' },
+              cache: 'no-store',
+            }).catch(() => undefined);
+            console.warn('GM index sync deferred:', indexError);
+          }
+
+          return true;
+        }
+      }
+
+      // Explorer reconciliation remains a backfill path, not the success gate.
       const response = await fetch(`/api/blockchain/arc/gm-debug?address=${encodeURIComponent(address)}`, {
         headers: { accept: 'application/json' },
         cache: 'no-store',
@@ -60,7 +101,6 @@ export const GMStreakView: React.FC = () => {
       if (!response.ok) throw new Error(`GM reconciliation HTTP ${response.status}`);
 
       const body = await response.json();
-      const todayDay = String(Math.floor(Date.now() / 86400000));
       const lastCheckInDay = String(body?.lastCheckInDay ?? '');
       if (lastCheckInDay !== todayDay) return false;
 
@@ -74,14 +114,12 @@ export const GMStreakView: React.FC = () => {
         window.localStorage.removeItem(PENDING_GM_TX_KEY);
       }
 
-      // gm-debug repairs the Supabase index server-side. Re-read the index
-      // here so the visible streak, days, and points are based on stored days.
       const repairedStats = await indexConfirmedGMDays(address, [lastCheckInDay]);
       setStats(repairedStats);
       setLeaderboard(await getGMLeaderboard(20));
       return true;
     } catch (err) {
-      console.warn('GM server reconciliation is still waiting:', err);
+      console.warn('GM reconciliation is still waiting:', err);
       return false;
     }
   };
@@ -144,14 +182,36 @@ export const GMStreakView: React.FC = () => {
       setTxHash(hash);
       window.localStorage.setItem(PENDING_GM_TX_KEY, hash);
 
-      let confirmed = false;
-      for (let attempt = 0; attempt < 12; attempt += 1) {
-        confirmed = await reconcileConfirmedToday(hash);
-        if (confirmed) break;
-        await new Promise((resolve) => setTimeout(resolve, 2500));
+      // Confirm the actual Arc transaction receipt first. Explorer indexing and
+      // Supabase bookkeeping must never turn a confirmed transaction into a UI failure.
+      if (!publicClient) throw new Error('Arc public client is unavailable.');
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (receipt.status !== 'success') {
+        throw new Error('GM transaction reverted on Arc.');
       }
 
-      if (!confirmed) throw new Error('GM transaction submitted but Arc has not exposed the confirmed daily state yet.');
+      setOnchainConfirmedToday(true);
+
+      let confirmed = await reconcileConfirmedToday(hash);
+      if (!confirmed) {
+        // The receipt is authoritative even if the contract-read/indexer path
+        // is temporarily delayed. Keep the confirmed state visible and continue
+        // backfilling in the background.
+        setStats((current) => markConfirmedToday(current));
+        confirmed = true;
+        void reconcileConfirmedToday(hash);
+      }
+      if (!confirmed) {
+        for (let attempt = 0; attempt < 4; attempt += 1) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          confirmed = await reconcileConfirmedToday(hash);
+          if (confirmed) break;
+        }
+      }
+
+      if (!confirmed) {
+        throw new Error('GM receipt confirmed, but daily contract state is temporarily delayed.'); 
+      }
       window.localStorage.removeItem(PENDING_GM_TX_KEY);
     } catch (err: any) {
       console.error('GM check-in failed:', err);
