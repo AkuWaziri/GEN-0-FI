@@ -50,7 +50,12 @@ export const WalletView: React.FC = () => {
         if (!cancelled) setTokenBalance(formatUnits(raw as bigint, 6));
       })
       .catch(() => {
-        if (!cancelled) setTokenBalance('0.00');
+        // USDC is also Arc's native gas asset. If the ERC-20 balance
+        // read is temporarily unavailable, keep the verified Arc balance
+        // instead of falsely showing zero.
+        if (!cancelled && token === 'USDC' && balanceUSDC && balanceUSDC !== 'Unavailable') {
+          setTokenBalance(balanceUSDC.replace(/,/g, ''));
+        }
       });
     if (token === 'USDC') {
       setFeeUsdc(tokenFee);
@@ -65,7 +70,7 @@ export const WalletView: React.FC = () => {
       })
       .catch(() => { if (!cancelled) setFeeUsdc(0); });
     return () => { cancelled = true; };
-  }, [address, publicClient, token, numericAmount, tokenFee]);
+  }, [address, publicClient, token, numericAmount, tokenFee, balanceUSDC]);
 
   const copyAddress = async () => {
     if (!address) return;
