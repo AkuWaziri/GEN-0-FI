@@ -2,9 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowDownUp, ChevronDown, Loader2, RefreshCw, Wallet } from 'lucide-react';
 import { createPublicClient, encodeFunctionData, fallback, formatUnits, http, parseUnits } from 'viem';
-import { switchChain } from '@wagmi/core';
 import { useAccount, useChainId, useWalletClient } from 'wagmi';
-import { wagmiConfig } from '../../config/wagmi';
 import { useWallet } from '../../context/WalletContext';
 import { recordConfirmedAction } from '../../services/points/pointsService';
 
@@ -387,7 +385,7 @@ export const SwapView: React.FC = () => {
     setExecutionHash(null);
     try {
       if (connectedChainId !== fromChainId) {
-        await switchChain(wagmiConfig, { chainId: fromChainId });
+        await switchWalletChain(fromChainId, fromChain);
       }
       if (!quoteIsExecutable(quote)) {
         throw new Error('LI.FI returned an incomplete route. Refresh the quote before submitting.');
@@ -442,39 +440,11 @@ export const SwapView: React.FC = () => {
         }
       }
 
-      // Arc mainnet uses native USDC for both settlement and network gas.
-      // Never call eth_getBalance on Arc for this path. The authoritative Arc balance
-      // endpoint reads the real 18-decimal native USDC balance from Arc RPC.
-      if (fromToken && isArcUsdc) {
-        let arcGasBalance = arcNativeBalance;
-        if (arcGasBalance === null) {
-          try {
-            const response = await fetchJson('/api/blockchain/arc/balance/' + address);
-            arcGasBalance = response?.rawBalance ?? null;
-            if (arcGasBalance !== null) setArcNativeBalance(arcGasBalance);
-          } catch (gasError) {
-            throw new Error(cleanSwapError(gasError, 'gas'));
-          }
-        }
-        if (arcGasBalance === null) {
-          throw new Error('Unable to verify your Arc USDC balance right now. Please try again.');
-        }
-        if (BigInt(arcGasBalance) <= 0n) {
-          throw new Error('Insufficient USDC balance to pay Arc network fees.');
-        }
-      } else if (fromToken && fromToken.address.toLowerCase() !== NATIVE) {
-        // Other EVM chains use their native gas asset for ERC-20 source transactions.
-        try {
-          const nativeBalance = await publicClient.getBalance({ address: address as `0x${string}` });
-          if (nativeBalance === 0n) {
-            throw new Error(`Insufficient native gas balance on ${fromChain?.name || 'the source chain'}.`);
-          }
-        } catch (gasError) {
-          if (gasError instanceof Error && /^Insufficient native gas/.test(gasError.message)) throw gasError;
-          throw new Error(cleanSwapError(gasError, 'gas'));
-        }
-      }
-
+      // LI.FI is the source of truth for route execution.
+      // Do not preflight gas with a separate eth_getBalance call. That can fail on
+      // RPCs that LI.FI itself can execute through and was causing false gas errors.
+      // Arc native USDC is also intentionally left to the LI.FI transaction request.
+      
       const approvalAddress = quote?.estimate?.approvalAddress;
       // Arc mainnet USDC is the native gas/settlement asset, not an ERC-20 allowance flow.
       // Never call allowance() or approve() against the Arc USDC predeploy.
@@ -509,14 +479,25 @@ export const SwapView: React.FC = () => {
         }
       }
 
-      const tx = quote.transactionRequest;
-      const hash = await walletClient.sendTransaction({
+      const tx = quote.transactionRequest as any;
+
+      // Execute the transaction exactly as returned by LI.FI. Preserve route-provided
+      // gas/fee fields when present so the wallet does not perform a different
+      // estimation path that can reject an otherwise executable LI.FI route.
+      const txRequest: any = {
         account: address as `0x${string}`,
         to: tx.to,
         data: tx.data,
         value: tx.value ? BigInt(tx.value) : 0n,
         chainId: fromChainId,
-      });
+      };
+      if (tx.gasLimit) txRequest.gas = BigInt(tx.gasLimit);
+      else if (tx.gas) txRequest.gas = BigInt(tx.gas);
+      if (tx.maxFeePerGas) txRequest.maxFeePerGas = BigInt(tx.maxFeePerGas);
+      if (tx.maxPriorityFeePerGas) txRequest.maxPriorityFeePerGas = BigInt(tx.maxPriorityFeePerGas);
+      if (tx.gasPrice) txRequest.gasPrice = BigInt(tx.gasPrice);
+
+      const hash = await walletClient.sendTransaction(txRequest);
       setExecutionHash(hash);
       setExecutionStage('confirming');
 
