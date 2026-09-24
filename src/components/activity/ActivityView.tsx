@@ -187,8 +187,17 @@ export const ActivityView: React.FC = () => {
                       <span className="text-[11px] text-zinc-500 font-mono">
                         {formatTimeAgo(tx.timestamp)}
                       </span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded border font-mono ${
+                        tx.status === 'success'
+                          ? 'bg-emerald-500/5 border-emerald-500/15 text-emerald-300'
+                          : tx.status === 'reverted'
+                            ? 'bg-red-500/5 border-red-500/15 text-red-300'
+                            : 'bg-amber-500/5 border-amber-500/15 text-amber-300'
+                      }`}>
+                        {tx.status === 'reverted' ? 'Reverted' : tx.status === 'pending' ? 'Pending' : 'Confirmed'}
+                      </span>
                       <span className="text-[10px] px-1.5 py-0.2 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 font-mono">
-                        Block #{tx.blockNumber}
+                        {tx.blockNumber > 0 ? `Block #${tx.blockNumber}` : 'Block unavailable'}
                       </span>
                     </div>
 
@@ -242,9 +251,9 @@ export const ActivityView: React.FC = () => {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 py-1 px-2.5 rounded-lg bg-[#131519] hover:bg-zinc-800 border border-zinc-800 text-xs font-mono text-zinc-400 hover:text-white transition-colors"
-                      title="View on ArcScan Explorer"
+                      title="View on Arc Explorer"
                     >
-                      <span>ArcScan</span>
+                      <span>Arc Explorer</span>
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   </div>
