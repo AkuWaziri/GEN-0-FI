@@ -30,6 +30,10 @@ export default async function handler(req: any, res: any) {
       historyStatus: state.historyStatus,
       historyStatusNote: state.historyStatusNote,
       latestActivityTime: state.recentTransactions.length > 0 ? state.recentTransactions[0].timestamp : undefined,
+      firstActivityTime: state.firstActivityTime,
+      failedTransactionCount: state.failedTransactionCount,
+      topProtocolUsed: state.topProtocolUsed,
+      tokenApprovalsCount: state.tokenApprovalsCount,
     };
 
     return res.status(200).json({
