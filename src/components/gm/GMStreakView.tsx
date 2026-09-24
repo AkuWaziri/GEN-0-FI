@@ -133,7 +133,7 @@ export const GMStreakView: React.FC = () => {
     setTxHash(null);
 
     try {
-      const hash = await writeContractAsync(({
+      const hash = await writeContractAsync({
         address: GM_CONTRACT_ADDRESS as `0x${string}`,
         abi: GM_CONTRACT_ABI,
         functionName: 'checkIn',
