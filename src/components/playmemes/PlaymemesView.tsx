@@ -124,9 +124,9 @@ export const PlaymemesView: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2 text-[10px] font-mono text-zinc-600">
-                <span>${{completedFields}/4 profile fields</span>
+                <span>{completedFields}/4 profile fields</span>
                 <span className="h-1.5 w-1.5 rounded-full bg-zinc-700" />
-                <span>Arc · ${{PLAYMEMES_ARC.chainId}</span>
+                <span>Arc · {PLAYMEMES_ARC.chainId}</span>
               </div>
             </div>
           </div>
@@ -189,7 +189,7 @@ export const PlaymemesView: React.FC = () => {
                 </div>
 
                 <div className="mt-3 grid md:grid-cols-3 gap-3">
-                  <Field icon={} value={website} onChange={setWebsite} placeholder="Website" />
+                  <Field value={website} onChange={setWebsite} placeholder="Website" />
                   <Field icon={<span className="text-[11px] font-bold">X</span>} value={xUrl} onChange={setXUrl} placeholder="X profile" />
                   <Field icon={<span className="text-[11px] font-bold">TG</span>} value={telegramUrl} onChange={setTelegramUrl} placeholder="Telegram" />
                 </div>
@@ -222,13 +222,13 @@ export const PlaymemesView: React.FC = () => {
 
                   <div className="mt-3 flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="text-base font-bold text-white truncate">${{displayName}</div>
-                      <div className="mt-0.5 text-xs font-mono text-blue-300">$${{displaySymbol}</div>
+                      <div className="text-base font-bold text-white truncate">{displayName}</div>
+                      <div className="mt-0.5 text-xs font-mono text-blue-300">${displaySymbol}</div>
                     </div>
                     <span className="shrink-0 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[9px] uppercase tracking-widest text-emerald-300">Arc</span>
                   </div>
 
-                  <p className="mt-3 text-[11px] leading-5 text-zinc-500 line-clamp-4">${{displayDescription}</p>
+                  <p className="mt-3 text-[11px] leading-5 text-zinc-500 line-clamp-4">{displayDescription}</p>
 
                   <div className="mt-4 grid grid-cols-2 gap-2">
                     <PreviewMetric label="Supply" value="1B" />
@@ -324,8 +324,8 @@ export const PlaymemesView: React.FC = () => {
               onClick={copyReferral}
               className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-xl border border-blue-500/15 bg-blue-500/[0.04] px-3.5 py-3 text-[11px] font-mono text-zinc-400 hover:text-white hover:border-blue-500/30 transition-colors"
             >
-              <span className="truncate">ref: ${{PLAYMEMES_ARC.referrer}</span>
-              {copied ?  : }
+              <span className="truncate">ref: {PLAYMEMES_ARC.referrer}</span>
+              {copied ? <span className="text-emerald-300">copied</span> : <span className="text-blue-300">copy</span>}
             </button>
           </div>
         </section>
@@ -437,7 +437,7 @@ function Field({
         {icon && <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-600">{icon}</span>}
         {suffix && <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[9px] uppercase tracking-widest text-zinc-600">{suffix}</span>}
       </div>
-      {maxLength && <div className="mt-1 text-right text-[9px] font-mono text-zinc-700">${{value.length}/${{maxLength}</div>}
+      {maxLength && <div className="mt-1 text-right text-[9px] font-mono text-zinc-700">{value.length}/{maxLength}</div>}
     </div>
   );
 }
