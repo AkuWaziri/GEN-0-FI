@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useWallet } from '../../context/WalletContext';
 import { getArcScanTxUrl, formatShortHash } from '../../config/arc';
 import { ChatMessage } from '../../types/blockchain';
+import { getGMLeaderboard, getGMStats } from '../../services/gm/gmService';
+import { getPointLeaderboard } from '../../services/points/pointsService';
 import {
   Sparkles,
   Send,
@@ -13,6 +15,27 @@ import {
 } from 'lucide-react';
 
 interface AskGen0ViewProps { embedded?: boolean; }
+
+type CopilotContext = {
+  gm: {
+    currentStreak: number | null;
+    longestStreak: number | null;
+    totalGmDays: number | null;
+    points: number | null;
+    checkedInToday: boolean | null;
+    rank: number | null;
+    totalRankedWallets: number | null;
+  };
+  points: {
+    swapCount: number | null;
+    bridgeCount: number | null;
+    swapPoints: number | null;
+    bridgePoints: number | null;
+    totalPoints: number | null;
+    rank: number | null;
+    totalRankedWallets: number | null;
+  };
+};
 
 export const AskGen0View: React.FC<AskGen0ViewProps> = ({ embedded = false }) => {
   const { address, shortAddress, isConnected, walletSummary, transactions, balanceUSDC } = useWallet();
@@ -99,7 +122,7 @@ export const AskGen0View: React.FC<AskGen0ViewProps> = ({ embedded = false }) =>
     {
       id: 'welcome',
       role: 'assistant',
-      content: "I’m GEN-0 AI. I can explain your wallet activity, Arc transactions, fees, holdings, GEN-0FI features, and Arc protocol concepts using verified context.",
+      content: "I’m COPILOT by GEN-0. I connect your wallet context with GEN-0FI activity, rewards, swaps, bridges, and product features so you can ask what is happening and why.",
       timestamp: Date.now(),
     },
   ]);
@@ -107,15 +130,65 @@ export const AskGen0View: React.FC<AskGen0ViewProps> = ({ embedded = false }) =>
   const [inputPrompt, setInputPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeModel, setActiveModel] = useState<string>('gemini-3.1-pro-preview');
+  const [copilotContext, setCopilotContext] = useState<CopilotContext>({
+    gm: { currentStreak: null, longestStreak: null, totalGmDays: null, points: null, checkedInToday: null, rank: null, totalRankedWallets: null },
+    points: { swapCount: null, bridgeCount: null, swapPoints: null, bridgePoints: null, totalPoints: null, rank: null, totalRankedWallets: null },
+  });
+  const [loadingCopilotContext, setLoadingCopilotContext] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const quickQuestions = [
-    'What happened today?',
-    'How much did I receive?',
-    'Where did my money go?',
-    'Show my biggest transactions',
-    'How much did I spend on fees?',
+    'What happened with my wallet recently?',
+    'What is my current balance and money flow?',
+    'Explain my latest swap or bridge activity',
+    'What is my GM streak and leaderboard rank?',
+    'What are my swap, bridge, and total points?',
+    'What can I use GEN-0FI for next?',
   ];
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadCopilotContext = async () => {
+      if (!address) return;
+      setLoadingCopilotContext(true);
+      try {
+        const [gmStats, gmRows, pointRows] = await Promise.all([
+          getGMStats(address).catch(() => null),
+          getGMLeaderboard(1000).catch(() => []),
+          getPointLeaderboard(1000).catch(() => []),
+        ]);
+        if (cancelled) return;
+        const normalized = address.toLowerCase();
+        const gmRankIndex = gmRows.findIndex((row) => row.walletAddress.toLowerCase() === normalized);
+        const pointRankIndex = pointRows.findIndex((row) => row.walletAddress.toLowerCase() === normalized);
+        const pointRow = pointRows.find((row) => row.walletAddress.toLowerCase() === normalized);
+        setCopilotContext({
+          gm: {
+            currentStreak: gmStats?.currentStreak ?? null,
+            longestStreak: gmStats?.longestStreak ?? null,
+            totalGmDays: gmStats?.totalGmDays ?? null,
+            points: gmStats?.points ?? null,
+            checkedInToday: gmStats?.checkedInToday ?? null,
+            rank: gmRankIndex >= 0 ? gmRankIndex + 1 : null,
+            totalRankedWallets: gmRows.length || null,
+          },
+          points: {
+            swapCount: pointRow?.swapCount ?? null,
+            bridgeCount: pointRow?.bridgeCount ?? null,
+            swapPoints: pointRow?.swapPoints ?? null,
+            bridgePoints: pointRow?.bridgePoints ?? null,
+            totalPoints: pointRow?.totalPoints ?? null,
+            rank: pointRankIndex >= 0 ? pointRankIndex + 1 : null,
+            totalRankedWallets: pointRows.length || null,
+          },
+        });
+      } finally {
+        if (!cancelled) setLoadingCopilotContext(false);
+      }
+    };
+    loadCopilotContext();
+    return () => { cancelled = true; };
+  }, [address]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -174,6 +247,7 @@ export const AskGen0View: React.FC<AskGen0ViewProps> = ({ embedded = false }) =>
             historyStatusNote: walletSummary?.historyStatusNote || '',
           },
           walletSummary,
+          copilotContext,
         }),
       });
 
@@ -184,7 +258,7 @@ export const AskGen0View: React.FC<AskGen0ViewProps> = ({ embedded = false }) =>
       }
 
       const data = await response.json();
-      const cleanAnswer = (data.answer || 'GEN-0 AI is temporarily unavailable. Your wallet data is still available in Financial Overview.').replace(/\*/g, '');
+      const cleanAnswer = (data.answer || 'COPILOT is temporarily unavailable. Your wallet data is still available in Financial Overview.').replace(/\*/g, '');
       if (data.model) {
         setActiveModel(data.model);
       }
@@ -219,7 +293,7 @@ export const AskGen0View: React.FC<AskGen0ViewProps> = ({ embedded = false }) =>
       {
         id: `welcome-${Date.now()}`,
         role: 'assistant',
-        content: `Chat history reset. How can I assist you with your Arc wallet or protocol questions?`,
+        content: `Chat history reset. Ask me about your wallet, swaps, bridges, GM streak, leaderboard rank, or GEN-0FI features.`,
         timestamp: Date.now(),
       },
     ]);
@@ -372,7 +446,7 @@ export const AskGen0View: React.FC<AskGen0ViewProps> = ({ embedded = false }) =>
           type="text"
           value={inputPrompt}
           onChange={(e) => setInputPrompt(e.target.value)}
-          placeholder="Ask GEN-0 AI about your wallet, Arc, transactions, fees, or GEN-0FI..."
+          placeholder="COPILOT AI about your wallet, Arc, transactions, fees, or GEN-0FI..."
           disabled={isGenerating}
           className="w-full min-w-0 pl-3.5 pr-11 py-3 rounded-xl bg-[#0d0f12] border border-zinc-800 focus:border-blue-500/50 glow-blue-focus focus:outline-none text-xs sm:text-sm text-white placeholder:text-zinc-500 shadow-sm transition-all"
         />
