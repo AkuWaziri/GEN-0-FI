@@ -42,7 +42,7 @@ function getTransactionExplorerUrl(chainId: number, chain?: LiFiChain, hash?: st
   if (!hash) return null;
   if (chainId === 5042) return 'https://arcscan.app/tx/' + hash;
   const explorer = chain?.metamask?.blockExplorerUrls?.find(Boolean);
-  return explorer ? explorer.replace(/\\/$/, '') + '/tx/' + hash : null;
+  return explorer ? explorer.replace(/\/$/, '') + '/tx/' + hash : null;
 }
 
 function quoteIsExecutable(quote: any) {
