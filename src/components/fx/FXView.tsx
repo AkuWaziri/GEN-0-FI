@@ -1,11 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowDownUp,
-  Clock3,
-  Coins,
-  ExternalLink,
-  Globe2,
-  Info,
   Loader2,
   RefreshCw,
   Search,
@@ -33,13 +28,7 @@ type RateResult = {
 
 const FX_DATA_URL = '/api/fx/rates';
 
-const POPULAR_PAIRS = [
-  { from: 'USDC', fromKind: 'stable' as Kind, to: 'USD', toKind: 'fiat' as Kind },
-  { from: 'EURC', fromKind: 'stable' as Kind, to: 'USD', toKind: 'fiat' as Kind },
-  { from: 'USD', fromKind: 'fiat' as Kind, to: 'NGN', toKind: 'fiat' as Kind },
-  { from: 'EUR', fromKind: 'fiat' as Kind, to: 'NGN', toKind: 'fiat' as Kind },
-  { from: 'GBP', fromKind: 'fiat' as Kind, to: 'USD', toKind: 'fiat' as Kind },
-];
+
 
 const formatNumber = (value: number, maxFraction = 6) => {
   if (!Number.isFinite(value)) return '—';
@@ -55,9 +44,6 @@ const formatRate = (value: number) => {
   if (Math.abs(value) >= 1) return formatNumber(value, 6);
   return formatNumber(value, 8);
 };
-
-const stableLabel = (symbol: string, stables: Stablecoin[]) =>
-  stables.find((item) => item.symbol === symbol)?.name || 'Stablecoin';
 
 export const FXView: React.FC = () => {
   const [stables, setStables] = useState<Stablecoin[]>([]);
@@ -246,29 +232,7 @@ export const FXView: React.FC = () => {
     setToKind(previousFromKind);
   };
 
-  const changeKind = (side: 'from' | 'to', kind: Kind) => {
-    const stableDefault = stables.some((item) => item.symbol === 'USDC') ? 'USDC' : stables[0]?.symbol || '';
-    const fiatDefault = fiats.some((item) => item.code === 'USD') ? 'USD' : 'USD';
-    const nextValue = kind === 'stable' ? stableDefault : fiatDefault;
 
-    if (side === 'from') {
-      setFromKind(kind);
-      setFrom(nextValue);
-      setFromSearch('');
-    } else {
-      setToKind(kind);
-      setTo(nextValue);
-      setToSearch('');
-    }
-  };
-
-  const selectPopularPair = (pair: typeof POPULAR_PAIRS[number]) => {
-    setFrom(pair.from);
-    setFromKind(pair.fromKind);
-    setTo(pair.to);
-    setToKind(pair.toKind);
-    setError(null);
-  };
 
   return (
     <div className="w-full min-h-[calc(100vh-3.5rem)] p-5 sm:p-8 lg:p-10">
@@ -491,34 +455,3 @@ function AssetPicker(props: {
   );
 }
 
-function RouterStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-950/55 px-3.5 py-3">
-      <div className="text-[9px] uppercase tracking-widest text-zinc-600">{label}</div>
-      <div className="mt-1 text-[11px] font-semibold text-white truncate">{value}</div>
-    </div>
-  );
-}
-
-function RouteStep({ number, title, detail, accent = false }: { number: string; title: string; detail: string; accent?: boolean }) {
-  return (
-    <div className="flex items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-950/45 p-3.5">
-      <div className={'h-8 w-8 shrink-0 rounded-lg border flex items-center justify-center text-[9px] font-mono ' + (accent ? 'border-fuchsia-500/25 bg-fuchsia-500/10 text-fuchsia-300' : 'border-blue-500/25 bg-blue-500/10 text-blue-300')}>
-        {number}
-      </div>
-      <div className="min-w-0">
-        <div className="text-xs font-semibold text-white">{title}</div>
-        <div className="mt-1 text-[10px] leading-4 text-zinc-600">{detail}</div>
-      </div>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-3.5">
-      <div className="text-[10px] uppercase tracking-widest text-zinc-600">{label}</div>
-      <div className="mt-1 text-sm font-semibold text-white">{value}</div>
-    </div>
-  );
-}
