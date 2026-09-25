@@ -31,10 +31,7 @@ type RateResult = {
   source: 'Frankfurter' | 'CBN';
 };
 
-const STABLES_URL = 'https://api.llama.fi/stablecoins?includePrices=true';
-const FIATS_URL = 'https://api.frankfurter.dev/v2/currencies';
-const FRANKFURTER_URL = 'https://api.frankfurter.dev/v2';
-const CBN_RATES_URL = 'https://api.frankfurter.dev/v2/providers/cbn/rates';
+const FX_DATA_URL = '/api/fx/rates';
 
 const POPULAR_PAIRS = [
   { from: 'USDC', fromKind: 'stable' as Kind, to: 'USD', toKind: 'fiat' as Kind },
@@ -97,68 +94,32 @@ export const FXView: React.FC = () => {
     setError(null);
 
     try {
-      const [stableResponse, fiatResponse, cbnResponse] = await Promise.all([
-        fetch(STABLES_URL, { cache: 'no-store' }),
-        fetch(FIATS_URL, { cache: 'no-store' }),
-        fetch(CBN_RATES_URL + '?base=USD&quotes=NGN', { cache: 'no-store' }),
-      ]);
+      const response = await fetch(FX_DATA_URL, { cache: 'no-store' });
+      const payload = await response.json();
 
-      if (!stableResponse.ok || !fiatResponse.ok) {
-        throw new Error('FX reference data is temporarily unavailable.');
+      if (!response.ok || !payload?.ok) {
+        throw new Error(payload?.error || 'FX reference data is temporarily unavailable.');
       }
 
-      const [stableJson, fiatJson, cbnJson] = await Promise.all([
-        stableResponse.json(),
-        fiatResponse.json(),
-        cbnResponse.ok ? cbnResponse.json() : Promise.resolve([]),
-      ]);
-
-      const nextStables = (Array.isArray(stableJson?.peggedAssets) ? stableJson.peggedAssets : [])
-        .map((item: any) => ({
-          id: String(item.id),
-          name: String(item.name || item.symbol || 'Stablecoin'),
-          symbol: String(item.symbol || '').toUpperCase(),
-          priceUSD: Number(item.price),
-        }))
-        .filter((item: Stablecoin) => item.symbol && Number.isFinite(item.priceUSD) && item.priceUSD > 0)
-        .sort((a: Stablecoin, b: Stablecoin) => a.symbol.localeCompare(b.symbol));
-
-      const nextFiats = Object.entries(fiatJson || {})
-        .map(([code, name]) => ({ code: code.toUpperCase(), name: String(name) }))
-        .sort((a, b) => a.code.localeCompare(b.code));
-
-      if (!nextFiats.some((item: Fiat) => item.code === 'USD')) {
-        nextFiats.unshift({ code: 'USD', name: 'United States Dollar' });
-      }
-
-      if (!nextFiats.some((item: Fiat) => item.code === 'NGN')) {
-        nextFiats.push({ code: 'NGN', name: 'Nigerian Naira' });
-      }
+      const nextStables = Array.isArray(payload.stables) ? payload.stables : [];
+      const nextFiats = Array.isArray(payload.currencies) ? payload.currencies : [];
 
       if (!nextStables.length) throw new Error('No stablecoin market prices were returned.');
+      if (!nextFiats.length) throw new Error('No fiat currencies were returned.');
 
       setStables(nextStables);
       setFiats(nextFiats);
-      setStableUpdatedAt(Date.now());
+      setStableUpdatedAt(payload.stableUpdatedAt ? new Date(payload.stableUpdatedAt).getTime() : Date.now());
+      setCbnNgnRate(Number.isFinite(Number(payload.cbnNgnRate)) ? Number(payload.cbnNgnRate) : null);
+      setCbnDate(payload.cbnDate ? String(payload.cbnDate) : null);
+      setFiatDate(payload.fiatDate ? String(payload.fiatDate) : null);
 
-      const latestCbn = Array.isArray(cbnJson)
-        ? cbnJson.find((row: any) => String(row?.quote || '').toUpperCase() === 'NGN')
-        : null;
-
-      if (latestCbn && Number.isFinite(Number(latestCbn.rate))) {
-        setCbnNgnRate(Number(latestCbn.rate));
-        setCbnDate(latestCbn.date ? String(latestCbn.date) : null);
-      } else {
-        setCbnNgnRate(null);
-        setCbnDate(null);
+      if (!nextStables.some((item: Stablecoin) => item.symbol === from) && fromKind === 'stable') {
+        setFrom(nextStables.some((item: Stablecoin) => item.symbol === 'USDC') ? 'USDC' : nextStables[0].symbol);
       }
 
-      if (!nextStables.some((item) => item.symbol === from) && fromKind === 'stable') {
-        setFrom(nextStables.some((item) => item.symbol === 'USDC') ? 'USDC' : nextStables[0].symbol);
-      }
-
-      if (!nextStables.some((item) => item.symbol === to) && toKind === 'stable') {
-        setTo(nextStables.some((item) => item.symbol === 'EURC') ? 'EURC' : nextStables[0].symbol);
+      if (!nextStables.some((item: Stablecoin) => item.symbol === to) && toKind === 'stable') {
+        setTo(nextStables.some((item: Stablecoin) => item.symbol === 'EURC') ? 'EURC' : nextStables[0].symbol);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load FX reference data.');
@@ -172,33 +133,32 @@ export const FXView: React.FC = () => {
   }, []);
 
   const getFiatToUsd = async (code: string): Promise<RateResult> => {
-    if (code === 'USD') return { rate: 1, date: null, source: 'Frankfurter' };
+    const normalized = code.toUpperCase();
 
-    if (code === 'NGN' && cbnNgnRate) {
-      return {
-        rate: 1 / cbnNgnRate,
-        date: cbnDate,
-        source: 'CBN',
-      };
+    if (normalized === 'USD') {
+      return { rate: 1, date: fiatDate, source: 'Frankfurter' };
     }
 
-    const response = await fetch(
-      `${FRANKFURTER_URL}/rate/${encodeURIComponent(code.toLowerCase())}/usd`,
-      { cache: 'no-store' },
-    );
+    const response = await fetch(FX_DATA_URL, { cache: 'no-store' });
+    const payload = await response.json();
 
-    if (!response.ok) throw new Error(`Reference rate for ${code} is unavailable.`);
-
-    const data = await response.json();
-
-    if (!Number.isFinite(Number(data?.rate)) || Number(data.rate) <= 0) {
-      throw new Error(`Reference rate for ${code} is unavailable.`);
+    if (!response.ok || !payload?.ok) {
+      throw new Error(payload?.error || `Reference rate for ${normalized} is unavailable.`);
     }
+
+    const usdPerCurrency = Number(payload?.fiatRatesUsd?.[normalized]);
+    if (!Number.isFinite(usdPerCurrency) || usdPerCurrency <= 0) {
+      throw new Error(`Reference rate for ${normalized} is unavailable.`);
+    }
+
+    const cbn = normalized === 'NGN' && Number.isFinite(Number(payload?.cbnNgnRate))
+      ? Number(payload.cbnNgnRate)
+      : null;
 
     return {
-      rate: Number(data.rate),
-      date: data?.date ? String(data.date) : null,
-      source: 'Frankfurter',
+      rate: 1 / (cbn || usdPerCurrency),
+      date: normalized === 'NGN' && payload?.cbnDate ? String(payload.cbnDate) : (payload?.fiatDate ? String(payload.fiatDate) : null),
+      source: cbn ? 'CBN' : 'Frankfurter',
     };
   };
 
@@ -317,7 +277,7 @@ export const FXView: React.FC = () => {
           <div>
             <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] font-mono"><span className="text-fuchsia-300">FX router</span><span className="text-zinc-700">•</span><span className="text-blue-300">reference mode</span></div>
             <h1 className="mt-1 text-2xl sm:text-3xl font-bold text-white tracking-tight">FX</h1>
-            <p className="mt-2 text-sm leading-6 text-zinc-400">Route an indicative conversion across fiat reference rates and stablecoin market prices.</p>
+            <p className="mt-2 text-sm leading-6 text-zinc-400">Convert live reference values between fiat currencies and stablecoins. No swap or fund movement.</p>
           </div>
           <button
             type="button"
@@ -331,7 +291,7 @@ export const FXView: React.FC = () => {
         </header>
 
         <section className="rounded-3xl border border-blue-500/20 bg-[radial-gradient(circle_at_15%_0%,rgba(232,121,249,.10),transparent_35%),radial-gradient(circle_at_85%_0%,rgba(59,130,246,.14),transparent_38%),#0b0e12] p-3 sm:p-5 shadow-[0_18px_70px_rgba(0,0,0,.35)]">
-          <div className="flex flex-wrap items-center justify-between gap-3 px-2 pb-4"><div><div className="text-[10px] uppercase tracking-[0.22em] text-blue-300 font-mono">Indicative route</div><div className="mt-1 text-sm font-semibold text-white">Find the current reference path</div></div><div className="text-[10px] font-mono text-zinc-600">display-only · no execution</div></div><div className="flex flex-wrap gap-2 mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-2 pb-4"><div><div className="text-[10px] uppercase tracking-[0.22em] text-blue-300 font-mono">Indicative route</div><div className="mt-1 text-sm font-semibold text-white">Live conversion rates</div></div><div className="text-[10px] font-mono text-zinc-600">rates only · no execution</div></div><div className="flex flex-wrap gap-2 mb-4">
             {POPULAR_PAIRS.map((pair) => (
               <button
                 key={`${pair.from}-${pair.to}`}
@@ -492,7 +452,7 @@ export const FXView: React.FC = () => {
               <Globe2 className="w-5 h-5 text-blue-400" />
               <div>
                 <h2 className="text-sm font-semibold text-white">Reference sources</h2>
-                <p className="text-[11px] text-zinc-500 mt-0.5">Published fiat data used to build indicative routes.</p>
+                <p className="text-[11px] text-zinc-500 mt-0.5">Live reference data used for display-only conversion.</p>
               </div>
             </div>
 
