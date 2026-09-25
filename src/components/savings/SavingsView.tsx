@@ -5,8 +5,8 @@ type Asset = 'all' | 'USDC' | 'EURC';
 type Opportunity = { id: string; protocol: string; title: string; asset: 'USDC' | 'EURC' | 'BOTH'; type: string; description: string; destination: string; tone: 'blue' | 'green' | 'violet' | 'amber'; badge?: string; };
 
 const OPPORTUNITIES: Opportunity[] = [
-  { id: 'aave-usdc', protocol: 'Aave V4', title: 'Supply USDC on Arc', asset: 'USDC', type: 'Lending market', description: 'Supply idle USDC into the live Aave V4 Arc market and earn the variable supply rate.', destination: 'https://pro.aave.com/', tone: 'blue', badge: 'Live' },
-  { id: 'aave-eurc', protocol: 'Aave V4', title: 'Supply EURC on Arc', asset: 'EURC', type: 'Lending market', description: 'Supply idle EURC into the live Aave V4 Arc market and earn the variable supply rate.', destination: 'https://pro.aave.com/', tone: 'green', badge: 'Live' },
+  { id: 'aave-usdc', protocol: 'Aave V4', title: 'Supply USDC on Arc', asset: 'USDC', type: 'Lending market', description: 'Supply idle USDC into the live Aave V4 Arc lending market and earn the variable supply rate.', destination: 'https://pro.aave.com/explore/deposit', tone: 'blue', badge: 'Live' },
+  { id: 'aave-eurc', protocol: 'Aave V4', title: 'Supply EURC on Arc', asset: 'EURC', type: 'Lending market', description: 'Supply idle EURC into the live Aave V4 Arc lending market and earn the variable supply rate.', destination: 'https://pro.aave.com/', tone: 'green', badge: 'Live' },
   { id: 'morpho-usdc', protocol: 'Morpho', title: 'Steakhouse Prime USDC', asset: 'USDC', type: 'Curated vault', description: 'A Morpho Arc vault using USDC across lending markets selected by Steakhouse Financial.', destination: 'https://app.morpho.org/arc/vault/0xbeef0016cb2Fd5C352ea7CA08a9f54739DFa7298/steakhouse-prime-usdc', tone: 'violet', badge: 'Arc' },
   { id: 'morpho-usdc-rwa', protocol: 'Morpho', title: 'Bitwise Premium RWA USDC', asset: 'USDC', type: 'RWA lending vault', description: 'A live Arc USDC vault that allocates against overcollateralized real-world asset markets.', destination: 'https://app.morpho.org/arc/vault/0x7610094B846657dCF166D59e42973db52c7015F9/bitwise-premium-rwa-usdc', tone: 'blue', badge: 'RWA' },
   { id: 'morpho-eurc', protocol: 'Morpho', title: 'Gauntlet EURC Prime', asset: 'EURC', type: 'Curated vault', description: 'A Morpho Arc vault for EURC, curated by Gauntlet with a risk-managed lending strategy.', destination: 'https://app.morpho.org/arc/vault/0x05863F54B05e96092069eF30c9Ca6060336e50B9/gauntlet-eurc-prime', tone: 'green', badge: 'Arc' },
@@ -50,9 +50,9 @@ export const SavingsView: React.FC = () => {
         <section className="rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-500/[0.08] via-[#0d1015] to-transparent p-5 sm:p-7">
           <div className="grid md:grid-cols-[1.5fr_1fr] gap-5 items-stretch">
             <div>
-              <div className="flex items-center gap-2"><WalletCards className="w-5 h-5 text-blue-300" /><span className="text-[10px] uppercase tracking-[0.22em] text-blue-300/80">Built for Arc</span></div>
-              <h2 className="mt-3 text-xl sm:text-2xl font-semibold text-white">Idle capital can stay productive.</h2>
-              <p className="mt-2 max-w-xl text-sm leading-6 text-zinc-400">GEN-0FI surfaces external Arc opportunities for USDC and EURC. Clicking an opportunity takes you straight to the protocol app where you connect, review the current rate, and act.</p>
+              <div className="flex items-center gap-2"><WalletCards className="w-5 h-5 text-blue-300" /><span className="text-[10px] uppercase tracking-[0.22em] text-blue-300/80">Aave on Arc</span></div>
+              <h2 className="mt-3 text-xl sm:text-2xl font-semibold text-white">Lend idle capital on Arc.</h2>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-zinc-400">GEN-0FI surfaces live Arc lending opportunities for USDC and EURC. Open Aave to connect your wallet, review the current supply and borrow rates, then decide there.</p>
               <div className="mt-5 grid sm:grid-cols-3 gap-2.5">
                 <Signal icon={CircleDollarSign} label="USDC" value="Native gas asset" />
                 <Signal icon={Euro} label="EURC" value="Arc stablecoin" />
@@ -63,8 +63,8 @@ export const SavingsView: React.FC = () => {
               <div className="text-[10px] uppercase tracking-widest text-zinc-600">How this works</div>
               <div className="mt-4 space-y-3">
                 <Step number="01" title="Choose an asset" text="USDC or EURC." />
-                <Step number="02" title="Open the live Aave live pools" text="Review the live vault or lending market on Aave." />
-                <Step number="03" title="Decide there" text="GEN-0FI never moves your funds for this feature. Only routes it." />
+                <Step number="02" title="Open the live Aave live pools" text="Review the live Aave lending market, supply rate, and borrow options." />
+                <Step number="03" title="Decide there" text="GEN-0FI never moves your funds for this feature. Only routes you to Aave." />
               </div>
             </div>
           </div>
@@ -72,7 +72,7 @@ export const SavingsView: React.FC = () => {
 
         <section>
           <div className="flex items-end justify-between gap-4 mb-4">
-            <div><h2 className="text-sm font-semibold text-white">Available on Arc</h2><p className="text-[11px] text-zinc-500 mt-1">Live protocol destinations verified against current Arc mainnet availability.</p></div>
+            <div><h2 className="text-sm font-semibold text-white">Available on Arc</h2><p className="text-[11px] text-zinc-500 mt-1">Live lending and borrowing destinations available through Aave on Arc.</p></div>
             <span className="text-[10px] text-zinc-600 font-mono">{visible.length} opportunities</span>
           </div>
           <div className="grid lg:grid-cols-2 gap-4">
@@ -95,7 +95,7 @@ export const SavingsView: React.FC = () => {
                   </div>
                   <div className="mt-5 flex items-center justify-between gap-3">
                     <span className="inline-flex items-center gap-1.5 text-[10px] text-zinc-600"><Info className="w-3.5 h-3.5" />Rates are variable</span>
-                    <a href={item.destination} target="_blank" rel="noopener noreferrer" className={'inline-flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition-colors ' + tone.button}>Open app <ArrowUpRight className="w-3.5 h-3.5" /></a>
+                    <a href={item.destination} target="_blank" rel="noopener noreferrer" className={'inline-flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition-colors ' + tone.button}>Open Aave <ArrowUpRight className="w-3.5 h-3.5" /></a>
                   </div>
                 </article>
               );
