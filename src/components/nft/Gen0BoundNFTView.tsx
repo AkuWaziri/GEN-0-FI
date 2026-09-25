@@ -11,6 +11,7 @@ const NFT_ABI = [
 ] as const;
 
 const USDC_ABI = [
+  { type: 'function', name: 'balanceOf', stateMutability: 'view', inputs: [{ name: 'account', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] },
   { type: 'function', name: 'allowance', stateMutability: 'view', inputs: [{ name: 'owner', type: 'address' }, { name: 'spender', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] },
   { type: 'function', name: 'approve', stateMutability: 'nonpayable', inputs: [{ name: 'spender', type: 'address' }, { name: 'value', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }] },
 ] as const;
@@ -40,9 +41,32 @@ export const Gen0BoundNFTView: React.FC = () => {
     if (!walletClient || !publicClient || !address) { setError('Connect your wallet first.'); return; }
     if (chainId !== GEN0_BOUND_CHAIN_ID) { setError('Switch your wallet to Arc Mainnet.'); return; }
     if (owned) { setShowOwned(true); return; }
-    setMinting(true); setError(''); setStatus('Checking your USDC allowance…'); setTxHash('');
+    setMinting(true); setError(''); setStatus('Checking Arc Mainnet and your USDC balance…'); setTxHash('');
     try {
-      const allowance = await publicClient.readContract({ address: GEN0_BOUND_USDC_ADDRESS, abi: USDC_ABI, functionName: 'allowance', args: [address, contractAddress] });
+      try {
+        await publicClient.getBlockNumber();
+      } catch (rpcError: any) {
+        throw new Error('Unable to reach Arc Mainnet RPC. Check your network, wallet extension, or browser blocking settings, then try again.');
+      }
+
+      const [balance, allowance] = await Promise.all([
+        publicClient.readContract({
+          address: GEN0_BOUND_USDC_ADDRESS,
+          abi: USDC_ABI,
+          functionName: 'balanceOf',
+          args: [address],
+        }),
+        publicClient.readContract({
+          address: GEN0_BOUND_USDC_ADDRESS,
+          abi: USDC_ABI,
+          functionName: 'allowance',
+          args: [address, contractAddress],
+        }),
+      ]);
+
+      if (balance < GEN0_BOUND_MINT_PRICE) {
+        throw new Error('You need at least 1 USDC on Arc Mainnet to mint GEN-0 Bound.');
+      }
       if (allowance < GEN0_BOUND_MINT_PRICE) {
         setStatus('Confirm the 1 USDC approval in your wallet…');
         const approval = await walletClient.writeContract({ account: address, address: GEN0_BOUND_USDC_ADDRESS, abi: USDC_ABI, functionName: 'approve', args: [contractAddress, GEN0_BOUND_MINT_PRICE], chainId: GEN0_BOUND_CHAIN_ID });
@@ -55,7 +79,10 @@ export const Gen0BoundNFTView: React.FC = () => {
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       if (receipt.status !== 'success') throw new Error('The mint transaction reverted.');
       setOwned(true); setStatus('Mint confirmed on Arc Mainnet.'); setShowOwned(true);
-    } catch (e: any) { setError(e?.shortMessage || e?.message || 'Mint failed.'); }
+    } catch (e: any) {
+      const message = e?.shortMessage || e?.details || e?.cause?.shortMessage || e?.cause?.message || e?.message || 'Mint failed.';
+      setError(String(message).replace(/^HTTP request failed$/i, 'Arc Mainnet RPC request failed. Check your network or wallet extension and try again.'));
+    }
     finally { setMinting(false); }
   };
 
