@@ -6,7 +6,6 @@ export const ARC_CHAIN_ID = ARC_MAINNET_CHAIN_ID;
 export const ARC_MAINNET_RPC_URL = 'https://rpc.mainnet.arc.io';
 export const ARC_RPC_URL = ARC_MAINNET_RPC_URL;
 export const ARC_FALLBACK_RPC_URL = 'https://rpc.arc-scan.org';
-export const ARC_FALLBACK_RPC_URL = 'https://rpc.arc-scan.org';
 export const ARC_MAINNET_EXPLORER_URL = 'https://explorer.arc.io';
 export const ARC_EXPLORER_URL = ARC_MAINNET_EXPLORER_URL;
 export const ARC_SECONDARY_EXPLORER_URL = ARC_MAINNET_EXPLORER_URL;
@@ -16,8 +15,8 @@ export const arcChain = defineChain({
   name: 'Arc',
   nativeCurrency: { name: 'USD Coin', symbol: 'USDC', decimals: 18 },
   rpcUrls: {
-    default: { http: [ARC_MAINNET_RPC_URL] },
-    public: { http: [ARC_MAINNET_RPC_URL] },
+    default: { http: [ARC_MAINNET_RPC_URL, ARC_FALLBACK_RPC_URL] },
+    public: { http: [ARC_MAINNET_RPC_URL, ARC_FALLBACK_RPC_URL] },
   },
   blockExplorers: {
     default: { name: 'Arc Explorer', url: ARC_MAINNET_EXPLORER_URL },
