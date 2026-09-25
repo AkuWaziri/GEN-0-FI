@@ -17,12 +17,17 @@ import {
   CircleX,
   Landmark,
   ShieldCheck,
+  Droplets,
+  ExternalLink,
 } from 'lucide-react';
 
 interface OverviewViewProps {
   onSelectTab: (tab: TabType) => void;
   onOpenConnect: () => void;
+  onOpenWallet: (mode: 'send' | 'receive') => void;
 }
+
+type HoldingsTab = 'coins' | 'nfts';
 
 function MetricCard({
   label,
@@ -57,7 +62,8 @@ function MetricCard({
   );
 }
 
-export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenConnect }) => {
+export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenConnect, onOpenWallet }) => {
+  const [holdingsTab, setHoldingsTab] = useState<HoldingsTab>('coins');
   const {
     address,
     isConnected,
@@ -206,7 +212,31 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
             <span className={`w-2 h-2 rounded-full ${greeting.dotClass} ${greeting.glowClass}`} />
             <span className={`text-xs font-mono font-semibold tracking-wider uppercase ${greeting.colorClass}`}>{greeting.text}</span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">Your Wallet</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">Your Wallet</h1>
+            <span className="px-2 py-0.5 rounded-full border border-blue-500/20 bg-blue-500/5 text-[9px] font-mono uppercase tracking-wider text-blue-300/80">Arc Mainnet</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <a
+            href="https://faucet.circle.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Circle testnet faucet for Arc Testnet"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-400/20 bg-cyan-400/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-cyan-300 hover:border-cyan-300/40 hover:bg-cyan-400/[0.08] transition-colors"
+          >
+            <Droplets className="w-3.5 h-3.5" />
+            <span>Arc Faucet</span>
+            <ExternalLink className="w-3 h-3 opacity-70" />
+          </a>
+          <button
+            type="button"
+            onClick={() => onSelectTab('activity')}
+            className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950/70 px-2.5 py-1.5 text-[10px] font-semibold text-zinc-300 hover:border-blue-500/30 hover:text-white transition-colors"
+          >
+            <Activity className="w-3.5 h-3.5" />
+            Activity
+          </button>
         </div>
       </div>
 
@@ -247,8 +277,8 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
             <p className="text-xs text-zinc-500 leading-relaxed">Send USDC/EURC directly on Arc or open to receive.</p>
           </div>
           <div className="pt-4 mt-4 border-t border-blue-500/10 flex items-center gap-2">
-            <button type="button" onClick={() => onSelectTab('wallet')} className="flex-1 py-2 rounded-lg bg-white text-[10px] font-bold text-black hover:bg-zinc-200 transition-colors">Send</button>
-            <button type="button" onClick={() => onSelectTab('wallet')} className="flex-1 py-2 rounded-lg border border-blue-400/20 bg-blue-500/10 text-[10px] font-semibold text-blue-300 hover:bg-blue-500/15 transition-colors">Receive</button>
+            <button type="button" onClick={() => onOpenWallet('send')} className="flex-1 py-2 rounded-lg bg-white text-[10px] font-bold text-black hover:bg-zinc-200 transition-colors">Send</button>
+            <button type="button" onClick={() => onOpenWallet('receive')} className="flex-1 py-2 rounded-lg border border-blue-400/20 bg-blue-500/10 text-[10px] font-semibold text-blue-300 hover:bg-blue-500/15 transition-colors">Receive</button>
           </div>
         </div>
       </div>
@@ -309,28 +339,81 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
       </div>
 
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
-        <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 glow-blue-card-hover">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400">Coins</span>
-            <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400"><Coins className="w-4 h-4" /></div>
+      <section className="rounded-2xl bg-[#0d0f12] border border-zinc-800 overflow-hidden shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-5 py-4 border-b border-zinc-900">
+          <div>
+            <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-blue-400">Holdings</p>
+            <h2 className="mt-1 text-sm font-bold text-white">Assets indexed from Arc Mainnet</h2>
           </div>
-          <div className="text-lg sm:text-xl font-bold text-white font-mono">
-            {isLoadingData ? <Skeleton className="h-7 w-16" /> : walletAssets?.coinHoldings ?? '—'}
+          <div className="flex items-center gap-1 rounded-xl bg-zinc-950 border border-zinc-800 p-1">
+            <button type="button" onClick={() => setHoldingsTab('coins')} className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[10px] font-semibold transition-colors ${holdingsTab === 'coins' ? 'bg-blue-500/15 text-blue-300 border border-blue-400/20' : 'text-zinc-500 hover:text-zinc-200'}`}>
+              <Coins className="w-3.5 h-3.5" /> Coins <span className="font-mono">{walletAssets?.coinHoldings ?? '—'}</span>
+            </button>
+            <button type="button" onClick={() => setHoldingsTab('nfts')} className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[10px] font-semibold transition-colors ${holdingsTab === 'nfts' ? 'bg-violet-500/15 text-violet-300 border border-violet-400/20' : 'text-zinc-500 hover:text-zinc-200'}`}>
+              <Gem className="w-3.5 h-3.5" /> NFTs <span className="font-mono">{walletAssets?.nftHoldings ?? '—'}</span>
+            </button>
           </div>
-          <div className="text-[11px] text-zinc-500 font-mono mt-1">Fungible token holdings</div>
         </div>
-        <div className="p-4 sm:p-5 rounded-xl bg-[#0d0f12] border border-zinc-800 glow-blue-card-hover">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400">NFTs</span>
-            <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400"><Gem className="w-4 h-4" /></div>
+
+        {isLoadingData ? (
+          <div className="p-5 space-y-3">
+            <Skeleton className="h-14 w-full" />
+            <Skeleton className="h-14 w-full" />
           </div>
-          <div className="text-lg sm:text-xl font-bold text-white font-mono">
-            {isLoadingData ? <Skeleton className="h-7 w-16" /> : walletAssets?.nftHoldings ?? '—'}
-          </div>
-          <div className="text-[11px] text-zinc-500 font-mono mt-1">Indexed NFT holdings</div>
-        </div>
-      </div>
+        ) : holdingsTab === 'coins' ? (
+          walletAssets?.coins?.length ? (
+            <div className="divide-y divide-zinc-900/80">
+              {walletAssets.coins.map((coin, index) => (
+                <div key={`${coin.address || 'coin'}-${coin.symbol}-${index}`} className="flex items-center justify-between gap-4 px-4 sm:px-5 py-3.5 hover:bg-blue-500/[0.025] transition-colors">
+                  <div className="min-w-0 flex items-center gap-3">
+                    <div className="w-9 h-9 shrink-0 rounded-xl bg-blue-500/10 border border-blue-400/15 flex items-center justify-center text-blue-300 text-xs font-bold">{coin.symbol.slice(0, 2)}</div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-white truncate">{coin.name}</div>
+                      <div className="text-[10px] text-zinc-500 font-mono truncate">{coin.symbol} · {coin.standard}</div>
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="text-xs font-mono font-semibold text-white">{coin.balance}</div>
+                    <div className="text-[10px] text-zinc-500">{coin.symbol}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="px-5 py-10 text-center">
+              <Coins className="w-7 h-7 mx-auto text-zinc-700" />
+              <p className="mt-3 text-xs font-semibold text-zinc-300">No fungible assets found</p>
+              <p className="mt-1 text-[10px] text-zinc-600 font-mono">Arc's indexed token balance is empty for this wallet.</p>
+            </div>
+          )
+        ) : (
+          walletAssets?.nfts?.length ? (
+            <div className="divide-y divide-zinc-900/80">
+              {walletAssets.nfts.map((nft, index) => (
+                <div key={`${nft.address || 'nft'}-${nft.symbol}-${index}`} className="flex items-center justify-between gap-4 px-4 sm:px-5 py-3.5 hover:bg-violet-500/[0.025] transition-colors">
+                  <div className="min-w-0 flex items-center gap-3">
+                    <div className="w-9 h-9 shrink-0 rounded-xl bg-violet-500/10 border border-violet-400/15 flex items-center justify-center text-violet-300"><Gem className="w-4 h-4" /></div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-white truncate">{nft.name}</div>
+                      <div className="text-[10px] text-zinc-500 font-mono truncate">{nft.symbol} · {nft.standard}</div>
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="text-xs font-mono font-semibold text-white">{nft.balance}</div>
+                    <div className="text-[10px] text-zinc-500">items</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="px-5 py-10 text-center">
+              <Gem className="w-7 h-7 mx-auto text-zinc-700" />
+              <p className="mt-3 text-xs font-semibold text-zinc-300">No NFTs found</p>
+              <p className="mt-1 text-[10px] text-zinc-600 font-mono">No indexed ERC-721 or ERC-1155 holdings are currently detected.</p>
+            </div>
+          )
+        )}
+      </section>
 
 
 
