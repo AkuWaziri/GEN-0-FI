@@ -20,6 +20,8 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onSelectTab, onOpenCo
       case 'savings': return 'Savings';
       case 'fx': return 'FX';
       case 'gm': return 'GM Streak';
+      case 'boundnft': return 'GEN-0 Bound NFT';
+      case 'deploy': return 'Deploy Contract';
       case 'settings': return 'Settings';
       default: return 'Dashboard';
     }
