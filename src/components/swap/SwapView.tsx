@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowDownUp, ChevronDown, Loader2, RefreshCw, Wallet } from 'lucide-react';
+import { ArrowDownUp, ArrowUpRight, ChevronDown, Loader2, RefreshCw, Wallet } from 'lucide-react';
 import { createPublicClient, encodeFunctionData, fallback, formatUnits, http, parseUnits } from 'viem';
 import { useAccount, useChainId, useWalletClient } from 'wagmi';
 import { useWallet } from '../../context/WalletContext';
@@ -37,6 +37,13 @@ const QUOTE_API = '/api/lifi/quote';
 const NATIVE = '0x0000000000000000000000000000000000000000';
 const ARC_USDC_PREDEPLOY = '0x3600000000000000000000000000000000000000';
 const ERC20_APPROVE_ABI = [{ type: 'function', name: 'approve', stateMutability: 'nonpayable', inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }] }, { type: 'function', name: 'allowance', stateMutability: 'view', inputs: [{ name: 'owner', type: 'address' }, { name: 'spender', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] }] as const;
+
+function getTransactionExplorerUrl(chainId: number, chain?: LiFiChain, hash?: string | null) {
+  if (!hash) return null;
+  if (chainId === 5042) return 'https://arcscan.app/tx/' + hash;
+  const explorer = chain?.metamask?.blockExplorerUrls?.find(Boolean);
+  return explorer ? explorer.replace(/\\/$/, '') + '/tx/' + hash : null;
+}
 
 function quoteIsExecutable(quote: any) {
   return Boolean(quote?.transactionRequest?.to && quote?.transactionRequest?.data && quote?.estimate?.toAmount && quote?.estimate?.toAmountMin);
@@ -209,6 +216,7 @@ export const SwapView: React.FC = () => {
   const [executionStage, setExecutionStage] = useState<'wallet' | 'confirming' | null>(null);
   const [executionHash, setExecutionHash] = useState<string | null>(null);
   const [executionConfirmed, setExecutionConfirmed] = useState(false);
+  const [executionExplorerUrl, setExecutionExplorerUrl] = useState<string | null>(null);
   const [arcNativeBalance, setArcNativeBalance] = useState<string | null>(null);
 
   const fromBalance = tokenBalanceFor(balances, fromChainId, fromToken);
@@ -344,6 +352,9 @@ export const SwapView: React.FC = () => {
     if (!address || !fromToken || !toToken || !amount || Number(amount) <= 0) return;
     setQuoting(true);
     setQuote(null);
+    setExecutionConfirmed(false);
+    setExecutionHash(null);
+    setExecutionExplorerUrl(null);
     setError(null);
     try {
       const rawAmount = parseUnits(amount, fromToken.decimals).toString();
@@ -470,6 +481,7 @@ export const SwapView: React.FC = () => {
 
       const hash = await walletClient.sendTransaction(txRequest);
       setExecutionHash(hash);
+      setExecutionExplorerUrl(getTransactionExplorerUrl(fromChainId, fromChain, hash));
       setExecutionStage('confirming');
 
       // Wait for the actual source-chain receipt before declaring success.
@@ -603,7 +615,7 @@ export const SwapView: React.FC = () => {
                   disabled={executing}
                   className="flex-1 rounded-xl bg-blue-500 hover:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 transition flex items-center justify-center gap-2"
                 >
-                  {executing && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {executing && !executionConfirmed && <Loader2 className="w-4 h-4 animate-spin" />}
                   {executing
                     ? executionStage === 'confirming'
                       ? 'Confirming onchain...'
@@ -643,8 +655,25 @@ export const SwapView: React.FC = () => {
             )}
 
             {executionHash && (
-              <div className="mt-4 rounded-xl border border-green-500/30 bg-green-500/5 px-4 py-3 text-sm text-green-300 break-all">
-                {executionConfirmed ? 'Confirmed onchain: ' : 'Submitted: '}{executionHash}
+              <div className={`mt-4 rounded-xl border px-4 py-3 text-sm ${executionConfirmed ? 'border-green-500/30 bg-green-500/5 text-green-300' : 'border-blue-500/20 bg-blue-500/5 text-blue-300'}`}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-medium">{executionConfirmed ? 'Confirmed' : executionStage === 'confirming' ? 'Confirming onchain...' : 'Submitted'}</div>
+                    <div className="mt-1 font-mono text-[10px] text-zinc-500 truncate">{executionHash}</div>
+                  </div>
+                  {executionExplorerUrl && (
+                    <a
+                      href={executionExplorerUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label="View transaction on explorer"
+                      title="View transaction on Arcscan"
+                      className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-lg border border-zinc-700/80 bg-zinc-900/70 text-zinc-400 hover:text-white hover:border-blue-500/50 transition"
+                    >
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                </div>
               </div>
             )}
 
@@ -664,12 +693,6 @@ export const SwapView: React.FC = () => {
                 </div>
                 <div className="mt-2 space-y-1 text-xs text-zinc-500">
                   <div>Route: {quote.toolDetails?.name || quote.tool || 'LI.FI'}</div>
-                  {quote.gen0fiFee?.percent !== undefined && (
-                    <div className="flex items-center justify-between gap-4">
-                      <span>GEN-0FI fee</span>
-                      <span className="text-blue-300">{Number(quote.gen0fiFee.percent).toFixed(2)}%</span>
-                    </div>
-                  )}
                 </div>
               </div>
             )}
