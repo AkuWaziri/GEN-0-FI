@@ -369,14 +369,22 @@ function AssetPicker(props: {
       kind: 'fiat' as Kind,
       meta: 'Fiat',
     })),
-  ].sort((a, b) => a.value.localeCompare(b.value)), [props.stables, props.fiats]);
+  ], [props.stables, props.fiats]);
 
   const query = props.search.toLowerCase().trim();
-  const list = assets.filter((item) =>
+
+  const matches = (item: typeof assets[number]) =>
     !query ||
     item.value.toLowerCase().includes(query) ||
-    item.name.toLowerCase().includes(query)
-  ).slice(0, 120);
+    item.name.toLowerCase().includes(query);
+
+  const stableList = assets
+    .filter((item) => item.kind === 'stable' && matches(item))
+    .slice(0, 100);
+
+  const fiatList = assets
+    .filter((item) => item.kind === 'fiat' && matches(item))
+    .slice(0, 100);
 
   const selected = assets.find((item) => item.value === props.value);
 
@@ -396,44 +404,84 @@ function AssetPicker(props: {
         )}
       </div>
 
-      <div className="relative">
+      <div className="relative z-20">
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}
           className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3.5 py-3 text-left hover:border-blue-500/30 transition-colors"
+          aria-haspopup="listbox"
+          aria-expanded={open}
         >
           <div className="flex items-center justify-between gap-3">
-            <span className="text-sm font-semibold text-white">{props.value || 'Select'}</span>
-            <span className="text-[9px] uppercase tracking-wider text-zinc-600">
-              {selected?.kind === 'stable' ? 'Stable' : 'Fiat'}
+            <span className="text-sm font-semibold text-white">
+              {selected?.value || (loading ? 'Loading assets…' : 'Select asset')}
+            </span>
+            <span className={selected?.kind === 'stable' ? 'text-[9px] uppercase tracking-wider text-blue-300' : 'text-[9px] uppercase tracking-wider text-zinc-500'}>
+              {selected?.kind === 'stable' ? 'Stablecoin' : selected?.kind === 'fiat' ? 'Fiat' : 'Choose'}
             </span>
           </div>
           <span className="block mt-0.5 text-[10px] text-zinc-600 truncate">
-            {selected?.name || 'Choose a currency'}
+            {selected?.name || 'Choose a stablecoin or fiat currency'}
           </span>
         </button>
 
         {open && (
-          <div className="absolute z-30 top-[calc(100%+8px)] left-0 right-0 rounded-xl border border-zinc-700 bg-[#111317] shadow-2xl overflow-hidden">
-            <div className="p-2 border-b border-zinc-800">
-              <div className="flex items-center gap-2 rounded-lg bg-zinc-950 px-3 py-2">
-                <Search className="w-3.5 h-3.5 text-zinc-500" />
+          <div className="absolute z-[100] top-[calc(100%+8px)] left-0 right-0 min-w-[280px] rounded-xl border border-zinc-700 bg-[#111317] shadow-[0_24px_70px_rgba(0,0,0,.55)] overflow-hidden">
+            <div className="p-2 border-b border-zinc-800 bg-[#111317]">
+              <div className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2.5">
+                <Search className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
                 <input
                   autoFocus
                   value={props.search}
                   onChange={(event) => props.onSearchChange(event.target.value)}
-                  placeholder="Search fiat or stablecoin"
-                  className="w-full bg-transparent text-xs text-white outline-none"
+                  placeholder="Search stablecoins or fiat"
+                  className="w-full bg-transparent text-xs text-white outline-none placeholder:text-zinc-600"
                 />
               </div>
             </div>
-            <div className="max-h-72 overflow-y-auto p-1.5">
-              {list.map((item) => (
+
+            <div className="max-h-80 overflow-y-auto p-1.5">
+              {stableList.length > 0 && (
+                <div className="px-2 pt-1.5 pb-1">
+                  <div className="text-[9px] font-semibold uppercase tracking-[0.16em] text-blue-300/80">
+                    Stablecoins
+                  </div>
+                </div>
+              )}
+
+              {stableList.map((item) => (
                 <button
                   type="button"
                   key={item.key}
                   onClick={() => {
-                    props.onValueChange(item.value, item.kind);
+                    props.onValueChange(item.value, 'stable');
+                    props.onSearchChange('');
+                    setOpen(false);
+                  }}
+                  className="w-full rounded-lg px-3 py-2.5 text-left hover:bg-blue-500/10 transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs font-semibold text-white">{item.value}</span>
+                    <span className="text-[9px] uppercase tracking-wider text-blue-300/70">Stablecoin</span>
+                  </div>
+                  <div className="text-[10px] text-zinc-500 mt-0.5 truncate">{item.name} · {item.meta}</div>
+                </button>
+              ))}
+
+              {fiatList.length > 0 && (
+                <div className="px-2 pt-3 pb-1">
+                  <div className="border-t border-zinc-800 pt-3 text-[9px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                    Fiat currencies
+                  </div>
+                </div>
+              )}
+
+              {fiatList.map((item) => (
+                <button
+                  type="button"
+                  key={item.key}
+                  onClick={() => {
+                    props.onValueChange(item.value, 'fiat');
                     props.onSearchChange('');
                     setOpen(false);
                   }}
@@ -441,12 +489,19 @@ function AssetPicker(props: {
                 >
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-xs font-semibold text-white">{item.value}</span>
-                    <span className="text-[9px] uppercase tracking-wider text-zinc-600">{item.kind}</span>
+                    <span className="text-[9px] uppercase tracking-wider text-zinc-600">Fiat</span>
                   </div>
-                  <div className="text-[10px] text-zinc-600 mt-0.5 truncate">{item.name} · {item.meta}</div>
+                  <div className="text-[10px] text-zinc-600 mt-0.5 truncate">{item.name}</div>
                 </button>
               ))}
-              {!list.length && <div className="px-3 py-6 text-center text-xs text-zinc-500">No matching currencies.</div>}
+
+              {!stableList.length && !fiatList.length && (
+                <div className="px-3 py-8 text-center text-xs text-zinc-500">
+                  {props.stables.length || props.fiats.length
+                    ? 'No matching stablecoins or fiat currencies.'
+                    : 'Loading stablecoins and fiat currencies…'}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -454,4 +509,3 @@ function AssetPicker(props: {
     </div>
   );
 }
-
