@@ -194,3 +194,4 @@ export const FXView: React.FC = () => {
     </main>
   );
 };
+
