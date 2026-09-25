@@ -467,9 +467,11 @@ export const DeployContractView: React.FC = () => {
 
         <button
           type="button"
-          onClick={() => void (wallet ? deploy() : connectWallet())}
-          disabled={busy}
-          className="mt-5 w-full py-3 rounded-xl bg-cyan-400 text-zinc-950 text-sm font-extrabold hover:bg-cyan-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          onClick={() => {
+            if (busy) return;
+            void (wallet ? deploy() : connectWallet());
+          }}
+          className="mt-5 w-full py-3 rounded-xl bg-cyan-400 text-zinc-950 text-sm font-extrabold hover:bg-cyan-300 active:bg-cyan-200 cursor-pointer transition-colors shadow-[0_0_24px_-8px_rgba(34,211,238,0.85)]"
         >
           {busy && <Loader2 className="inline-block w-4 h-4 mr-2 animate-spin" />}
           {buttonLabel}
