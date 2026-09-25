@@ -5,6 +5,7 @@ export const ARC_MAINNET_CHAIN_ID = 5042;
 export const ARC_CHAIN_ID = ARC_MAINNET_CHAIN_ID;
 export const ARC_MAINNET_RPC_URL = 'https://rpc.mainnet.arc.io';
 export const ARC_RPC_URL = ARC_MAINNET_RPC_URL;
+export const ARC_FALLBACK_RPC_URL = 'https://rpc.arc-scan.org';
 export const ARC_MAINNET_EXPLORER_URL = 'https://explorer.arc.io';
 export const ARC_EXPLORER_URL = ARC_MAINNET_EXPLORER_URL;
 export const ARC_SECONDARY_EXPLORER_URL = ARC_MAINNET_EXPLORER_URL;
