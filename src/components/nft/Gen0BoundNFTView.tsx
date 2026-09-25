@@ -76,7 +76,7 @@ export const Gen0BoundNFTView:React.FC=()=>{
       if(!response.ok||!compiled.ok)throw new Error(compiled.error||'NFT compilation failed.');
       const data=encodeDeployData({abi:compiled.abi,bytecode:compiled.bytecode,args:[GEN0_BOUND_USDC_ADDRESS,GEN0_BOUND_FEE_WALLET,metadataURI]});
       setStatus('Confirm the GEN-0 Bound deployment in your wallet…');
-      const hash=await walletClient.sendTransaction({account,address:undefined,data,chainId:GEN0_BOUND_CHAIN_ID});
+      const hash=await walletClient.sendTransaction({account,data,chainId:GEN0_BOUND_CHAIN_ID});
       setTxHash(hash);
       setStatus('Waiting for the NFT contract to confirm on Arc Mainnet…');
       const receipt=await publicClient.waitForTransactionReceipt({hash});
