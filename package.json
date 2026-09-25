@@ -33,7 +33,8 @@
     "@lifi/widget": "^4.6.0",
     "@lifi/widget-provider-ethereum": "^4.1.3",
     "@openzeppelin/contracts": "^5.4.0",
-    "solc": "^0.8.30"
+    "solc": "^0.8.30",
+    "esbuild": "^0.25.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
