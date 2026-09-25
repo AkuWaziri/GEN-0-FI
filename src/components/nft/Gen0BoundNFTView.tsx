@@ -1,303 +1,142 @@
-import React, { useEffect, useState } from 'react';
-import { Gem, ShieldCheck, Sparkles, ExternalLink, Loader2, CheckCircle2 } from 'lucide-react';
-import { useAccount, usePublicClient, useWalletClient, useReadContract } from 'wagmi';
-import { Address, formatUnits } from 'viem';
+import React, { useEffect, useMemo, useState } from 'react';
+import { CheckCircle2, ExternalLink, Gem, Loader2, Rocket, ShieldCheck, Sparkles } from 'lucide-react';
+import { encodeDeployData, type Address } from 'viem';
+import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { getArcScanTxUrl } from '../../config/arc';
-import {
-  GEN0_BOUND_ARTWORK_URL,
-  GEN0_BOUND_CHAIN_ID,
-  GEN0_BOUND_MINT_PRICE,
-  GEN0_BOUND_NFT_ADDRESS,
-  GEN0_BOUND_USDC_ADDRESS,
-} from '../../config/gen0BoundNFT';
+import { GEN0_BOUND_ARTWORK_URL, GEN0_BOUND_CHAIN_ID, GEN0_BOUND_FEE_WALLET, GEN0_BOUND_MINT_PRICE, GEN0_BOUND_NFT_ADDRESS, GEN0_BOUND_USDC_ADDRESS } from '../../config/gen0BoundNFT';
 
 const NFT_ABI = [
-  {
-    type: 'function',
-    name: 'hasMinted',
-    stateMutability: 'view',
-    inputs: [{ name: '', type: 'address' }],
-    outputs: [{ name: '', type: 'bool' }],
-  },
-  {
-    type: 'function',
-    name: 'mint',
-    stateMutability: 'nonpayable',
-    inputs: [],
-    outputs: [],
-  },
+  {type:'function',name:'hasMinted',stateMutability:'view',inputs:[{name:'',type:'address'}],outputs:[{name:'',type:'bool'}]},
+  {type:'function',name:'mint',stateMutability:'nonpayable',inputs:[],outputs:[]},
 ] as const;
 
 const USDC_ABI = [
-  {
-    type: 'function',
-    name: 'allowance',
-    stateMutability: 'view',
-    inputs: [
-      { name: 'owner', type: 'address' },
-      { name: 'spender', type: 'address' },
-    ],
-    outputs: [{ name: '', type: 'uint256' }],
-  },
-  {
-    type: 'function',
-    name: 'approve',
-    stateMutability: 'nonpayable',
-    inputs: [
-      { name: 'spender', type: 'address' },
-      { name: 'value', type: 'uint256' },
-    ],
-    outputs: [{ name: '', type: 'bool' }],
-  },
+  {type:'function',name:'allowance',stateMutability:'view',inputs:[{name:'owner',type:'address'},{name:'spender',type:'address'}],outputs:[{name:'',type:'uint256'}]},
+  {type:'function',name:'approve',stateMutability:'nonpayable',inputs:[{name:'spender',type:'address'},{name:'value',type:'uint256'}],outputs:[{name:'',type:'bool'}]},
 ] as const;
 
-export const Gen0BoundNFTView: React.FC = () => {
-  const { address, chainId } = useAccount();
-  const { data: walletClient } = useWalletClient({ chainId: GEN0_BOUND_CHAIN_ID });
-  const publicClient = usePublicClient({ chainId: GEN0_BOUND_CHAIN_ID });
+const DEPLOY_ABI=[{
+  type:'constructor',
+  inputs:[
+    {name:'usdc_',type:'address'},
+    {name:'feeRecipient_',type:'address'},
+    {name:'metadataURI_',type:'string'}
+  ],
+  stateMutability:'nonpayable'
+}] as const;
 
-  const contractConfigured = Boolean(GEN0_BOUND_NFT_ADDRESS);
-  const artworkConfigured = Boolean(GEN0_BOUND_ARTWORK_URL);
+const localAddress=()=>typeof window==='undefined'?'':(window.localStorage.getItem('gen0_bound_nft_address')||'');
+const validAddress=(x:string)=>/^0x[a-fA-F0-9]{40}$/.test(x);
 
-  const {
-    data: hasMinted,
-    isLoading: checkingOwnership,
-    refetch: refetchMinted,
-  } = useReadContract({
-    address: contractConfigured ? GEN0_BOUND_NFT_ADDRESS : undefined,
-    abi: NFT_ABI,
-    functionName: 'hasMinted',
-    args: address ? [address as Address] : undefined,
-    chainId: GEN0_BOUND_CHAIN_ID,
-    query: {
-      enabled: Boolean(contractConfigured && address),
-    },
-  });
+export const Gen0BoundNFTView:React.FC=()=>{
+  const {address,chainId}=useAccount();
+  const {data:walletClient}=useWalletClient({chainId:GEN0_BOUND_CHAIN_ID});
+  const publicClient=usePublicClient({chainId:GEN0_BOUND_CHAIN_ID});
 
-  const [isMinting, setIsMinting] = useState(false);
-  const [status, setStatus] = useState<string | null>(null);
-  const [txHash, setTxHash] = useState<string | null>(null);
-  const [ownedModal, setOwnedModal] = useState(false);
+  const [contractAddress,setContractAddress]=useState<string>(()=>GEN0_BOUND_NFT_ADDRESS||localAddress());
+  const [artwork,setArtwork]=useState(GEN0_BOUND_ARTWORK_URL);
+  const [deploying,setDeploying]=useState(false);
+  const [minting,setMinting]=useState(false);
+  const [status,setStatus]=useState('');
+  const [error,setError]=useState('');
+  const [txHash,setTxHash]=useState('');
+  const [owned,setOwned]=useState(false);
+  const [showOwned,setShowOwned]=useState(false);
 
-  useEffect(() => {
-    if (hasMinted) setOwnedModal(true);
-  }, [hasMinted]);
+  useEffect(()=>{ if(GEN0_BOUND_ARTWORK_URL)setArtwork(GEN0_BOUND_ARTWORK_URL); },[]);
+  useEffect(()=>{
+    if(!address||!contractAddress||!validAddress(contractAddress)||!publicClient)return;
+    let active=true;
+    publicClient.readContract({address:contractAddress as Address,abi:NFT_ABI,functionName:'hasMinted',args:[address]})
+      .then(v=>{if(active){setOwned(Boolean(v));if(v)setShowOwned(true);}})
+      .catch(()=>{if(active)setOwned(false);});
+    return()=>{active=false;};
+  },[address,contractAddress,publicClient]);
 
-  const handleMint = async () => {
-    if (!address || !walletClient || !publicClient) {
-      setStatus('Connect a wallet on Arc Mainnet first.');
-      return;
-    }
+  const metadataURI=useMemo(()=>{
+    const image=artwork.trim();
+    if(!image)return '';
+    return 'data:application/json,'+encodeURIComponent(JSON.stringify({
+      name:'GEN-0 Bound',
+      description:'The GEN-0 Bound soulbound collectible on Arc Mainnet.',
+      image
+    }));
+  },[artwork]);
 
-    if (chainId !== GEN0_BOUND_CHAIN_ID) {
-      setStatus('Switch your wallet to Arc Mainnet.');
-      return;
-    }
-
-    if (!contractConfigured) {
-      setStatus('GEN-0 Bound contract address is not configured yet.');
-      return;
-    }
-
-    if (hasMinted) {
-      setOwnedModal(true);
-      return;
-    }
-
-    setIsMinting(true);
-    setStatus(null);
-    setTxHash(null);
-
-    try {
-      const allowance = await publicClient.readContract({
-        address: GEN0_BOUND_USDC_ADDRESS,
-        abi: USDC_ABI,
-        functionName: 'allowance',
-        args: [address, GEN0_BOUND_NFT_ADDRESS],
-      });
-
-      if (allowance < GEN0_BOUND_MINT_PRICE) {
-        setStatus('Approve 1 USDC, then the mint transaction will follow.');
-
-        const approvalHash = await walletClient.writeContract({
-          address: GEN0_BOUND_USDC_ADDRESS,
-          abi: USDC_ABI,
-          functionName: 'approve',
-          args: [GEN0_BOUND_NFT_ADDRESS, GEN0_BOUND_MINT_PRICE],
-          chainId: GEN0_BOUND_CHAIN_ID,
-        });
-
-        await publicClient.waitForTransactionReceipt({ hash: approvalHash });
-      }
-
-      setStatus('Confirm the GEN-0 Bound mint in your wallet.');
-
-      const mintHash = await walletClient.writeContract({
-        address: GEN0_BOUND_NFT_ADDRESS,
-        abi: NFT_ABI,
-        functionName: 'mint',
-        chainId: GEN0_BOUND_CHAIN_ID,
-      });
-
-      setTxHash(mintHash);
-      setStatus('Waiting for the mint to confirm on Arc Mainnet...');
-
-      await publicClient.waitForTransactionReceipt({ hash: mintHash });
-      await refetchMinted();
-
-      setStatus('Mint confirmed on Arc Mainnet.');
-      setOwnedModal(true);
-    } catch (error: any) {
-      const message = error?.shortMessage || error?.message || 'Mint transaction failed.';
-      setStatus(message.slice(0, 180));
-    } finally {
-      setIsMinting(false);
-    }
+  const deployNFT=async()=>{
+    if(!walletClient||!publicClient||!address){setError('Connect your wallet first.');return;}
+    if(chainId!==GEN0_BOUND_CHAIN_ID){setError('Switch your wallet to Arc Mainnet.');return;}
+    if(!metadataURI){setError('Add the final artwork URL before deploying.');return;}
+    setDeploying(true);setError('');setStatus('Compiling the real GEN-0 Bound contract…');
+    try{
+      const response=await fetch('/api/nft/compile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        usdc:GEN0_BOUND_USDC_ADDRESS,feeRecipient:GEN0_BOUND_FEE_WALLET,metadataURI
+      })});
+      const compiled=await response.json();
+      if(!response.ok||!compiled.ok)throw new Error(compiled.error||'NFT compilation failed.');
+      const data=encodeDeployData({abi:compiled.abi,bytecode:compiled.bytecode,args:[GEN0_BOUND_USDC_ADDRESS,GEN0_BOUND_FEE_WALLET,metadataURI]});
+      setStatus('Confirm the GEN-0 Bound deployment in your wallet…');
+      const hash=await walletClient.sendTransaction({account,address:undefined,data,chainId:GEN0_BOUND_CHAIN_ID});
+      setTxHash(hash);
+      setStatus('Waiting for the NFT contract to confirm on Arc Mainnet…');
+      const receipt=await publicClient.waitForTransactionReceipt({hash});
+      if(receipt.status!=='success'||!receipt.contractAddress)throw new Error('Arc confirmed the transaction but returned no contract address.');
+      const deployed=receipt.contractAddress;
+      setContractAddress(deployed);
+      window.localStorage.setItem('gen0_bound_nft_address',deployed);
+      setStatus('GEN-0 Bound contract deployed and confirmed.');
+    }catch(e:any){
+      setError(e?.shortMessage||e?.message||'NFT deployment failed.');
+    }finally{setDeploying(false);}
   };
 
-  const buttonLabel = !contractConfigured
-    ? 'MINT · CONTRACT NOT DEPLOYED'
-    : hasMinted
-      ? 'YOU OWN GEN-0 BOUND'
-      : isMinting
-        ? 'MINTING…'
-        : 'MINT · 1 USDC';
+  const mint=async()=>{
+    if(!walletClient||!publicClient||!address){setError('Connect your wallet first.');return;}
+    if(chainId!==GEN0_BOUND_CHAIN_ID){setError('Switch your wallet to Arc Mainnet.');return;}
+    if(!validAddress(contractAddress)){setError('Deploy or configure the GEN-0 Bound contract first.');return;}
+    if(owned){setShowOwned(true);return;}
+    setMinting(true);setError('');setStatus('Checking your USDC allowance…');setTxHash('');
+    try{
+      const allowance=await publicClient.readContract({address:GEN0_BOUND_USDC_ADDRESS,abi:USDC_ABI,functionName:'allowance',args:[address,contractAddress as Address]});
+      if(allowance<GEN0_BOUND_MINT_PRICE){
+        setStatus('Confirm the 1 USDC approval in your wallet…');
+        const approval=await walletClient.writeContract({account,address:GEN0_BOUND_USDC_ADDRESS,abi:USDC_ABI,functionName:'approve',args:[contractAddress as Address,GEN0_BOUND_MINT_PRICE],chainId:GEN0_BOUND_CHAIN_ID});
+        await publicClient.waitForTransactionReceipt({hash:approval});
+      }
+      setStatus('Confirm the GEN-0 Bound mint in your wallet…');
+      const hash=await walletClient.writeContract({account,address:contractAddress as Address,abi:NFT_ABI,functionName:'mint',chainId:GEN0_BOUND_CHAIN_ID});
+      setTxHash(hash);setStatus('Waiting for your GEN-0 Bound NFT to confirm on Arc…');
+      const receipt=await publicClient.waitForTransactionReceipt({hash});
+      if(receipt.status!=='success')throw new Error('The mint transaction reverted.');
+      setOwned(true);setStatus('Mint confirmed on Arc Mainnet.');setShowOwned(true);
+    }catch(e:any){setError(e?.shortMessage||e?.message||'Mint failed.');}
+    finally{setMinting(false);}
+  };
 
-  return (
-    <div className="p-4 sm:p-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-400/20 flex items-center justify-center text-blue-300 shrink-0">
-              <Gem className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-blue-400">GEN-0 Bound</p>
-              <h2 className="text-sm sm:text-base font-bold text-white truncate">Your onchain collectible</h2>
-            </div>
-          </div>
-          <p className="mt-2 text-[11px] leading-relaxed text-zinc-500 max-w-xl">
-            One soulbound GEN-0 character per wallet, permanently linked to your Arc identity.
-          </p>
-        </div>
-
-        <div className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-full border border-blue-400/15 bg-blue-400/[0.05] px-2.5 py-1 text-[9px] font-mono uppercase tracking-wider text-blue-300">
-          <Sparkles className="w-3 h-3" />
-          Arc Mainnet
-        </div>
+  const configured=validAddress(contractAddress);
+  return <div className="p-4 sm:p-6">
+    <div className="mx-auto max-w-5xl">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div><p className="text-[10px] font-semibold uppercase tracking-[.24em] text-cyan-300">GEN-0 Bound</p><h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">Your onchain collectible</h1><p className="mt-2 max-w-xl text-sm leading-6 text-slate-400">One soulbound collectible per wallet. Deployed and settled directly on Arc Mainnet.</p></div>
+        <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-cyan-300/15 bg-cyan-300/[.05] px-3 py-1.5 text-[9px] font-semibold uppercase tracking-wider text-cyan-200"><Sparkles className="h-3 w-3"/> Arc Mainnet</span>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-[minmax(220px,0.72fr)_minmax(0,1.28fr)] gap-4">
-        <div className="relative aspect-square rounded-2xl border border-blue-400/15 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,.22),transparent_38%),radial-gradient(circle_at_75%_75%,rgba(168,85,247,.15),transparent_42%),#0d1016] flex items-center justify-center overflow-hidden">
-          {artworkConfigured ? (
-            <img
-              src={GEN0_BOUND_ARTWORK_URL}
-              alt="GEN-0 Bound"
-              className="w-full h-full object-cover"
-              draggable={false}
-            />
-          ) : (
-            <div className="px-6 text-center">
-              <Gem className="mx-auto w-8 h-8 text-blue-400/60" />
-              <p className="mt-3 text-xs text-zinc-400">Final artwork URI not configured.</p>
-            </div>
-          )}
+      <div className="grid gap-5 lg:grid-cols-[minmax(280px,.9fr)_minmax(0,1.1fr)]">
+        <div className="overflow-hidden rounded-3xl border border-white/[.08] bg-[#0a1019]">
+          <div className="aspect-square bg-[#0d1420]">{artwork?<img src={artwork} alt="GEN-0 Bound" className="h-full w-full object-cover" draggable={false}/>:<div className="flex h-full items-center justify-center p-8 text-center text-sm text-slate-500">Add the artwork URL to deploy the NFT.</div>}</div>
         </div>
-
-        <div className="rounded-2xl border border-zinc-800/90 bg-zinc-950/50 p-4 sm:p-5 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h3 className="text-sm font-bold text-white">GEN-0 Bound</h3>
-                <p className="mt-0.5 text-[9px] font-mono uppercase tracking-widest text-zinc-500">Soulbound NFT</p>
-              </div>
-              <ShieldCheck className="w-4 h-4 text-blue-400 shrink-0" />
-            </div>
-
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <div className="rounded-xl border border-zinc-800 bg-[#0d0f12] px-3 py-2.5">
-                <span className="block text-[9px] uppercase tracking-wider text-zinc-600">Mint price</span>
-                <span className="mt-1 block text-sm font-bold text-white">1.00 USDC</span>
-              </div>
-              <div className="rounded-xl border border-zinc-800 bg-[#0d0f12] px-3 py-2.5">
-                <span className="block text-[9px] uppercase tracking-wider text-zinc-600">Limit</span>
-                <span className="mt-1 block text-sm font-bold text-white">1 / wallet</span>
-              </div>
-            </div>
-
-            <div className="mt-2.5 flex items-start gap-2 rounded-xl border border-blue-400/10 bg-blue-500/[0.035] px-3 py-2.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" />
-              <span className="text-[10px] leading-relaxed text-zinc-500">
-                The 1 USDC payment goes directly to the GEN-0 fee wallet. Ownership is enforced onchain.
-              </span>
-            </div>
-
-            {checkingOwnership && contractConfigured && (
-              <div className="mt-3 flex items-center gap-2 text-[10px] text-zinc-500">
-                <Loader2 className="w-3 h-3 animate-spin" /> Checking onchain ownership…
-              </div>
-            )}
-
-            {status && (
-              <div className="mt-3 rounded-xl border border-zinc-800 bg-black/20 px-3 py-2.5 text-[10px] leading-relaxed text-zinc-400">
-                {status}
-              </div>
-            )}
-
-            {txHash && (
-              <a
-                href={getArcScanTxUrl(txHash)}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-2 inline-flex items-center gap-1.5 text-[10px] text-blue-400 hover:text-blue-300"
-              >
-                View mint transaction <ExternalLink className="w-3 h-3" />
-              </a>
-            )}
-          </div>
-
-          <button
-            type="button"
-            onClick={handleMint}
-            disabled={isMinting || Boolean(hasMinted) || !contractConfigured}
-            className="mt-4 w-full py-2.5 rounded-xl bg-blue-500 hover:bg-blue-400 disabled:bg-white/[0.06] border border-blue-400/30 disabled:border-zinc-700 text-[11px] font-bold text-white disabled:text-zinc-500 transition-colors"
-          >
-            {isMinting && <Loader2 className="inline-block w-3.5 h-3.5 mr-1.5 animate-spin" />}
-            {buttonLabel}
-          </button>
-        </div>
+        <section className="rounded-3xl border border-white/[.08] bg-[#0a1019] p-5 sm:p-6">
+          <div className="flex items-center justify-between"><div><h2 className="text-sm font-bold text-white">GEN-0 Bound</h2><p className="mt-1 text-[9px] uppercase tracking-[.18em] text-slate-600">Soulbound · GEN0B</p></div><ShieldCheck className="h-5 w-5 text-cyan-300"/></div>
+          <div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-2xl border border-white/[.07] bg-white/[.025] p-3"><p className="text-[9px] uppercase tracking-wider text-slate-600">Mint</p><p className="mt-1 text-sm font-bold text-white">1 USDC</p></div><div className="rounded-2xl border border-white/[.07] bg-white/[.025] p-3"><p className="text-[9px] uppercase tracking-wider text-slate-600">Limit</p><p className="mt-1 text-sm font-bold text-white">1 / wallet</p></div></div>
+          {!configured&&<div className="mt-4 rounded-2xl border border-cyan-300/10 bg-cyan-300/[.035] p-4"><div className="flex items-center gap-2 text-xs font-semibold text-white"><Rocket className="h-4 w-4 text-cyan-300"/> Deploy once, then mint</div><p className="mt-1 text-[10px] leading-5 text-slate-500">The contract uses the fixed Arc USDC address and GEN-0 fee wallet. The metadata is embedded as a data URI and points to your artwork.</p><input value={artwork} onChange={e=>setArtwork(e.target.value)} placeholder="https://.../gen0-bound.png" className="mt-3 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-300/35"/></div>}
+          {configured&&<div className="mt-4 rounded-2xl border border-emerald-300/10 bg-emerald-300/[.03] p-4"><p className="text-[9px] uppercase tracking-wider text-emerald-300">Contract ready</p><p className="mt-1 break-all font-mono text-[10px] text-slate-400">{contractAddress}</p><a href={'https://explorer.arc.io/address/'+contractAddress} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-[10px] text-cyan-300">View contract <ExternalLink className="h-3 w-3"/></a></div>}
+          {status&&<div className="mt-4 rounded-xl border border-white/[.07] bg-black/20 px-3 py-2.5 text-[10px] leading-5 text-slate-400">{status}</div>}
+          {error&&<div className="mt-3 rounded-xl border border-rose-400/15 bg-rose-400/[.04] px-3 py-2.5 text-[10px] leading-5 text-rose-200">{error}</div>}
+          {txHash&&<a href={getArcScanTxUrl(txHash)} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-[10px] text-cyan-300">View transaction <ExternalLink className="h-3 w-3"/></a>}
+          {!configured?<button disabled={deploying||!artwork.trim()} onClick={()=>void deployNFT()} className="mt-5 flex w-full items-center justify-center rounded-xl bg-cyan-400 py-3 text-xs font-extrabold text-slate-950 hover:bg-cyan-300 disabled:opacity-40">{deploying?<Loader2 className="mr-2 h-4 w-4 animate-spin"/>:<Rocket className="mr-2 h-4 w-4"/>}{deploying?'DEPLOYING ON ARC…':'DEPLOY GEN-0 BOUND'}</button>:<button disabled={minting||owned} onClick={()=>void mint()} className="mt-5 flex w-full items-center justify-center rounded-xl bg-cyan-400 py-3 text-xs font-extrabold text-slate-950 hover:bg-cyan-300 disabled:bg-white/[.06] disabled:text-slate-500">{minting?<Loader2 className="mr-2 h-4 w-4 animate-spin"/>:<Gem className="mr-2 h-4 w-4"/>}{owned?'YOU OWN GEN-0 BOUND':minting?'MINTING…':'MINT · 1 USDC'}</button>}
+          <p className="mt-3 text-center text-[9px] leading-5 text-slate-600">1 USDC is transferred directly onchain to the GEN-0 fee wallet. Transfers of the NFT are disabled.</p>
+        </section>
       </div>
-
-      {ownedModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-5">
-          <div className="w-full max-w-md rounded-3xl border border-blue-400/25 bg-[#0b0e14] p-5 sm:p-6 shadow-[0_0_80px_rgba(59,130,246,.22)]">
-            <div className="text-center">
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[10px] font-mono uppercase tracking-wider text-emerald-300">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Confirmed on Arc
-              </div>
-              <h3 className="mt-4 text-2xl font-black tracking-tight text-white">YOU OWN</h3>
-              <p className="mt-1 text-xs text-zinc-500">GEN-0 Bound · soulbound to this wallet</p>
-
-              {artworkConfigured && (
-                <img
-                  src={GEN0_BOUND_ARTWORK_URL}
-                  alt="GEN-0 Bound NFT you own"
-                  className="mt-5 w-full aspect-square object-cover rounded-2xl border border-blue-400/20"
-                  draggable={false}
-                />
-              )}
-
-              <button
-                type="button"
-                onClick={() => setOwnedModal(false)}
-                className="mt-5 w-full rounded-xl border border-zinc-700 bg-white/[0.05] py-2.5 text-[11px] font-bold text-white hover:bg-white/[0.08]"
-              >
-                CLOSE
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
-  );
+    {showOwned&&<div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 p-5 backdrop-blur-md"><div className="w-full max-w-md rounded-3xl border border-cyan-300/20 bg-[#0b111a] p-5 shadow-[0_0_90px_rgba(34,211,238,.16)]"><div className="text-center"><span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/15 bg-emerald-300/[.06] px-3 py-1 text-[9px] uppercase tracking-wider text-emerald-300"><CheckCircle2 className="h-3.5 w-3.5"/> Confirmed on Arc</span><h2 className="mt-4 text-3xl font-black text-white">YOU OWN</h2>{artwork&&<img src={artwork} alt="GEN-0 Bound you own" className="mt-5 aspect-square w-full rounded-2xl object-cover border border-white/10"/>}<button onClick={()=>setShowOwned(false)} className="mt-5 w-full rounded-xl border border-white/10 bg-white/[.05] py-2.5 text-xs font-bold text-white">CLOSE</button></div></div></div>}
+  </div>;
 };
