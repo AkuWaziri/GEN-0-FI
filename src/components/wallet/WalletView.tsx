@@ -4,6 +4,7 @@ import { encodeFunctionData, formatUnits, parseUnits, isAddress } from 'viem';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { ARC_CHAIN_ID, ARC_MAINNET_EXPLORER_URL } from '../../config/arc';
 import { useWallet } from '../../context/WalletContext';
+import { recordConfirmedAction } from '../../services/points/pointsService';
 
 const GEN0FI_FEE_RATE = 0.005;
 const GEN0FI_FEE_WALLET = '0x5Bce25397eEfbc76f6479e6838c00a5115dbEA4c';
@@ -157,6 +158,11 @@ export const WalletView: React.FC<WalletViewProps> = ({ initialMode = 'send' }) 
       }
 
       setStatus(`Sent ${formattedNet} ${token}. GEN-0FI fee: ${formattedFee} USDC.`);
+      if (txHash) {
+        recordConfirmedAction(address, txHash, 'send').catch(() => {
+          // Points sync is secondary to the confirmed wallet transaction.
+        });
+      }
       setAmount('');
       setRecipient('');
       await refreshData();
