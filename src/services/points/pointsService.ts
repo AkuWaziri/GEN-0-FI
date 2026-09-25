@@ -2,11 +2,11 @@ import { supabase } from '../../lib/supabase';
 import type { PointAction, PointLeaderboardRow } from '../../types/points';
 
 export const POINT_VALUES: Record<PointAction, number> = {
-  swap: 5,
-  bridge: 10,
-  send: 5,
-  nft_mint: 200,
-  coin_launch: 50,
+  swap: 50,
+  bridge: 100,
+  send: 50,
+  nft_mint: 500,
+  coin_launch: 500,
 };
 
 export const SWAP_POINTS = POINT_VALUES.swap;
