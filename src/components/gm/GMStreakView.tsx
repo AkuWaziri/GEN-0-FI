@@ -3,7 +3,7 @@ import { Flame, Check, Trophy, CalendarDays, RefreshCw, ExternalLink } from 'luc
 import { useWallet } from '../../context/WalletContext';
 import { usePublicClient, useWriteContract } from 'wagmi';
 import { GM_CONTRACT_ABI, GM_CONTRACT_ADDRESS, GM_FEE_WEI, isGMContractConfigured } from '../../config/gmContract';
-import { indexConfirmedGMDays, getGMLeaderboard, getGMStats, GMLeaderboardRow, GMStats } from '../../services/gm/gmService';
+import { getGMStreakPoints, indexConfirmedGMDays, getGMLeaderboard, getGMStats, GMLeaderboardRow, GMStats } from '../../services/gm/gmService';
 import { isSupabaseConfigured } from '../../lib/supabase';
 import { ARC_CHAIN_ID, getArcScanTxUrl } from '../../config/arc';
 
@@ -19,7 +19,7 @@ const markConfirmedToday = (current: GMStats | null): GMStats => {
       currentStreak: 1,
       longestStreak: 1,
       totalGmDays: 1,
-      points: 1,
+      points: getGMStreakPoints(1),
       checkedInToday: true,
       lastCheckinDate: today,
     };
@@ -37,7 +37,7 @@ const markConfirmedToday = (current: GMStats | null): GMStats => {
     currentStreak: nextStreak,
     longestStreak: Math.max(current.longestStreak, nextStreak),
     totalGmDays: current.totalGmDays + 1,
-    points: nextStreak,
+    points: getGMStreakPoints(nextStreak),
     checkedInToday: true,
     lastCheckinDate: today,
   };
