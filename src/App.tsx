@@ -21,8 +21,6 @@ import { WrongNetworkView } from './components/wallet/WrongNetworkView';
 import { WelcomeOnboarding } from './components/wallet/WelcomeOnboarding';
 import { WalletIdentityModal } from './components/wallet/WalletIdentityModal';
 import { Footer } from './components/common/Footer';
-import { Gen0BoundNFTView } from './components/nft/Gen0BoundNFTView';
-import { DeployContractView } from './components/deploy/DeployContractView';
 import { initGlobalClickSound } from './utils/sound';
 
 const AppContent: React.FC = () => {
@@ -88,8 +86,6 @@ const AppContent: React.FC = () => {
             {activeTab === 'activity' && <ActivityView />}
             {activeTab === 'points' && <PointsLeaderboardView />}
             {activeTab === 'settings' && <SettingsView />}
-            {activeTab === 'boundnft' && <Gen0BoundNFTView />}
-            {activeTab === 'deploy' && <DeployContractView />}
           </div>
           {activeTab !== 'copilot' && <Footer />}
         </main>
