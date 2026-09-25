@@ -172,7 +172,6 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
     return months > 0 ? `${years}y ${months}mo` : `${years}y`;
   }, [walletSummary?.firstActivityTime, walletSummary?.historyStatus]);
 
-  const failedTransactionCount = walletSummary?.failedTransactionCount ?? 0;
   const tokenApprovalsCount = walletSummary?.tokenApprovalsCount ?? 0;
 
   if (!isConnected || !address) {
@@ -315,12 +314,6 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
           value={isLoadingData ? '…' : walletAgeDisplay}
           detail={walletAgeDisplay === 'Unavailable' ? 'Lifetime index unavailable' : 'Since first indexed activity'}
           icon={CalendarClock}
-        />
-        <MetricCard
-          label="Failed Transactions"
-          value={isLoadingData ? '…' : String(failedTransactionCount)}
-          detail="Reverted lifetime transactions"
-          icon={CircleX}
         />
         <MetricCard
           label="Token Approvals"
