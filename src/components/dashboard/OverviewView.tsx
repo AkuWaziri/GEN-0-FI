@@ -3,7 +3,6 @@ import { useWallet } from '../../context/WalletContext';
 import { Skeleton } from '../common/Skeleton';
 import { TabType } from '../common/Sidebar';
 import { Gen0BoundNFTView } from '../nft/Gen0BoundNFTView';
-import { DeployContractView } from '../deploy/DeployContractView';
 import {
   Code2,
   Flame,
@@ -416,13 +415,8 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
           </div>
           <span className="text-[10px] text-zinc-600 font-mono">Arc Mainnet</span>
         </div>
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <div className="rounded-2xl border border-zinc-800 bg-[#0d0f12] overflow-hidden glow-blue-card-hover">
-            <Gen0BoundNFTView />
-          </div>
-          <div className="rounded-2xl border border-zinc-800 bg-[#0d0f12] overflow-hidden glow-blue-card-hover">
-            <DeployContractView />
-          </div>
+        <div className="rounded-2xl border border-zinc-800 bg-[#0d0f12] overflow-hidden glow-blue-card-hover">
+          <Gen0BoundNFTView />
         </div>
       </section>
 
