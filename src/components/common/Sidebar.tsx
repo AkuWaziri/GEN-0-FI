@@ -21,7 +21,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
     { id: 'playmemes' as TabType, label: 'Playmemes', icon: Rocket },
     { id: 'swap' as TabType, label: 'Swap & Bridge', icon: ArrowLeftRight },
     { id: 'wallet' as TabType, label: 'Send & Receive', icon: Send },
-    { id: 'savings' as TabType, label: 'Savings', icon: PiggyBank },
+    { id: 'savings' as TabType, label: 'Lend', icon: PiggyBank },
     { id: 'fx' as TabType, label: 'FX', icon: Coins },
     { id: 'copilot' as TabType, label: 'COPILOT', icon: Sparkles },
     { id: 'points' as TabType, label: 'Leaderboard', icon: Trophy },
