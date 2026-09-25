@@ -1,6 +1,6 @@
 import React from 'react';
 import { TabType } from './Sidebar';
-import { LayoutDashboard, History, Settings, ArrowLeftRight, Trophy, Send, Sparkles, Coins, PiggyBank, Rocket } from 'lucide-react';
+import { LayoutDashboard, History, Settings, ArrowLeftRight, Trophy, Send, Sparkles, Coins, PiggyBank, Rocket, Gem, Code2 } from 'lucide-react';
 
 interface MobileNavProps { activeTab: TabType; onSelectTab: (tab: TabType) => void; }
 
@@ -15,6 +15,8 @@ export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, onSelectTab }) 
     { id: 'copilot' as TabType, label: 'COPILOT', icon: Sparkles },
     { id: 'points' as TabType, label: 'Leaderboard', icon: Trophy },
     { id: 'activity' as TabType, label: 'Activity', icon: History },
+    { id: 'boundnft' as TabType, label: 'GEN-0 NFT', icon: Gem },
+    { id: 'deploy' as TabType, label: 'Deploy', icon: Code2 },
     { id: 'settings' as TabType, label: 'Settings', icon: Settings },
   ];
   return (
