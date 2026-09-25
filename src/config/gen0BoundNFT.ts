@@ -2,7 +2,7 @@ import { Address } from 'viem';
 import { ARC_MAINNET_CHAIN_ID } from './arc';
 
 export const GEN0_BOUND_NFT_ADDRESS = (
-  (import.meta.env.VITE_GEN0_BOUND_NFT_ADDRESS || '').trim()
+  (import.meta.env.VITE_GEN0_BOUND_NFT_ADDRESS || '0x02Acc0f0e5bdC1757710dF93F3fabD3Ad88C9b9C').trim()
 ) as Address;
 
 export const GEN0_BOUND_ARTWORK_URL = (
@@ -10,7 +10,7 @@ export const GEN0_BOUND_ARTWORK_URL = (
 );
 
 export const GEN0_BOUND_METADATA_URI = (
-  (import.meta.env.VITE_GEN0_BOUND_METADATA_URI || '').trim()
+  (import.meta.env.VITE_GEN0_BOUND_METADATA_URI || 'ipfs://bafkreibcmwuncoiw2fjfraxj7kyp6s56sqbnyiqx72i55jmwmmzpenuudm').trim()
 );
 
 export const GEN0_BOUND_USDC_ADDRESS =
