@@ -26,12 +26,31 @@ export interface NormalizedTransaction {
   summary: string;
 }
 
+export interface WalletAssetItem {
+  address: string;
+  name: string;
+  symbol: string;
+  balance: string;
+  standard: string;
+  decimals?: number;
+}
+
+export interface WalletNftItem {
+  address: string;
+  name: string;
+  symbol: string;
+  balance: string;
+  standard: string;
+}
+
 export interface WalletAssetSummary {
   tokenHoldings: number;
   coinHoldings: number;
   nftHoldings: number;
   fungibleHoldings: number;
   historyStatus: 'complete' | 'unavailable';
+  coins?: WalletAssetItem[];
+  nfts?: WalletNftItem[];
 }
 
 export interface WalletSummary {
