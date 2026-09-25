@@ -6,7 +6,7 @@ export const GEN0_BOUND_NFT_ADDRESS = (
 ) as Address;
 
 export const GEN0_BOUND_ARTWORK_URL = (
-  (import.meta.env.VITE_GEN0_BOUND_ARTWORK_URL || '').trim()
+  (import.meta.env.VITE_GEN0_BOUND_ARTWORK_URL || 'https://kommodo.ai/i/A3GKVydqmhZ9K5RbRKvh').trim()
 );
 
 export const GEN0_BOUND_METADATA_URI = (
