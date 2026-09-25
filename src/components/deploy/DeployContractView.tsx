@@ -468,7 +468,7 @@ export const DeployContractView: React.FC = () => {
         <button
           type="button"
           onClick={() => void (wallet ? deploy() : connectWallet())}
-          disabled={busy || Boolean(wallet && formError)}
+          disabled={busy}
           className="mt-5 w-full py-3 rounded-xl bg-cyan-400 text-zinc-950 text-sm font-extrabold hover:bg-cyan-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {busy && <Loader2 className="inline-block w-4 h-4 mr-2 animate-spin" />}
