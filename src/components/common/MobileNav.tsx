@@ -10,7 +10,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, onSelectTab }) 
     { id: 'playmemes' as TabType, label: 'Playmemes', icon: Rocket },
     { id: 'swap' as TabType, label: 'Swap', icon: ArrowLeftRight },
     { id: 'wallet' as TabType, label: 'Wallet', icon: Send },
-    { id: 'savings' as TabType, label: 'Savings', icon: PiggyBank },
+    { id: 'savings' as TabType, label: 'Lend', icon: PiggyBank },
     { id: 'fx' as TabType, label: 'FX', icon: Coins },
     { id: 'copilot' as TabType, label: 'COPILOT', icon: Sparkles },
     { id: 'points' as TabType, label: 'Leaderboard', icon: Trophy },
