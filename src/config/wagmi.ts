@@ -13,7 +13,8 @@ import {
   ARC_FALLBACK_RPC_URL,
 } from './arc';
 
-// Disable background third-party SDK analytics telemetry and origin allowlist checks for unused embedded wallets
+// Deployment trigger: keep Arc Mainnet RPC fallback changes flowing to Vercel.
+
 if (typeof OptionsController !== 'undefined') {
   try {
     OptionsController.setEnableCoinbase(false);
@@ -48,7 +49,6 @@ if (typeof AlertController !== 'undefined') {
   } catch (_) {}
 }
 
-// Arc Mainnet as official AppKit / Wagmi network definition
 export const arcMainnet = defineChain({
   id: ARC_MAINNET_CHAIN_ID,
   caipNetworkId: `eip155:${ARC_MAINNET_CHAIN_ID}`,
@@ -76,21 +76,15 @@ export const arcMainnet = defineChain({
   testnet: false,
 });
 
-// Backward-compatible alias
 export const arcTestnet = arcMainnet;
 
-// All supported networks in wagmi (Arc Mainnet is primary; other chains are registered
-// so when user connects on Base/Ethereum/etc., the app cleanly detects wrong network
-// and facilitates one-click standard switching to Arc Mainnet)
 export const supportedNetworks = [arcMainnet, base, mainnet, arbitrum, polygon, optimism];
 
-// Read Reown / WalletConnect Project ID with fallback for development and testing
 export const WALLETCONNECT_PROJECT_ID =
   (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID) ||
   (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_WALLETCONNECT_PROJECT_ID) ||
-  'b56e18d47c72ab683b10814fe9495694'; // Reliable public project ID fallback if not set in .env
+  'b56e18d47c72ab683b10814fe9495694';
 
-// Create Wagmi Adapter
 export const wagmiAdapter = new WagmiAdapter({
   projectId: WALLETCONNECT_PROJECT_ID,
   networks: supportedNetworks,
@@ -98,7 +92,6 @@ export const wagmiAdapter = new WagmiAdapter({
 
 export const wagmiConfig = wagmiAdapter.wagmiConfig;
 
-// Initialize Reown AppKit modal once
 export const appKitModal = createAppKit({
   adapters: [wagmiAdapter],
   networks: [arcMainnet, base, mainnet, arbitrum, polygon, optimism],
@@ -113,9 +106,9 @@ export const appKitModal = createAppKit({
     icons: ['https://arc.etherscan.io/favicon.ico'],
   },
   features: {
-    email: false, // Strictly no email per specifications
-    socials: [], // Strictly no social logins per specifications
-    emailShowWallets: false, // Disabled to prevent unnecessary embedded auth iframe initialization
+    email: false,
+    socials: [],
+    emailShowWallets: false,
     analytics: false,
     swaps: false,
     onramp: false,
