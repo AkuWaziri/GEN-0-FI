@@ -6,13 +6,35 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { arcChain, ARC_NETWORK_CONFIG, ARC_RPC_URL } from './src/config/arc';
 import { normalizeTransaction, RawTxInput } from './src/services/blockchain/normalizer';
 import { handleAiAskPayload } from './src/services/ai/geminiService';
+import { compileGen0Token } from './src/services/blockchain/gen0TokenCompiler';
 
 dotenv.config();
 
 const app = express();
 const PORT = 3000;
 
-app.use(express.json({ limit: '64kb' }));
+app.use(express.json({ limit: '64kb' }));\n\napp.post('/api/deploy/compile', (req, res) => {
+  try {
+    const body = req.body || {};
+    const name = String(body.name || '').trim();
+    const symbol = String(body.symbol || '').trim().toUpperCase();
+    const decimals = Number(body.decimals);
+    const initialSupply = String(body.initialSupply || '').trim();
+    const receiver = String(body.receiver || '').trim();
+
+    if (!name || name.length > 64) return res.status(400).json({ error: 'Token name must be 1-64 characters.' });
+    if (!/^[A-Z0-9._-]+$/.test(symbol) || symbol.length > 16) return res.status(400).json({ error: 'Ticker must be 1-16 characters using letters, numbers, ., _, or -.' });
+    if (!Number.isInteger(decimals) || decimals < 0 || decimals > 18) return res.status(400).json({ error: 'Decimals must be an integer from 0 to 18.' });
+    if (!/^\\d+$/.test(initialSupply) || initialSupply === '0') return res.status(400).json({ error: 'Initial supply must be a positive whole number.' });
+    if (!isAddress(receiver)) return res.status(400).json({ error: 'A valid receiving wallet address is required.' });
+
+    const compiled = compileGen0Token({ name, symbol, decimals, initialSupply, receiver });
+    return res.status(200).json({ ok: true, bytecode: compiled.bytecode, abi: compiled.abi, compiler: compiled.compiler, network: 'Arc Mainnet', chainId: 5042 });
+  } catch (error: any) {
+    console.error('[GEN-0 deploy compile]', error);
+    return res.status(500).json({ error: error?.message || 'Token compilation failed.' });
+  }
+});
 
 // Normalize incoming request path for Vercel serverless functions (where /api might be stripped)
 app.use((req, res, next) => {
