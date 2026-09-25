@@ -17,7 +17,6 @@ import {
   ArrowUpRight,
   CalendarClock,
   CircleX,
-  Landmark,
   ShieldCheck,
   Droplets,
   ExternalLink,
@@ -175,7 +174,6 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
   }, [walletSummary?.firstActivityTime, walletSummary?.historyStatus]);
 
   const failedTransactionCount = walletSummary?.failedTransactionCount ?? 0;
-  const topProtocolUsed = walletSummary?.topProtocolUsed || 'None';
   const tokenApprovalsCount = walletSummary?.tokenApprovalsCount ?? 0;
 
   if (!isConnected || !address) {
@@ -312,7 +310,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
         <MetricCard
           label="Wallet Age"
           value={isLoadingData ? '…' : walletAgeDisplay}
@@ -324,13 +322,6 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
           value={isLoadingData ? '…' : String(failedTransactionCount)}
           detail="Reverted lifetime transactions"
           icon={CircleX}
-        />
-        <MetricCard
-          label="Top Protocol Used"
-          value={isLoadingData ? '…' : topProtocolUsed}
-          detail="Most-used indexed contract"
-          icon={Landmark}
-          compact
         />
         <MetricCard
           label="Token Approvals"
