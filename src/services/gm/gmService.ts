@@ -35,6 +35,13 @@ const previousDateKey = (date: string) => {
   return dateKey(d);
 };
 
+export const GM_STREAK_REWARDS = [10, 20, 30, 40, 50, 60, 70] as const;
+
+export const getGMStreakPoints = (streak: number): number => {
+  if (streak <= 0) return 0;
+  return GM_STREAK_REWARDS[(streak - 1) % GM_STREAK_REWARDS.length];
+};
+
 const calculateStats = (dates: string[], today: string): GMStats => {
   const unique = [...new Set(dates)].sort();
   const checkedInToday = unique.includes(today);
@@ -63,7 +70,7 @@ const calculateStats = (dates: string[], today: string): GMStats => {
     currentStreak,
     longestStreak,
     totalGmDays: unique.length,
-    points: currentStreak,
+    points: getGMStreakPoints(currentStreak),
     checkedInToday,
     lastCheckinDate: unique.at(-1) || null,
   };
