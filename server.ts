@@ -13,7 +13,9 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-app.use(express.json({ limit: '64kb' }));\n\napp.post('/api/deploy/compile', (req, res) => {
+app.use(express.json({ limit: '64kb' }));
+
+app.post('/api/deploy/compile', (req, res) => {
   try {
     const body = req.body || {};
     const name = String(body.name || '').trim();
