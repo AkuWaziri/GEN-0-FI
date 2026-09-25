@@ -14,13 +14,21 @@ const ERC20_ABI = [{ type: 'function', name: 'balanceOf', stateMutability: 'view
 type Mode = 'send' | 'receive';
 type Token = 'USDC' | 'EURC';
 
-export const WalletView: React.FC = () => {
+interface WalletViewProps {
+  initialMode?: Mode;
+}
+
+export const WalletView: React.FC<WalletViewProps> = ({ initialMode = 'send' }) => {
   const { address, balanceUSDC, refreshData } = useWallet();
   const { chainId } = useAccount();
   const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient({ chainId: ARC_CHAIN_ID });
 
-  const [mode, setMode] = useState<Mode>('send');
+  const [mode, setMode] = useState<Mode>(initialMode);
+
+  React.useEffect(() => {
+    setMode(initialMode);
+  }, [initialMode]);
   const [token, setToken] = useState<Token>('USDC');
   const [tokenBalance, setTokenBalance] = useState('0.00');
   const [feeUsdc, setFeeUsdc] = useState(0);
