@@ -10,6 +10,7 @@ import {
   ARC_CHAIN_ID,
   ARC_RPC_URL,
   ARC_EXPLORER_URL,
+  ARC_FALLBACK_RPC_URL,
 } from './arc';
 
 // Disable background third-party SDK analytics telemetry and origin allowlist checks for unused embedded wallets
@@ -63,7 +64,7 @@ export const arcMainnet = defineChain({
       http: [ARC_MAINNET_RPC_URL, ARC_FALLBACK_RPC_URL],
     },
     public: {
-      http: [ARC_MAINNET_RPC_URL, 'https://rpc.arc.io'],
+      http: [ARC_MAINNET_RPC_URL, ARC_FALLBACK_RPC_URL],
     },
   },
   blockExplorers: {
