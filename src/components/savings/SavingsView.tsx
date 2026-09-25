@@ -37,8 +37,8 @@ export const SavingsView: React.FC = () => {
         <header className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
           <div>
             <p className="text-[10px] uppercase tracking-[0.25em] text-blue-400 font-mono">Arc-native yield</p>
-            <h1 className="mt-1 text-2xl sm:text-3xl font-bold text-white tracking-tight">Savings</h1>
-            <p className="mt-2 max-w-2xl text-sm text-zinc-400">Put idle USDC or EURC to work through live savings opportunities on Arc.</p>
+            <h1 className="mt-1 text-2xl sm:text-3xl font-bold text-white tracking-tight">Lend</h1>
+            <p className="mt-2 max-w-2xl text-sm text-zinc-400">Put idle USDC or EURC to work through yield opportunities on Arc. Routed through AAVE pools.</p>
           </div>
           <div className="flex items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-1">
             {(['all', 'USDC', 'EURC'] as Asset[]).map((filter) => (
@@ -63,8 +63,8 @@ export const SavingsView: React.FC = () => {
               <div className="text-[10px] uppercase tracking-widest text-zinc-600">How this works</div>
               <div className="mt-4 space-y-3">
                 <Step number="01" title="Choose an asset" text="USDC or EURC." />
-                <Step number="02" title="Open the live app" text="Review the live vault or lending market." />
-                <Step number="03" title="Decide there" text="GEN-0FI never moves your funds for this feature." />
+                <Step number="02" title="Open the live Aave live pools" text="Review the live vault or lending market on Aave." />
+                <Step number="03" title="Decide there" text="GEN-0FI never moves your funds for this feature. Only routes it." />
               </div>
             </div>
           </div>
