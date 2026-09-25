@@ -414,7 +414,7 @@ function AssetPicker(props: {
         >
           <div className="flex items-center justify-between gap-3">
             <span className="text-sm font-semibold text-white">
-              {selected?.value || (loading ? 'Loading assets…' : 'Select asset')}
+              {selected?.value || 'Select asset'}
             </span>
             <span className={selected?.kind === 'stable' ? 'text-[9px] uppercase tracking-wider text-blue-300' : 'text-[9px] uppercase tracking-wider text-zinc-500'}>
               {selected?.kind === 'stable' ? 'Stablecoin' : selected?.kind === 'fiat' ? 'Fiat' : 'Choose'}
