@@ -38,7 +38,7 @@ export const SavingsView: React.FC = () => {
           <div>
             <p className="text-[10px] uppercase tracking-[0.25em] text-blue-400 font-mono">Arc-native yield</p>
             <h1 className="mt-1 text-2xl sm:text-3xl font-bold text-white tracking-tight">Lend</h1>
-            <p className="mt-2 max-w-2xl text-sm text-zinc-400">Put idle USDC or EURC to work through yield opportunities on Arc. Routed through AAVE pools.</p>
+            <p className="mt-2 max-w-2xl text-sm text-zinc-400">Put idle USDC or EURC to work through yield opportunities on Arc. Routed through AAVE and Morpho</p>
           </div>
           <div className="flex items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-1">
             {(['all', 'USDC', 'EURC'] as Asset[]).map((filter) => (
