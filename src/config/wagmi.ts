@@ -60,7 +60,7 @@ export const arcMainnet = defineChain({
   },
   rpcUrls: {
     default: {
-      http: [ARC_MAINNET_RPC_URL, 'https://rpc.arc.io'],
+      http: [ARC_MAINNET_RPC_URL, ARC_FALLBACK_RPC_URL],
     },
     public: {
       http: [ARC_MAINNET_RPC_URL, 'https://rpc.arc.io'],
