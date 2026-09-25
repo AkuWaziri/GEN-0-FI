@@ -5,8 +5,11 @@ export const GEN0_BOUND_NFT_ADDRESS = (
   (import.meta.env.VITE_GEN0_BOUND_NFT_ADDRESS || '0x02Acc0f0e5bdC1757710dF93F3fabD3Ad88C9b9C').trim()
 ) as Address;
 
+export const GEN0_BOUND_ARTWORK_CID =
+  'bafkreihfz54tnigct6ys6l7nj2sia3zrvxpo7cmbihfrrt5srazv3itmda';
+
 export const GEN0_BOUND_ARTWORK_URL = (
-  (import.meta.env.VITE_GEN0_BOUND_ARTWORK_URL || 'https://kommodo.ai/i/A3GKVydqmhZ9K5RbRKvh').trim()
+  (import.meta.env.VITE_GEN0_BOUND_ARTWORK_URL || `https://ipfs.io/ipfs/${GEN0_BOUND_ARTWORK_CID}`).trim()
 );
 
 export const GEN0_BOUND_METADATA_URI = (
