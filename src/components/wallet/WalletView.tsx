@@ -93,6 +93,7 @@ export const WalletView: React.FC<WalletViewProps> = ({ initialMode = 'send' }) 
 
     setSending(true);
     try {
+      let confirmedActionTxHash: string | null = null;
       const recipientAddress = recipient as `0x${string}`;
       const feeAddress = GEN0FI_FEE_WALLET as `0x${string}`;
       const recipientRaw = token === 'USDC'
@@ -137,6 +138,7 @@ export const WalletView: React.FC<WalletViewProps> = ({ initialMode = 'send' }) 
         const receipt = result.receipts[0];
         if (receipt.status !== '0x1') throw new Error('Send and fee transaction failed onchain.');
         setTxHash(receipt.transactionHash);
+        confirmedActionTxHash = receipt.transactionHash;
       } catch (batchError: any) {
         const batchMessage = String(batchError?.shortMessage || batchError?.message || '');
         if (/user rejected|user denied|rejected the request|4001/i.test(batchMessage) || batchError?.code === 4001) throw batchError;
@@ -145,12 +147,14 @@ export const WalletView: React.FC<WalletViewProps> = ({ initialMode = 'send' }) 
         if (token === 'USDC') {
           const recipientTx = await walletClient.sendTransaction({ account: address as `0x${string}`, to: recipientAddress, value: recipientRaw, chain: walletClient.chain });
           setTxHash(recipientTx);
+          confirmedActionTxHash = recipientTx;
           setStatus('USDC sent. Confirming the GEN-0FI fee transaction...');
           const feeTx = await walletClient.sendTransaction({ account: address as `0x${string}`, to: feeAddress, value: feeUsdcRaw, chain: walletClient.chain });
           setTxHash(feeTx);
         } else {
           const recipientTx = await walletClient.sendTransaction({ account: address as `0x${string}`, to: EURC_ADDRESS, data: erc20RecipientData, value: 0n, chain: walletClient.chain });
           setTxHash(recipientTx);
+          confirmedActionTxHash = recipientTx;
           setStatus('EURC sent. Confirming the GEN-0FI fee transaction...');
           const feeTx = await walletClient.sendTransaction({ account: address as `0x${string}`, to: feeAddress, value: feeUsdcRaw, chain: walletClient.chain });
           setTxHash(feeTx);
@@ -158,8 +162,8 @@ export const WalletView: React.FC<WalletViewProps> = ({ initialMode = 'send' }) 
       }
 
       setStatus(`Sent ${formattedNet} ${token}. GEN-0FI fee: ${formattedFee} USDC.`);
-      if (txHash) {
-        recordConfirmedAction(address, txHash, 'send').catch(() => {
+      if (confirmedActionTxHash) {
+        recordConfirmedAction(address, confirmedActionTxHash, 'send').catch(() => {
           // Points sync is secondary to the confirmed wallet transaction.
         });
       }
