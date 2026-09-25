@@ -46,6 +46,7 @@ export const PointsLeaderboardView: React.FC = () => {
     () => activityMeta.map((item) => ({
       ...item,
       points: myRow?.[item.key] ?? 0,
+      unitPoints: item.points,
       count: myRow?.[item.count] ?? 0,
     })),
     [myRow],
@@ -161,7 +162,7 @@ export const PointsLeaderboardView: React.FC = () => {
                   <div key={item.label} className="rounded-xl border border-zinc-800 bg-black/20 p-3">
                     <Icon className="w-4 h-4 text-zinc-400" />
                     <div className="mt-3 text-sm font-semibold text-white">{item.points}</div>
-                    <div className="text-[10px] text-zinc-600">{item.count} × {item.points === 0 ? item.points : item.points / item.count || 0} pts</div>
+                    <div className="text-[10px] text-zinc-600">{item.count} × {item.unitPoints} pts</div>
                     <div className="mt-1 text-[10px] text-zinc-500">{item.label}</div>
                   </div>
                 );
