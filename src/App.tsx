@@ -29,6 +29,7 @@ const AppContent: React.FC = () => {
   const [pendingTab, setPendingTab] = useState<TabType | null>(null);
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
   const [isIdentityModalOpen, setIsIdentityModalOpen] = useState(false);
+  const [walletMode, setWalletMode] = useState<'send' | 'receive'>('send');
 
   useEffect(() => {
     const cleanup = initGlobalClickSound();
@@ -65,11 +66,20 @@ const AppContent: React.FC = () => {
         <Header activeTab={activeTab} onSelectTab={setActiveTab} onOpenConnect={() => setIsIdentityModalOpen(true)} />
         <main className="flex-1 overflow-y-auto flex flex-col justify-between">
           <div>
-            {activeTab === 'overview' && <OverviewView onSelectTab={setActiveTab} onOpenConnect={() => setIsIdentityModalOpen(true)} />}
+            {activeTab === 'overview' && (
+              <OverviewView
+                onSelectTab={setActiveTab}
+                onOpenConnect={() => setIsIdentityModalOpen(true)}
+                onOpenWallet={(mode) => {
+                  setWalletMode(mode);
+                  setActiveTab('wallet');
+                }}
+              />
+            )}
             {activeTab === 'copilot' && <AskGen0View />}
             {activeTab === 'playmemes' && <PlaymemesView />}
             {activeTab === 'swap' && <SwapView />}
-            {activeTab === 'wallet' && <WalletView />}
+            {activeTab === 'wallet' && <WalletView initialMode={walletMode} />}
             {activeTab === 'savings' && <SavingsView />}
             {activeTab === 'fx' && <FXView />}
             {activeTab === 'gm' && <GMStreakView />}
