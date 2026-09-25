@@ -606,9 +606,11 @@ export async function fetchWalletAssetSummary(address: string): Promise<{
   nftHoldings: number;
   fungibleHoldings: number;
   historyStatus: 'complete' | 'unavailable';
+  coins: Array<{ address: string; name: string; symbol: string; balance: string; standard: string; decimals?: number }>;
+  nfts: Array<{ address: string; name: string; symbol: string; balance: string; standard: string }>;
 }> {
   if (!address || !isAddress(address, { strict: false })) {
-    return { tokenHoldings: 0, coinHoldings: 0, nftHoldings: 0, fungibleHoldings: 0, historyStatus: 'unavailable' };
+    return { tokenHoldings: 0, coinHoldings: 0, nftHoldings: 0, fungibleHoldings: 0, historyStatus: 'unavailable', coins: [], nfts: [] };
   }
 
   const url = ARCSCAN_V1_BASE + '/address/' + address + '/tokens';
@@ -625,6 +627,30 @@ export async function fetchWalletAssetSummary(address: string): Promise<{
     throw new Error('Arcscan token holdings unavailable');
   }
 
+  const coins: Array<{ address: string; name: string; symbol: string; balance: string; standard: string; decimals?: number }> = [];
+  const nfts: Array<{ address: string; name: string; symbol: string; balance: string; standard: string }> = [];
+
+  const displayBalance = (row: any): { value: string; decimals?: number } => {
+    const raw = row?.balance ?? row?.amount ?? row?.quantity ?? row?.raw_balance;
+    const decimalsCandidate = row?.decimals ?? row?.token?.decimals;
+    const decimals = Number.isFinite(Number(decimalsCandidate)) ? Number(decimalsCandidate) : undefined;
+    if (raw && typeof raw === 'object') {
+      const formatted = raw.formatted ?? raw.display ?? raw.value;
+      if (formatted !== undefined && formatted !== null) return { value: String(formatted), decimals };
+      const nestedRaw = raw.raw ?? raw.value_raw ?? raw.amount_raw;
+      if (nestedRaw !== undefined) {
+        try {
+          if (decimals !== undefined && /^-?\\d+$/.test(String(nestedRaw))) {
+            const exact = formatUnits(BigInt(String(nestedRaw)), decimals);
+            return { value: exact, decimals };
+          }
+          return { value: String(nestedRaw), decimals };
+        } catch {}
+      }
+    }
+    return { value: raw === undefined || raw === null ? '0' : String(raw), decimals };
+  };
+
   let coinHoldings = 0;
   let nftHoldings = 0;
 
@@ -636,26 +662,42 @@ export async function fetchWalletAssetSummary(address: string): Promise<{
       row?.token?.standard ??
       ''
     ).toUpperCase();
+    const assetAddress = addressOf(
+      row?.address ?? row?.token_address ?? row?.tokenAddress ?? row?.token?.address ?? row?.contract_address ?? row?.contractAddress
+    ) || '';
+    const name = String(row?.name ?? row?.token_name ?? row?.token?.name ?? 'Unknown asset');
+    const symbol = String(row?.symbol ?? row?.token_symbol ?? row?.token?.symbol ?? '—');
+    const { value: balance, decimals } = displayBalance(row);
 
     if (standard === 'ERC-721' || standard === 'ERC721' || standard === 'ERC-1155' || standard === 'ERC1155') {
       nftHoldings++;
+      nfts.push({ address: assetAddress, name, symbol, balance, standard: standard || 'NFT' });
     } else if (standard === 'ERC-20' || standard === 'ERC20') {
-      const balance = row?.balance ?? row?.amount ?? row?.quantity ?? row?.raw_balance;
-      if (balance !== undefined && balance !== null && String(balance) !== '0') {
+      if (balance !== '0' && balance !== '0.0' && balance !== '0.00') {
         coinHoldings++;
-      } else if (balance === undefined || balance === null) {
-        coinHoldings++;
+        coins.push({ address: assetAddress, name, symbol, balance, standard: standard || 'ERC-20', decimals });
       }
     }
   }
 
-  // Arc's native USDC is the wallet's primary coin holding. It is not
-  // returned by the token-holdings endpoint because the native balance and
-  // ERC-20 USDC face are the same underlying asset. Count it exactly once.
+  // Native Arc USDC is the wallet's primary coin holding and is intentionally
+  // shown once, separately from the ERC-20 token index.
   let nativeCoinCount = 0;
+  let nativeBalance = '0';
   try {
-    const { raw } = await fetchBalanceFromArcRpc(address);
-    if (BigInt(raw) > 0n) nativeCoinCount = 1;
+    const { raw, formatted } = await fetchBalanceFromArcRpc(address);
+    if (BigInt(raw) > 0n) {
+      nativeCoinCount = 1;
+      nativeBalance = formatted;
+      coins.unshift({
+        address: ERC20_USDC,
+        name: 'USD Coin',
+        symbol: 'USDC',
+        balance: formatted,
+        standard: 'NATIVE',
+        decimals: NATIVE_DECIMALS,
+      });
+    }
   } catch {}
 
   return {
@@ -664,6 +706,8 @@ export async function fetchWalletAssetSummary(address: string): Promise<{
     nftHoldings,
     fungibleHoldings: coinHoldings + nativeCoinCount,
     historyStatus: 'complete',
+    coins,
+    nfts,
   };
 }
 
