@@ -8,6 +8,27 @@ Target network: Arc Mainnet
 - USDC decimals: 6
 - GEN-0 fee wallet: 0x5Bce25397eEfbc76f6479e6838c00a5115dbEA4c
 
+## Final artwork
+
+The supplied GEN-0 Bound artwork is the canonical collection image.
+
+Before deployment, host the exact artwork and a metadata JSON at a permanent HTTPS/IPFS/Arweave location. The metadata JSON should contain at minimum:
+
+```json
+{
+  "name": "GEN-0 Bound",
+  "description": "A one-per-wallet soulbound GEN-0FI collectible on Arc.",
+  "image": "<PERMANENT_ARTWORK_URI>",
+  "attributes": [
+    { "trait_type": "Collection", "value": "GEN-0FI" },
+    { "trait_type": "Type", "value": "Soulbound" },
+    { "trait_type": "Network", "value": "Arc" }
+  ]
+}
+```
+
+Do not use a temporary upload URL.
+
 ## Constructor parameters
 
 Deploy `contracts/Gen0BoundNFT.sol` with:
@@ -19,7 +40,7 @@ Deploy `contracts/Gen0BoundNFT.sol` with:
    `0x5Bce25397eEfbc76f6479e6838c00a5115dbEA4c`
 
 3. `metadataURI_`
-   The final HTTPS/IPFS/Arweave metadata JSON URI for the GEN-0 Bound artwork.
+   The permanent metadata JSON URI containing the final supplied artwork.
 
 ## Onchain rules
 
@@ -28,10 +49,11 @@ Deploy `contracts/Gen0BoundNFT.sol` with:
 - The 1 USDC is transferred directly to the immutable GEN-0 fee wallet.
 - NFT transfers are disabled after mint, making the NFT soulbound.
 - There is no admin mint function.
-- The metadata URI can be updated by the deployer before the collection is finalized.
+- The metadata URI is fixed at deployment.
+- `tokenURI()` returns the fixed metadata URI for every minted token.
 
-## Important
+## Deployment state
 
-Do not deploy until the final metadata URI is confirmed. The deployment transaction must be approved by the connected deployer wallet on Arc Mainnet.
+No production GEN-0 Bound contract address is recorded yet.
 
-After deployment, save the resulting contract address in GEN-0FI as the production GEN-0 Bound NFT contract address.
+Do not enable a live MINT button until the contract is deployed on Arc Mainnet and its address is configured in GEN-0FI.
