@@ -1,17 +1,10 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Code2, Copy, ExternalLink, Loader2, Rocket, ShieldCheck, Wallet, XCircle } from 'lucide-react';
 import { ARC_MAINNET_CHAIN_ID, ARC_MAINNET_EXPLORER_URL } from '../../config/arc';
 
 const USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
 const GEN0_FEE_WALLET = '0x5Bce25397eEfbc76f6479e6838c00a5115dbEA4c';
-const DEPLOYMENT_FEE = 100_000n; // 0.10 USDC, ERC-20 representation uses 6 decimals.
-
-// Runtime bytecode for a tiny real storage contract.
-// calldata = empty: returns slot 0.
-// calldata = 32 bytes: stores that word in slot 0.
-// The creation prefix returns the runtime bytecode from memory.
-const SIMPLE_STORAGE_BYTECODE =
-  '0x601c600c600039601c6000f33660106014576000356000556000005b60005460005260206000f3';
+const DEPLOYMENT_FEE = 100_000n; // 0.10 USDC, Arc USDC ERC-20 has 6 decimals.
 
 type EthereumProvider = {
   request: (args: { method: string; params?: unknown[] }) => Promise<any>;
@@ -22,6 +15,14 @@ declare global {
     ethereum?: EthereumProvider;
   }
 }
+
+type CompileResponse = {
+  ok: boolean;
+  bytecode: string;
+  abi: unknown[];
+  compiler: string;
+  error?: string;
+};
 
 const shorten = (value: string, chars = 5) =>
   value ? `${value.slice(0, chars + 2)}…${value.slice(-chars)}` : '';
@@ -63,10 +64,36 @@ async function ensureArc(provider: EthereumProvider): Promise<void> {
   }
 }
 
+function validateTokenForm(name: string, symbol: string, decimals: string, initialSupply: string): string | null {
+  if (!name.trim() || name.trim().length > 64) return 'Token name must be between 1 and 64 characters.';
+  if (!/^[A-Za-z0-9._-]+$/.test(symbol.trim()) || symbol.trim().length > 16) {
+    return 'Ticker must be 1-16 characters using letters, numbers, ., _, or -.';
+  }
+  const decimalValue = Number(decimals);
+  if (!Number.isInteger(decimalValue) || decimalValue < 0 || decimalValue > 18) {
+    return 'Decimals must be an integer from 0 to 18.';
+  }
+  if (!/^\d+$/.test(initialSupply) || initialSupply === '0') {
+    return 'Initial supply must be a positive whole number.';
+  }
+  try {
+    const units = BigInt(initialSupply);
+    const scale = 10n ** BigInt(decimalValue);
+    if (units > (2n ** 256n - 1n) / scale) return 'Initial supply is too large for uint256.';
+  } catch {
+    return 'Initial supply is invalid.';
+  }
+  return null;
+}
+
 export const DeployContractView: React.FC = () => {
   const [wallet, setWallet] = useState('');
+  const [tokenName, setTokenName] = useState('');
+  const [symbol, setSymbol] = useState('');
+  const [decimals, setDecimals] = useState('18');
+  const [initialSupply, setInitialSupply] = useState('1000000');
   const [busy, setBusy] = useState(false);
-  const [stage, setStage] = useState<'idle' | 'fee' | 'deploy' | 'success' | 'error'>('idle');
+  const [stage, setStage] = useState<'idle' | 'compile' | 'fee' | 'deploy' | 'success' | 'error'>('idle');
   const [feeHash, setFeeHash] = useState('');
   const [deployHash, setDeployHash] = useState('');
   const [contractAddress, setContractAddress] = useState('');
@@ -88,13 +115,15 @@ export const DeployContractView: React.FC = () => {
 
   useEffect(() => {
     void detectWallet();
-    const ethereum = window.ethereum;
-    if (!ethereum) return;
     const handleAccounts = () => void detectWallet();
-    ethereum.request({ method: 'eth_chainId' }).catch(() => undefined);
     window.addEventListener('focus', handleAccounts);
     return () => window.removeEventListener('focus', handleAccounts);
   }, [detectWallet]);
+
+  const formError = useMemo(
+    () => validateTokenForm(tokenName, symbol, decimals, initialSupply),
+    [tokenName, symbol, decimals, initialSupply],
+  );
 
   const connectWallet = async () => {
     if (!window.ethereum) {
@@ -121,6 +150,16 @@ export const DeployContractView: React.FC = () => {
       return;
     }
 
+    const normalizedName = tokenName.trim();
+    const normalizedSymbol = symbol.trim().toUpperCase();
+    const decimalValue = Number(decimals);
+    const validationError = validateTokenForm(normalizedName, normalizedSymbol, decimals, initialSupply);
+    if (validationError) {
+      setError(validationError);
+      setStage('error');
+      return;
+    }
+
     setBusy(true);
     setError('');
     setFeeHash('');
@@ -136,6 +175,26 @@ export const DeployContractView: React.FC = () => {
       await ensureArc(provider);
       setWallet(account);
 
+      // Compile before charging the GEN-0 fee so a compiler/API failure never
+      // leaves the user with a fee transaction and no deployment attempt.
+      setStage('compile');
+      const compileResponse = await fetch('/api/deploy/compile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: normalizedName,
+          symbol: normalizedSymbol,
+          decimals: decimalValue,
+          initialSupply,
+          receiver: account,
+        }),
+      });
+
+      const compiled: CompileResponse = await compileResponse.json();
+      if (!compileResponse.ok || !compiled.ok || !compiled.bytecode) {
+        throw new Error(compiled.error || 'Token compilation failed.');
+      }
+
       // Step 1: charge the published GEN-0 deployment fee onchain.
       setStage('fee');
       const feeTx = await provider.request({
@@ -149,28 +208,24 @@ export const DeployContractView: React.FC = () => {
       });
       setFeeHash(feeTx);
 
-      await provider.request({
-        method: 'eth_getTransactionReceipt',
-        params: [feeTx],
-      }).then(async (receipt: any) => {
-        for (let i = 0; !receipt && i < 120; i++) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          receipt = await provider.request({
-            method: 'eth_getTransactionReceipt',
-            params: [feeTx],
-          });
-        }
-        if (!receipt) throw new Error('The fee transaction did not confirm.');
-        if (receipt.status === '0x0') throw new Error('The GEN-0 deployment fee transaction reverted.');
-      });
+      let feeReceipt: any = null;
+      for (let i = 0; i < 120 && !feeReceipt; i++) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        feeReceipt = await provider.request({
+          method: 'eth_getTransactionReceipt',
+          params: [feeTx],
+        });
+      }
+      if (!feeReceipt) throw new Error('The GEN-0 deployment fee did not confirm.');
+      if (feeReceipt.status === '0x0') throw new Error('The GEN-0 deployment fee transaction reverted.');
 
-      // Step 2: deploy the real contract from the user's wallet.
+      // Step 2: deploy the compiled ERC-20 from the user's wallet.
       setStage('deploy');
       const gas = await provider.request({
         method: 'eth_estimateGas',
         params: [{
           from: account,
-          data: SIMPLE_STORAGE_BYTECODE,
+          data: compiled.bytecode,
         }],
       });
 
@@ -178,7 +233,7 @@ export const DeployContractView: React.FC = () => {
         method: 'eth_sendTransaction',
         params: [{
           from: account,
-          data: SIMPLE_STORAGE_BYTECODE,
+          data: compiled.bytecode,
           value: '0x0',
           gas,
         }],
@@ -194,8 +249,8 @@ export const DeployContractView: React.FC = () => {
         });
       }
 
-      if (!receipt) throw new Error('The contract deployment did not confirm.');
-      if (receipt.status === '0x0') throw new Error('The contract deployment reverted.');
+      if (!receipt) throw new Error('The token deployment did not confirm.');
+      if (receipt.status === '0x0') throw new Error('The token deployment reverted.');
       if (!receipt.contractAddress) throw new Error('Arc confirmed the deployment but returned no contract address.');
 
       setContractAddress(receipt.contractAddress);
@@ -217,11 +272,13 @@ export const DeployContractView: React.FC = () => {
 
   const buttonLabel = !wallet
     ? 'CONNECT WALLET'
-    : busy && stage === 'fee'
-      ? 'CONFIRMING 0.10 USDC FEE…'
-      : busy && stage === 'deploy'
-        ? 'DEPLOYING ON ARC…'
-        : 'DEPLOY SIMPLE CONTRACT';
+    : busy && stage === 'compile'
+      ? 'BUILDING TOKEN…'
+      : busy && stage === 'fee'
+        ? 'CONFIRMING 0.10 USDC FEE…'
+        : busy && stage === 'deploy'
+          ? 'DEPLOYING ON ARC…'
+          : 'DEPLOY TOKEN';
 
   return (
     <div className="w-full">
@@ -229,7 +286,7 @@ export const DeployContractView: React.FC = () => {
         <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-cyan-400">GEN-0 Deploy</p>
         <h2 className="mt-1 text-xl font-extrabold text-white tracking-tight">Deploy Contract</h2>
         <p className="mt-2 text-xs text-zinc-500">
-          Deploy a real, minimal storage contract directly from your wallet on Arc Mainnet.
+          Create a real fixed-supply ERC-20 and deploy it directly from your wallet on Arc Mainnet.
         </p>
       </div>
 
@@ -240,8 +297,8 @@ export const DeployContractView: React.FC = () => {
               <Code2 className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white">GEN-0 Simple Storage</h3>
-              <p className="text-[10px] text-zinc-500 font-mono">LIVE CONTRACT DEPLOYMENT · ARC 5042</p>
+              <h3 className="text-sm font-bold text-white">ERC-20 Token Deployment</h3>
+              <p className="text-[10px] text-zinc-500 font-mono">REAL CONTRACT · ARC MAINNET · 5042</p>
             </div>
           </div>
           <span className="px-2 py-1 rounded-full bg-cyan-400/10 border border-cyan-300/15 text-[9px] font-mono text-cyan-300">
@@ -249,23 +306,76 @@ export const DeployContractView: React.FC = () => {
           </span>
         </div>
 
+        <div className="grid sm:grid-cols-2 gap-3 mt-5">
+          <label className="block">
+            <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Token name</span>
+            <input
+              value={tokenName}
+              onChange={(e) => setTokenName(e.target.value)}
+              maxLength={64}
+              placeholder="e.g. Arc Builder"
+              className="mt-1.5 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-3 text-sm text-white outline-none placeholder:text-zinc-700 focus:border-cyan-400/40"
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Ticker / symbol</span>
+            <input
+              value={symbol}
+              onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+              maxLength={16}
+              placeholder="e.g. ABLD"
+              className="mt-1.5 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-3 text-sm text-white uppercase outline-none placeholder:text-zinc-700 focus:border-cyan-400/40"
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Initial supply</span>
+            <input
+              value={initialSupply}
+              onChange={(e) => setInitialSupply(e.target.value.replace(/\D/g, ''))}
+              inputMode="numeric"
+              placeholder="1000000"
+              className="mt-1.5 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-3 text-sm text-white font-mono outline-none placeholder:text-zinc-700 focus:border-cyan-400/40"
+            />
+            <span className="mt-1 block text-[9px] text-zinc-600">100% is minted once to your connected wallet.</span>
+          </label>
+
+          <label className="block">
+            <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Decimals</span>
+            <select
+              value={decimals}
+              onChange={(e) => setDecimals(e.target.value)}
+              className="mt-1.5 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-3 text-sm text-white outline-none focus:border-cyan-400/40"
+            >
+              {Array.from({ length: 19 }, (_, i) => <option key={i} value={i}>{i}</option>)}
+            </select>
+          </label>
+        </div>
+
         <div className="grid sm:grid-cols-3 gap-3 mt-5">
           <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800">
             <Rocket className="w-4 h-4 text-cyan-400 mb-2" />
             <p className="text-xs font-semibold text-white">0.10 USDC</p>
-            <p className="text-[10px] text-zinc-600 mt-1">GEN-0 fee</p>
+            <p className="text-[10px] text-zinc-600 mt-1">GEN-0 deployment fee</p>
           </div>
           <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800">
             <ShieldCheck className="w-4 h-4 text-blue-400 mb-2" />
-            <p className="text-xs font-semibold text-white">Wallet signed</p>
-            <p className="text-[10px] text-zinc-600 mt-1">Fee + deployment</p>
+            <p className="text-xs font-semibold text-white">Fixed supply</p>
+            <p className="text-[10px] text-zinc-600 mt-1">No owner or mint function</p>
           </div>
           <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800">
             <Code2 className="w-4 h-4 text-violet-400 mb-2" />
-            <p className="text-xs font-semibold text-white">Simple storage</p>
-            <p className="text-[10px] text-zinc-600 mt-1">Read/write slot 0</p>
+            <p className="text-xs font-semibold text-white">Standard ERC-20</p>
+            <p className="text-[10px] text-zinc-600 mt-1">Transfer · approve · transferFrom</p>
           </div>
         </div>
+
+        {formError && (
+          <div className="mt-5 p-3 rounded-xl border border-amber-400/15 bg-amber-400/[0.04]">
+            <p className="text-[11px] text-amber-200/80">{formError}</p>
+          </div>
+        )}
 
         {!wallet && (
           <div className="mt-5 p-3 rounded-xl border border-zinc-800 bg-zinc-950 flex items-center gap-3">
@@ -287,10 +397,14 @@ export const DeployContractView: React.FC = () => {
               <Loader2 className="w-4 h-4 text-cyan-300 animate-spin" />
               <div>
                 <p className="text-xs font-semibold text-white">
-                  {stage === 'fee' ? 'Confirming GEN-0 fee' : 'Deploying contract'}
+                  {stage === 'compile' ? 'Building your token' : stage === 'fee' ? 'Confirming GEN-0 fee' : 'Deploying token'}
                 </p>
                 <p className="text-[10px] text-zinc-500">
-                  {stage === 'fee' ? 'The 0.10 USDC fee is being sent onchain.' : 'Your deployment transaction is being confirmed on Arc.'}
+                  {stage === 'compile'
+                    ? 'Preparing real Solidity deployment bytecode.'
+                    : stage === 'fee'
+                      ? 'The 0.10 USDC fee is being sent onchain.'
+                      : 'Your token deployment transaction is being confirmed on Arc.'}
                 </p>
               </div>
             </div>
@@ -314,11 +428,21 @@ export const DeployContractView: React.FC = () => {
             <div className="flex items-center gap-3">
               <CheckCircle2 className="w-5 h-5 text-emerald-400" />
               <div>
-                <p className="text-sm font-bold text-white">Contract deployed</p>
-                <p className="text-[10px] text-zinc-500">Confirmed on Arc Mainnet</p>
+                <p className="text-sm font-bold text-white">{normalizedSuccessName(tokenName)}</p>
+                <p className="text-[10px] text-zinc-500">ERC-20 deployed and confirmed on Arc Mainnet</p>
               </div>
             </div>
-            <div className="mt-4 p-3 rounded-xl bg-zinc-950 border border-zinc-800">
+            <div className="mt-4 grid sm:grid-cols-2 gap-2">
+              <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800">
+                <p className="text-[10px] uppercase tracking-wider text-zinc-600">Token</p>
+                <p className="mt-1 text-xs font-semibold text-white">{symbol.toUpperCase()}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800">
+                <p className="text-[10px] uppercase tracking-wider text-zinc-600">Initial supply</p>
+                <p className="mt-1 text-xs font-mono text-zinc-300">{initialSupply} · {decimals} decimals</p>
+              </div>
+            </div>
+            <div className="mt-3 p-3 rounded-xl bg-zinc-950 border border-zinc-800">
               <p className="text-[10px] uppercase tracking-wider text-zinc-600">Contract address</p>
               <p className="mt-1 text-xs font-mono text-zinc-300 break-all">{contractAddress}</p>
             </div>
@@ -344,7 +468,7 @@ export const DeployContractView: React.FC = () => {
         <button
           type="button"
           onClick={() => void (wallet ? deploy() : connectWallet())}
-          disabled={busy}
+          disabled={busy || Boolean(wallet && formError)}
           className="mt-5 w-full py-3 rounded-xl bg-cyan-400 text-zinc-950 text-sm font-extrabold hover:bg-cyan-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {busy && <Loader2 className="inline-block w-4 h-4 mr-2 animate-spin" />}
@@ -352,9 +476,13 @@ export const DeployContractView: React.FC = () => {
         </button>
 
         <p className="mt-3 text-center text-[10px] text-zinc-600">
-          Two wallet confirmations are required: the 0.10 USDC fee, then the contract deployment.
+          The app compiles the token first, then requires two wallet confirmations: the 0.10 USDC GEN-0 fee and the deployment transaction.
         </p>
       </section>
     </div>
   );
 };
+
+function normalizedSuccessName(name: string): string {
+  return name.trim() || 'Token deployed';
+}
