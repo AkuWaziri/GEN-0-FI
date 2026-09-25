@@ -1,5 +1,5 @@
 import { isAddress } from 'viem';
-import { compileGen0Token } from '../../../src/services/blockchain/gen0TokenCompiler';
+import { compileGen0Token } from '../../src/services/blockchain/gen0TokenCompiler';
 
 const NAME_MAX = 64;
 const SYMBOL_MAX = 16;
