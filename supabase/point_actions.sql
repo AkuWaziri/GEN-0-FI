@@ -40,11 +40,11 @@ create policy "Point actions can be created"
     and wallet_address like '0x%'
     and length(tx_hash) >= 10
     and (
-      (action_type = 'swap' and points = 5)
-      or (action_type = 'bridge' and points = 10)
-      or (action_type = 'send' and points = 5)
-      or (action_type = 'nft_mint' and points = 200)
-      or (action_type = 'coin_launch' and points = 50)
+      (action_type = 'swap' and points = 50)
+      or (action_type = 'bridge' and points = 100)
+      or (action_type = 'send' and points = 50)
+      or (action_type = 'nft_mint' and points = 500)
+      or (action_type = 'coin_launch' and points = 500)
     )
     and chain_id = 5042
   );
