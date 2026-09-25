@@ -3,9 +3,9 @@ import { Logo } from './Logo';
 import { NetworkBadge } from './NetworkBadge';
 import { AddressBadge } from './AddressBadge';
 import { useWallet } from '../../context/WalletContext';
-import { LayoutDashboard, History, Settings, Wallet, ArrowLeftRight, Trophy, Flame, Send, Sparkles, Coins, PiggyBank, Rocket } from 'lucide-react';
+import { LayoutDashboard, History, Settings, Wallet, ArrowLeftRight, Trophy, Flame, Send, Sparkles, Coins, PiggyBank, Rocket, Gem, Code2 } from 'lucide-react';
 
-export type TabType = 'overview' | 'copilot' | 'playmemes' | 'swap' | 'wallet' | 'savings' | 'fx' | 'gm' | 'activity' | 'points' | 'settings';
+export type TabType = 'overview' | 'copilot' | 'playmemes' | 'swap' | 'wallet' | 'savings' | 'fx' | 'gm' | 'activity' | 'points' | 'settings' | 'boundnft' | 'deploy';
 
 interface SidebarProps {
   activeTab: TabType;
@@ -27,6 +27,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
     { id: 'points' as TabType, label: 'Leaderboard', icon: Trophy },
     { id: 'gm' as TabType, label: 'GM Streak', icon: Flame },
     { id: 'activity' as TabType, label: 'Activity', icon: History },
+    { id: 'boundnft' as TabType, label: 'GEN-0 Bound NFT', icon: Gem },
+    { id: 'deploy' as TabType, label: 'Deploy Contract', icon: Code2 },
     { id: 'settings' as TabType, label: 'Settings', icon: Settings },
   ];
 
