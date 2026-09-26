@@ -97,8 +97,8 @@ function getDirectPublicClient(chainId: number, chain?: LiFiChain) {
   });
 }
 
-async function switchWalletChain(chainId: number, chain?: LiFiChain) {
-  const ethereum = typeof window !== 'undefined' ? (window as any).ethereum : null;
+async function switchWalletChain(chainId: number, chain?: LiFiChain, walletProvider?: { request: (args: { method: string; params?: any[] }) => Promise<any> }) {
+  const ethereum = walletProvider || (typeof window !== 'undefined' ? (window as any).ethereum : null);
   if (!ethereum?.request) throw new Error('No compatible wallet provider is available.');
 
   const hexChainId = '0x' + chainId.toString(16);
@@ -441,7 +441,7 @@ export const SwapView: React.FC = () => {
     setExecutionHash(null);
     try {
       if (connectedChainId !== fromChainId) {
-        await switchWalletChain(fromChainId, fromChain);
+        await switchWalletChain(fromChainId, fromChain, walletClient);
       }
       if (!quoteIsExecutable(quote)) {
         throw new Error('LI.FI returned an incomplete route. Refresh the quote before submitting.');
@@ -561,7 +561,7 @@ export const SwapView: React.FC = () => {
   const switchFromChain = async () => {
     setError(null);
     try {
-      await switchWalletChain(fromChainId, fromChain);
+      await switchWalletChain(fromChainId, fromChain, walletClient);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error || '');
       const lower = message.toLowerCase();
