@@ -96,6 +96,7 @@ export const appKitModal = createAppKit({
   adapters: [wagmiAdapter],
   networks: [arcMainnet, base, mainnet, arbitrum, polygon, optimism],
   defaultNetwork: arcMainnet,
+  allowUnsupportedChain: true,
   projectId: WALLETCONNECT_PROJECT_ID,
   enableCoinbase: false,
   debug: false,
