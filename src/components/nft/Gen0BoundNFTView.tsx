@@ -4,7 +4,7 @@ import { decodeEventLog } from 'viem';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { getArcScanTxUrl } from '../../config/arc';
 import { recordConfirmedAction } from '../../services/points/pointsService';
-import { GEN0_BOUND_ARTWORK_URL, GEN0_BOUND_CHAIN_ID, GEN0_BOUND_FEE_WALLET, GEN0_BOUND_MINT_PRICE, GEN0_BOUND_NFT_ADDRESS, GEN0_BOUND_USDC_ADDRESS } from '../../config/gen0BoundNFT';
+import { GEN0_BOUND_ARTWORK_GATEWAYS, GEN0_BOUND_CHAIN_ID, GEN0_BOUND_FEE_WALLET, GEN0_BOUND_MINT_PRICE, GEN0_BOUND_NFT_ADDRESS, GEN0_BOUND_USDC_ADDRESS } from '../../config/gen0BoundNFT';
 
 const NFT_ABI = [
   { type: 'function', name: 'hasMinted', stateMutability: 'view', inputs: [{ name: '', type: 'address' }], outputs: [{ name: '', type: 'bool' }] },
@@ -29,8 +29,9 @@ export const Gen0BoundNFTView: React.FC = () => {
   const [owned, setOwned] = useState(false);
   const [showOwned, setShowOwned] = useState(false);
   const [checkingOwnership, setCheckingOwnership] = useState(true);
-  const [imageSrc, setImageSrc] = useState(GEN0_BOUND_ARTWORK_URL);
+  const [imageGatewayIndex, setImageGatewayIndex] = useState(0);
   const [imageFailed, setImageFailed] = useState(false);
+  const imageSrc = GEN0_BOUND_ARTWORK_GATEWAYS[imageGatewayIndex] || GEN0_BOUND_ARTWORK_GATEWAYS[0];
 
   useEffect(() => {
     if (!address || !publicClient) {
@@ -55,9 +56,9 @@ export const Gen0BoundNFTView: React.FC = () => {
     setMinting(true); setError(''); setStatus('Checking Arc Mainnet and your USDC balance…'); setTxHash('');
     try {
       try {
-        await publicClient.getBlockNumber();
-      } catch (rpcError: any) {
-        throw new Error('Unable to reach Arc Mainnet RPC. Check your network, wallet extension, or browser blocking settings, then try again.');
+        await publicClient.getChainId();
+      } catch {
+        throw new Error('Arc Mainnet RPC is temporarily unreachable. The app will retry through the ArcScan public RPC automatically. Refresh once if the problem persists.');
       }
 
       const alreadyMinted = await publicClient.readContract({
@@ -162,7 +163,13 @@ export const Gen0BoundNFTView: React.FC = () => {
     </div>
     <div className="grid gap-5 lg:grid-cols-[minmax(280px,.9fr)_minmax(0,1.1fr)]">
       <div className="overflow-hidden rounded-3xl border border-white/[.08] bg-[#0a1019]"><div className="relative aspect-square bg-[#0d1420]">
-        {!imageFailed ? <img src={imageSrc} alt="GEN-0 Bound artwork" className="h-full w-full object-cover" draggable={false} onError={() => { if (imageSrc !== `https://cloudflare-ipfs.com/ipfs/${GEN0_BOUND_ARTWORK_URL.split('/ipfs/')[1]}`) setImageSrc(`https://cloudflare-ipfs.com/ipfs/${GEN0_BOUND_ARTWORK_URL.split('/ipfs/')[1]}`); else setImageFailed(true); }} /> : <div className="flex h-full items-center justify-center p-8 text-center text-xs text-slate-500">GEN-0 Bound artwork could not be loaded from the IPFS gateway.</div>}
+        {!imageFailed ? <img src={imageSrc} alt="GEN-0 Bound artwork" className="h-full w-full object-cover" draggable={false} onError={() => {
+          if (imageGatewayIndex < GEN0_BOUND_ARTWORK_GATEWAYS.length - 1) {
+            setImageGatewayIndex((index) => index + 1);
+          } else {
+            setImageFailed(true);
+          }
+        }} /> : <div className="flex h-full items-center justify-center p-8 text-center text-xs text-slate-500">GEN-0 Bound artwork could not be loaded from the IPFS gateway.</div>}
       </div></div>
       <section className="rounded-3xl border border-white/[.08] bg-[#0a1019] p-5 sm:p-6">
         <div className="flex items-center justify-between"><div><h2 className="text-sm font-bold text-white">GEN-0 Bound</h2><p className="mt-1 text-[9px] uppercase tracking-[.18em] text-slate-600">Soulbound · GEN0B</p></div><ShieldCheck className="h-5 w-5 text-cyan-300"/></div>
