@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeftRight, Coins, ExternalLink, Gem, RefreshCw, Send, Trophy, WalletCards } from 'lucide-react';
 import { useWallet } from '../../context/WalletContext';
-import { getPointLeaderboard, POINT_VALUES } from '../../services/points/pointsService';
+import { getPointLeaderboard, recoverHistoricalLifiPoints, POINT_VALUES } from '../../services/points/pointsService';
 import type { PointLeaderboardRow } from '../../types/points';
 import { isSupabaseConfigured } from '../../lib/supabase';
 
@@ -25,6 +25,13 @@ export const PointsLeaderboardView: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
+      if (address) {
+        try {
+          await recoverHistoricalLifiPoints(address);
+        } catch (recoveryError) {
+          console.warn('Historical LI.FI points recovery skipped:', recoveryError);
+        }
+      }
       setRows(await getPointLeaderboard(100));
     } catch (err) {
       console.error('Points leaderboard load failed:', err);
