@@ -30,7 +30,7 @@ const markConfirmedToday = (current: GMStats | null): GMStats => {
   }
 
   const continuesStreak = current.lastCheckinDate === yesterday;
-  const nextStreak = continuesStreak ? current.currentStreak + 1 : 1;
+  const nextStreak = continuesStreak ? (current.currentStreak % 30) + 1 : 1;
 
   return {
     ...current,
