@@ -707,8 +707,10 @@ export const SwapView: React.FC = () => {
                         ? 'Bridge processing...'
                         : 'Confirm in wallet...'
                     : executionConfirmed
-                      ? 'Confirmed'
-                      : connectedChainId !== fromChainId
+                      ? 'Completed'
+                      : executionHash
+                        ? 'Transaction submitted'
+                        : connectedChainId !== fromChainId
                       ? 'Switch wallet to ' + (fromChain?.name || 'source chain')
                       : (fromChainId === toChainId ? 'Swap ' : 'Bridge ') + (fromToken?.symbol || '')}
                 </button>
