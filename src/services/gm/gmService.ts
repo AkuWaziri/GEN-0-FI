@@ -36,11 +36,13 @@ const previousDateKey = (date: string) => {
 };
 
 export const GM_STREAK_MAX_DAILY_POINTS = 100;
+export const GM_STREAK_CYCLE_DAYS = 30;
 
 /** Daily reward rises by 10 points per consecutive day, capped at 100. */
 export const getGMStreakPoints = (streak: number): number => {
   if (streak <= 0) return 0;
-  return Math.min(streak * 10, GM_STREAK_MAX_DAILY_POINTS);
+  const cycleDay = ((streak - 1) % GM_STREAK_CYCLE_DAYS) + 1;
+  return Math.min(cycleDay * 10, GM_STREAK_MAX_DAILY_POINTS);
 };
 
 const calculateStats = (dates: string[], today: string): GMStats => {
@@ -57,6 +59,7 @@ const calculateStats = (dates: string[], today: string): GMStats => {
       currentStreak += 1;
       cursor = previousDateKey(cursor);
     }
+    currentStreak = ((currentStreak - 1) % GM_STREAK_CYCLE_DAYS) + 1;
   }
 
   let longestStreak = 0;
@@ -65,9 +68,10 @@ const calculateStats = (dates: string[], today: string): GMStats => {
   for (let i = 0; i < unique.length; i += 1) {
     if (i === 0 || previousDateKey(unique[i]) === unique[i - 1]) run += 1;
     else run = 1;
-    longestStreak = Math.max(longestStreak, run);
-    // Award each confirmed check-in once. A missed day starts a new reward run.
-    points += getGMStreakPoints(run);
+    // The displayed streak and daily reward cycle after day 30; points remain lifetime cumulative.
+    const cycleDay = ((run - 1) % GM_STREAK_CYCLE_DAYS) + 1;
+    longestStreak = Math.max(longestStreak, Math.min(run, GM_STREAK_CYCLE_DAYS));
+    points += getGMStreakPoints(cycleDay);
   }
 
   return {
