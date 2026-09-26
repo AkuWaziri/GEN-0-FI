@@ -15,28 +15,38 @@ export const SEND_POINTS = POINT_VALUES.send;
 export const NFT_MINT_POINTS = POINT_VALUES.nft_mint;
 export const COIN_LAUNCH_POINTS = POINT_VALUES.coin_launch;
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export async function recordConfirmedAction(
   walletAddress: string,
   txHash: string,
   action: PointAction,
+  chainId = 5042,
 ): Promise<void> {
   if (!supabase) throw new Error('Points indexing is not configured.');
 
   const normalizedWallet = walletAddress.toLowerCase();
   const normalizedHash = txHash.toLowerCase();
+  let lastError: unknown = null;
 
-  const { error } = await supabase.from('point_actions').upsert({
-    wallet_address: normalizedWallet,
-    tx_hash: normalizedHash,
-    action_type: action,
-    points: POINT_VALUES[action],
-    chain_id: 5042,
-  }, {
-    onConflict: 'tx_hash',
-    ignoreDuplicates: true,
-  });
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const { error } = await supabase.from('point_actions').upsert({
+      wallet_address: normalizedWallet,
+      tx_hash: normalizedHash,
+      action_type: action,
+      points: POINT_VALUES[action],
+      chain_id: chainId,
+    }, {
+      onConflict: 'tx_hash',
+      ignoreDuplicates: true,
+    });
 
-  if (error) throw error;
+    if (!error) return;
+    lastError = error;
+    if (attempt < 3) await sleep(500 * 2 ** attempt);
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('Points indexing failed after retries.');
 }
 
 export async function getPointLeaderboard(limit = 50): Promise<PointLeaderboardRow[]> {
