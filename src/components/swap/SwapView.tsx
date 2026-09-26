@@ -148,6 +148,50 @@ async function switchWalletChain(chainId: number, chain?: LiFiChain) {
   });
 }
 
+async function sendWalletTransaction(walletClient: any, address: string, tx: any): Promise<string> {
+  try {
+    return await walletClient.sendTransaction(tx);
+  } catch (error) {
+    const message = error instanceof Error ? error.message.toLowerCase() : String(error || '').toLowerCase();
+    const unsupportedChain = /chain.*not.*configured|chain.*unsupported|unknown chain|unsupported chain|chain mismatch/.test(message);
+    if (!unsupportedChain) throw error;
+
+    const ethereum = typeof window !== 'undefined' ? (window as any).ethereum : null;
+    const selectedAddress = typeof ethereum?.selectedAddress === 'string'
+      ? ethereum.selectedAddress.toLowerCase()
+      : null;
+
+    if (!ethereum?.request || (selectedAddress && selectedAddress !== address.toLowerCase())) {
+      throw error;
+    }
+
+    const toHex = (value: bigint | number | string | undefined) => {
+      if (value === undefined || value === null || value === '') return undefined;
+      return '0x' + BigInt(value).toString(16);
+    };
+
+    const request: Record<string, string> = {
+      from: address,
+      to: tx.to,
+    };
+    if (tx.data) request.data = tx.data;
+    const value = toHex(tx.value);
+    if (value) request.value = value;
+    const gas = toHex(tx.gas);
+    if (gas) request.gas = gas;
+    const gasPrice = toHex(tx.gasPrice);
+    if (gasPrice) request.gasPrice = gasPrice;
+    const maxFeePerGas = toHex(tx.maxFeePerGas);
+    if (maxFeePerGas) request.maxFeePerGas = maxFeePerGas;
+    const maxPriorityFeePerGas = toHex(tx.maxPriorityFeePerGas);
+    if (maxPriorityFeePerGas) request.maxPriorityFeePerGas = maxPriorityFeePerGas;
+
+    return await ethereum.request({
+      method: 'eth_sendTransaction',
+      params: [request],
+    });
+  }
+}
 function cleanSwapError(error: unknown, context: 'balance' | 'allowance' | 'gas' | 'transaction' = 'transaction') {
   const message = error instanceof Error ? error.message : String(error || '');
   const lower = message.toLowerCase();
@@ -449,7 +493,7 @@ export const SwapView: React.FC = () => {
             functionName: 'approve',
             args: [approvalAddress as `0x${string}`, required],
           });
-          const approvalHash = await walletClient.sendTransaction({
+          const approvalHash = await sendWalletTransaction(walletClient, address, {
             account: address as `0x${string}`,
             to: fromToken.address as `0x${string}`,
             data: approvalData,
@@ -480,7 +524,7 @@ export const SwapView: React.FC = () => {
       if (tx.maxPriorityFeePerGas) txRequest.maxPriorityFeePerGas = BigInt(tx.maxPriorityFeePerGas);
       if (tx.gasPrice) txRequest.gasPrice = BigInt(tx.gasPrice);
 
-      const hash = await walletClient.sendTransaction(txRequest);
+      const hash = await sendWalletTransaction(walletClient, address, txRequest);
       setExecutionHash(hash);
       setExecutionExplorerUrl(getTransactionExplorerUrl(fromChainId, fromChain, hash));
       setExecutionStage('confirming');
