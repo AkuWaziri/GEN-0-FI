@@ -97,8 +97,14 @@ function getDirectPublicClient(chainId: number, chain?: LiFiChain) {
   });
 }
 
-async function switchWalletChain(chainId: number, chain?: LiFiChain, walletProvider?: { request: (args: { method: string; params?: any[] }) => Promise<any> }) {
-  const ethereum = walletProvider || (typeof window !== 'undefined' ? (window as any).ethereum : null);
+function getWalletRequestProvider(walletClient: any) {
+  const request = walletClient?.transport?.request;
+  if (typeof request === 'function') return { request: (args: { method: string; params?: any[] }) => request(args) };
+  return typeof window !== 'undefined' ? (window as any).ethereum : null;
+}
+
+async function switchWalletChain(chainId: number, chain?: LiFiChain, walletClient?: any) {
+  const ethereum = getWalletRequestProvider(walletClient);
   if (!ethereum?.request) throw new Error('No compatible wallet provider is available.');
 
   const hexChainId = '0x' + chainId.toString(16);
@@ -156,7 +162,7 @@ async function sendWalletTransaction(walletClient: any, address: string, tx: any
     const unsupportedChain = /chain.*not.*configured|chain.*unsupported|unknown chain|unsupported chain|chain mismatch/.test(message);
     if (!unsupportedChain) throw error;
 
-    const ethereum = typeof window !== 'undefined' ? (window as any).ethereum : null;
+    const ethereum = getWalletRequestProvider(walletClient);
     const selectedAddress = typeof ethereum?.selectedAddress === 'string'
       ? ethereum.selectedAddress.toLowerCase()
       : null;
@@ -257,10 +263,12 @@ export const SwapView: React.FC = () => {
   const [quote, setQuote] = useState<any>(null);
   const [quoting, setQuoting] = useState(false);
   const [executing, setExecuting] = useState(false);
-  const [executionStage, setExecutionStage] = useState<'wallet' | 'confirming' | null>(null);
+  const [executionStage, setExecutionStage] = useState<'wallet' | 'confirming' | 'bridging' | null>(null);
   const [executionHash, setExecutionHash] = useState<string | null>(null);
   const [executionConfirmed, setExecutionConfirmed] = useState(false);
   const [executionExplorerUrl, setExecutionExplorerUrl] = useState<string | null>(null);
+  const [executionStatus, setExecutionStatus] = useState<string | null>(null);
+  const [pointsStatus, setPointsStatus] = useState<string | null>(null);
   const [arcNativeBalance, setArcNativeBalance] = useState<string | null>(null);
 
   const fromBalance = tokenBalanceFor(balances, fromChainId, fromToken);
@@ -400,6 +408,8 @@ export const SwapView: React.FC = () => {
     setExecutionConfirmed(false);
     setExecutionHash(null);
     setExecutionExplorerUrl(null);
+    setExecutionStatus(null);
+    setPointsStatus(null);
     setError(null);
     try {
       const rawAmount = parseUnits(amount, fromToken.decimals).toString();
@@ -529,28 +539,47 @@ export const SwapView: React.FC = () => {
       setExecutionExplorerUrl(getTransactionExplorerUrl(fromChainId, fromChain, hash));
       setExecutionStage('confirming');
 
-      // Wait for the actual source-chain receipt before declaring success.
-      // Wait for the source-chain receipt before declaring the transaction confirmed.
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
-      if (receipt.status !== 'success') {
-        throw new Error('The transaction reverted. No points were awarded.');
-      }
-
-      // The onchain transaction is now confirmed. Do not keep the UI in
-      // "Confirm in wallet" while the separate points sync is running.
-      setExecutionConfirmed(true);
-      setExecutionStage(null);
-      setExecuting(false);
-
-      // Points are secondary bookkeeping. A slow Supabase request must never
-      // make an already-confirmed blockchain transaction look pending.
+      // Bound receipt waiting so an unresponsive RPC cannot spin indefinitely.
+      const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: 120_000 });
+      if (receipt.status !== 'success') throw new Error('The source transaction reverted. No points were awarded.');
       const action = fromChainId === toChainId ? 'swap' : 'bridge';
+      if (action === 'bridge') {
+        setExecutionStage('bridging');
+        setExecutionStatus('Source confirmed. Waiting for destination delivery...');
+        let terminal: any = null;
+        for (let attempt = 0; attempt < 90; attempt += 1) {
+          try {
+            const params = new URLSearchParams({ txHash: hash, fromChain: String(fromChainId), toChain: String(toChainId) });
+            const status = await fetchJson(API + '/status?' + params.toString());
+            const state = String(status?.status || '').toUpperCase();
+            const substatus = String(status?.substatus || '').toUpperCase();
+            if (state === 'DONE' || state === 'FAILED') { terminal = status; break; }
+            setExecutionStatus(substatus === 'WAIT_SOURCE_CONFIRMATIONS'
+              ? 'Source confirmed. LI.FI is updating bridge confirmations...'
+              : 'Source confirmed. Bridge is processing on the destination chain...');
+          } catch { setExecutionStatus('Source confirmed. Rechecking LI.FI bridge status...'); }
+          await new Promise((resolve) => window.setTimeout(resolve, 5000));
+        }
+        if (!terminal) {
+          setExecutionConfirmed(false); setExecutionStage(null);
+          setExecutionStatus('Source transaction confirmed. Bridge delivery is still processing. Check again shortly.');
+          setExecuting(false); return;
+        }
+        const finalState = String(terminal.status || '').toUpperCase();
+        const finalSubstatus = String(terminal.substatus || '').toUpperCase();
+        if (finalState !== 'DONE' || !['COMPLETED', 'PARTIAL'].includes(finalSubstatus)) {
+          setExecutionStage(null);
+          setExecutionStatus(finalSubstatus === 'REFUNDED' ? 'Bridge refunded. No bridge points were awarded.' : 'Bridge status: ' + (finalSubstatus || finalState) + '. No bridge points were awarded.');
+          setExecuting(false); return;
+        }
+      }
+      setExecutionConfirmed(true); setExecutionStage(null);
+      setExecutionStatus(action === 'bridge' ? 'Bridge completed on the destination chain.' : 'Swap confirmed onchain.');
+      setExecuting(false);
       try {
         await recordConfirmedAction(address, hash, action, fromChainId);
-      } catch {
-        // The transaction is already confirmed. Keep the UI confirmed even if
-        // points indexing is temporarily unavailable after the retry window.
-      }
+        setPointsStatus('+' + (action === 'swap' ? 50 : 100) + ' points recorded');
+      } catch { setPointsStatus('Transaction confirmed. Points could not sync yet; refresh the leaderboard to recover them.'); }
     } catch (err) {
       setError(cleanSwapError(err));
       setExecutionStage(null);
@@ -666,8 +695,10 @@ export const SwapView: React.FC = () => {
                   {executing && !executionConfirmed && <Loader2 className="w-4 h-4 animate-spin" />}
                   {executing
                     ? executionStage === 'confirming'
-                      ? 'Confirming onchain...'
-                      : 'Confirm in wallet...'
+                      ? 'Confirming source...'
+                      : executionStage === 'bridging'
+                        ? 'Bridge processing...'
+                        : 'Confirm in wallet...'
                     : executionConfirmed
                       ? 'Confirmed'
                       : connectedChainId !== fromChainId
@@ -706,7 +737,7 @@ export const SwapView: React.FC = () => {
               <div className={`mt-4 rounded-xl border px-4 py-3 text-sm ${executionConfirmed ? 'border-green-500/30 bg-green-500/5 text-green-300' : 'border-blue-500/20 bg-blue-500/5 text-blue-300'}`}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="font-medium">{executionConfirmed ? 'Confirmed' : executionStage === 'confirming' ? 'Confirming onchain...' : 'Submitted'}</div>
+                    <div className="font-medium">{executionConfirmed ? 'Completed' : executionStage === 'bridging' ? 'Bridge processing...' : executionStage === 'confirming' ? 'Confirming source...' : 'Submitted'}</div>
                     <div className="mt-1 font-mono text-[10px] text-zinc-500 truncate">{executionHash}</div>
                   </div>
                   {executionExplorerUrl && (
@@ -721,6 +752,8 @@ export const SwapView: React.FC = () => {
                       <ArrowUpRight className="w-3.5 h-3.5" />
                     </a>
                   )}
+                  {executionStatus && <div className="mt-1 text-xs text-zinc-400">{executionStatus}</div>}
+                  {pointsStatus && <div className="mt-1 text-xs text-emerald-300">{pointsStatus}</div>}
                 </div>
               </div>
             )}
