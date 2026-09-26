@@ -500,9 +500,12 @@ export const SwapView: React.FC = () => {
       // Points are secondary bookkeeping. A slow Supabase request must never
       // make an already-confirmed blockchain transaction look pending.
       const action = fromChainId === toChainId ? 'swap' : 'bridge';
-      recordConfirmedAction(address, hash, action).catch(() => {
-        // The transaction remains confirmed even if points sync is temporarily unavailable.
-      });
+      try {
+        await recordConfirmedAction(address, hash, action, fromChainId);
+      } catch {
+        // The transaction is already confirmed. Keep the UI confirmed even if
+        // points indexing is temporarily unavailable after the retry window.
+      }
     } catch (err) {
       setError(cleanSwapError(err));
       setExecutionStage(null);
