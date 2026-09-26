@@ -3,9 +3,9 @@ import { Logo } from './Logo';
 import { NetworkBadge } from './NetworkBadge';
 import { AddressBadge } from './AddressBadge';
 import { useWallet } from '../../context/WalletContext';
-import { LayoutDashboard, History, Settings, Wallet, ArrowLeftRight, Trophy, Flame, Send, Sparkles, PiggyBank } from 'lucide-react';
+import { LayoutDashboard, History, Settings, Wallet, ArrowLeftRight, Trophy, Flame, Send, Sparkles, PiggyBank, Rocket } from 'lucide-react';
 
-export type TabType = 'overview' | 'copilot' | 'playmemes' | 'swap' | 'wallet' | 'savings' | 'gm' | 'boundnft'  | 'activity' | 'points' | 'settings';
+export type TabType = 'overview' | 'copilot' | 'playmemes' | 'swap' | 'wallet' | 'savings' | 'gm' | 'boundnft' | 'activity' | 'points' | 'settings';
 
 interface SidebarProps {
   activeTab: TabType;
