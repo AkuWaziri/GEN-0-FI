@@ -11,7 +11,6 @@ import { AskGen0View } from './components/ask/AskGen0View';
 import { GMStreakView } from './components/gm/GMStreakView';
 import { WalletView } from './components/wallet/WalletView';
 import { Gen0BoundNFTView } from './components/nft/Gen0BoundNFTView';
-import { DeployContractView } from './components/deploy/DeployContractView';
 import { SavingsView } from './components/savings/SavingsView';
 import { PlaymemesView } from './components/playmemes/PlaymemesView';
 import { SettingsView } from './components/settings/SettingsView';
@@ -83,7 +82,6 @@ const AppContent: React.FC = () => {
             {activeTab === 'wallet' && <WalletView initialMode={walletMode} />}
             {activeTab === 'savings' && <SavingsView />}
             {activeTab === 'boundnft' && <Gen0BoundNFTView />}
-            {activeTab === 'deploy' && <DeployContractView />}
             {activeTab === 'gm' && <GMStreakView />}
             {activeTab === 'activity' && <ActivityView />}
             {activeTab === 'points' && <PointsLeaderboardView />}
