@@ -696,7 +696,7 @@ export const SwapView: React.FC = () => {
               {quoteIsExecutable(quote) ? (
                 <button
                   onClick={connectedChainId !== fromChainId ? switchFromChain : executeQuote}
-                  disabled={executing}
+                  disabled={executing || Boolean(executionHash && !executionConfirmed)}
                   className="flex-1 rounded-xl bg-blue-500 hover:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 transition flex items-center justify-center gap-2"
                 >
                   {executing && !executionConfirmed && <Loader2 className="w-4 h-4 animate-spin" />}
