@@ -33,6 +33,7 @@ type BalanceToken = LiFiToken & {
 };
 
 const API = 'https://li.quest/v1';
+const CHAINS_API = '/api/lifi/chains';
 const QUOTE_API = '/api/lifi/quote';
 const NATIVE = '0x0000000000000000000000000000000000000000';
 const ARC_USDC_PREDEPLOY = '0x3600000000000000000000000000000000000000';
@@ -233,12 +234,13 @@ export const SwapView: React.FC = () => {
   useEffect(() => {
     let cancelled = false;
     setLoadingChains(true);
-    fetchJson(`${API}/chains?chainTypes=EVM`)
+    fetchJson(CHAINS_API)
       .then((data) => {
         if (cancelled) return;
         const list = Array.isArray(data) ? data : data.chains || [];
         const supported = list
-          .filter((chain: LiFiChain) => chain.id && chain.name)
+          .filter((chain: LiFiChain) => Number.isInteger(Number(chain.id)) && chain.name)
+          .filter((chain: LiFiChain) => !chain.chainType || chain.chainType.toUpperCase() === 'EVM')
           .sort((a: LiFiChain, b: LiFiChain) => a.name.localeCompare(b.name));
         setChains(supported);
         if (!supported.some((c: LiFiChain) => c.id === fromChainId)) {
