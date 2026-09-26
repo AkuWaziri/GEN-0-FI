@@ -3,6 +3,7 @@ import { CheckCircle2, ExternalLink, Gem, Loader2, ShieldCheck, Sparkles } from 
 import { type Address } from 'viem';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { getArcScanTxUrl } from '../../config/arc';
+import { recordConfirmedAction } from '../../services/points/pointsService';
 import { GEN0_BOUND_ARTWORK_URL, GEN0_BOUND_CHAIN_ID, GEN0_BOUND_FEE_WALLET, GEN0_BOUND_MINT_PRICE, GEN0_BOUND_NFT_ADDRESS, GEN0_BOUND_USDC_ADDRESS } from '../../config/gen0BoundNFT';
 
 const NFT_ABI = [
@@ -78,7 +79,8 @@ export const Gen0BoundNFTView: React.FC = () => {
       setStatus('Waiting for your GEN-0 Bound NFT to confirm on Arc…');
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       if (receipt.status !== 'success') throw new Error('The mint transaction reverted.');
-      setOwned(true); setStatus('Mint confirmed on Arc Mainnet.'); setShowOwned(true);
+      await recordConfirmedAction(address, hash, 'nft_mint');
+      setOwned(true); setStatus('Mint confirmed on Arc Mainnet. +1,000 points added.'); setShowOwned(true);
     } catch (e: any) {
       const message = e?.shortMessage || e?.details || e?.cause?.shortMessage || e?.cause?.message || e?.message || 'Mint failed.';
       setError(String(message).replace(/^HTTP request failed$/i, 'Arc Mainnet RPC request failed. Check your network or wallet extension and try again.'));
