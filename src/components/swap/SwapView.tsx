@@ -4,7 +4,7 @@ import { ArrowDownUp, ArrowUpRight, ChevronDown, Loader2, RefreshCw, Wallet } fr
 import { createPublicClient, encodeFunctionData, fallback, formatUnits, http, parseUnits } from 'viem';
 import { useAccount, useChainId, useWalletClient } from 'wagmi';
 import { useWallet } from '../../context/WalletContext';
-import { recordConfirmedAction } from '../../services/points/pointsService';
+import { recordConfirmedAction, recoverHistoricalLifiPoints } from '../../services/points/pointsService';
 
 type LiFiChain = {
   id: number;
@@ -579,7 +579,14 @@ export const SwapView: React.FC = () => {
       try {
         await recordConfirmedAction(address, hash, action, fromChainId);
         setPointsStatus('+' + (action === 'swap' ? 50 : 100) + ' points recorded');
-      } catch { setPointsStatus('Transaction confirmed. Points could not sync yet; refresh the leaderboard to recover them.'); }
+      } catch {
+        try {
+          await recoverHistoricalLifiPoints(address);
+          setPointsStatus('Transaction confirmed. Points recovery was requested; refresh the leaderboard to verify.');
+        } catch {
+          setPointsStatus('Transaction confirmed. Points are not synced yet; refresh the leaderboard to retry recovery.');
+        }
+      }
     } catch (err) {
       setError(cleanSwapError(err));
       setExecutionStage(null);
