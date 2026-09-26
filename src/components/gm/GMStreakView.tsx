@@ -37,7 +37,7 @@ const markConfirmedToday = (current: GMStats | null): GMStats => {
     currentStreak: nextStreak,
     longestStreak: Math.max(current.longestStreak, nextStreak),
     totalGmDays: current.totalGmDays + 1,
-    points: getGMStreakPoints(nextStreak),
+    points: current.points + getGMStreakPoints(nextStreak),
     checkedInToday: true,
     lastCheckinDate: today,
   };
