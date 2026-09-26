@@ -49,6 +49,26 @@ export async function recordConfirmedAction(
   throw lastError instanceof Error ? lastError : new Error('Points indexing failed after retries.');
 }
 
+export async function recoverHistoricalLifiPoints(walletAddress: string): Promise<{ recovered: number; swaps: number; bridges: number }> {
+  if (!walletAddress) return { recovered: 0, swaps: 0, bridges: 0 };
+
+  const response = await fetch('/api/points/recover?address=' + encodeURIComponent(walletAddress), {
+    headers: { Accept: 'application/json' },
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    throw new Error('Historical points recovery failed.');
+  }
+
+  const data = await response.json();
+  return {
+    recovered: Number(data?.recovered) || 0,
+    swaps: Number(data?.swaps) || 0,
+    bridges: Number(data?.bridges) || 0,
+  };
+}
+
 export async function getPointLeaderboard(limit = 50): Promise<PointLeaderboardRow[]> {
   if (!supabase) return [];
 
