@@ -12,6 +12,13 @@ export const GEN0_BOUND_ARTWORK_URL = (
   (import.meta.env.VITE_GEN0_BOUND_ARTWORK_URL || `https://ipfs.io/ipfs/${GEN0_BOUND_ARTWORK_CID}`).trim()
 );
 
+export const GEN0_BOUND_ARTWORK_GATEWAYS = [
+  GEN0_BOUND_ARTWORK_URL,
+  `https://${GEN0_BOUND_ARTWORK_CID}.ipfs.dweb.link`,
+  `https://w3s.link/ipfs/${GEN0_BOUND_ARTWORK_CID}`,
+  `https://gateway.pinata.cloud/ipfs/${GEN0_BOUND_ARTWORK_CID}`,
+] as const;
+
 export const GEN0_BOUND_METADATA_URI = (
   (import.meta.env.VITE_GEN0_BOUND_METADATA_URI || 'ipfs://bafkreibcmwuncoiw2fjfraxj7kyp6s56sqbnyiqx72i55jmwmmzpenuudm').trim()
 );
