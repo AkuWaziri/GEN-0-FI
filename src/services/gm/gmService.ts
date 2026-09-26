@@ -35,14 +35,12 @@ const previousDateKey = (date: string) => {
   return dateKey(d);
 };
 
-export const GM_STREAK_MAX_DAILY_POINTS = 100;
-export const GM_STREAK_CYCLE_DAYS = 30;
+export const GM_STREAK_DAILY_CAP = 300;
 
-/** Daily reward rises by 10 points per consecutive day, capped at 100. */
+/** Days 1-13 award 10 points per consecutive day; day 14 onward awards 300 per check-in. */
 export const getGMStreakPoints = (streak: number): number => {
   if (streak <= 0) return 0;
-  const cycleDay = ((streak - 1) % GM_STREAK_CYCLE_DAYS) + 1;
-  return Math.min(cycleDay * 10, GM_STREAK_MAX_DAILY_POINTS);
+  return streak >= 14 ? GM_STREAK_DAILY_CAP : streak * 10;
 };
 
 const calculateStats = (dates: string[], today: string): GMStats => {
@@ -59,7 +57,7 @@ const calculateStats = (dates: string[], today: string): GMStats => {
       currentStreak += 1;
       cursor = previousDateKey(cursor);
     }
-    currentStreak = ((currentStreak - 1) % GM_STREAK_CYCLE_DAYS) + 1;
+
   }
 
   let longestStreak = 0;
@@ -68,10 +66,9 @@ const calculateStats = (dates: string[], today: string): GMStats => {
   for (let i = 0; i < unique.length; i += 1) {
     if (i === 0 || previousDateKey(unique[i]) === unique[i - 1]) run += 1;
     else run = 1;
-    // The displayed streak and daily reward cycle after day 30; points remain lifetime cumulative.
-    const cycleDay = ((run - 1) % GM_STREAK_CYCLE_DAYS) + 1;
-    longestStreak = Math.max(longestStreak, Math.min(run, GM_STREAK_CYCLE_DAYS));
-    points += getGMStreakPoints(cycleDay);
+    // Streak continues naturally; every recorded day adds its confirmed daily reward to lifetime points.
+    longestStreak = Math.max(longestStreak, run);
+    points += getGMStreakPoints(run);
   }
 
   return {
