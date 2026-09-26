@@ -5,7 +5,7 @@ export const POINT_VALUES: Record<PointAction, number> = {
   swap: 50,
   bridge: 100,
   send: 50,
-  nft_mint: 500,
+  nft_mint: 1000,
   coin_launch: 500,
 };
 
