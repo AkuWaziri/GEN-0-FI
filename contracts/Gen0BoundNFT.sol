@@ -64,10 +64,10 @@ contract Gen0BoundNFT is ERC721 {
     function mint() external {
         if (hasMinted[msg.sender]) revert AlreadyMinted();
 
-        uint256 tokenId = _nextTokenId++;
-
+        // Pay first. If payment fails, the entire mint reverts.
         usdc.safeTransferFrom(msg.sender, feeRecipient, MINT_PRICE);
 
+        uint256 tokenId = _nextTokenId++;
         hasMinted[msg.sender] = true;
         _safeMint(msg.sender, tokenId);
 
@@ -88,6 +88,34 @@ contract Gen0BoundNFT is ERC721 {
         return _metadataURI;
     }
 
+    // Explicitly block all public transfer entrypoints.
+    // _safeMint still works because minting enters through _update with from == address(0).
+    function transferFrom(
+        address,
+        address,
+        uint256
+    ) public pure override {
+        revert NonTransferable();
+    }
+
+    function safeTransferFrom(
+        address,
+        address,
+        uint256
+    ) public pure override {
+        revert NonTransferable();
+    }
+
+    function safeTransferFrom(
+        address,
+        address,
+        uint256,
+        bytes memory
+    ) public pure override {
+        revert NonTransferable();
+    }
+
+    // Defense in depth for any internal transfer path.
     function _update(address to, uint256 tokenId, address auth)
         internal
         override
