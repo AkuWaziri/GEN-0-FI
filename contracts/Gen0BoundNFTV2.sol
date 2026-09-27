@@ -25,7 +25,7 @@ contract Gen0BoundNFTV2 is ERC721 {
 
     IERC20 public immutable usdc;
     address public immutable feeRecipient;
-    string private immutable _metadataURI;
+    string private _metadataURI;
 
     uint256 public constant MINT_PRICE = 1_000_000;
     uint256 private _nextTokenId = 1;
@@ -90,34 +90,8 @@ contract Gen0BoundNFTV2 is ERC721 {
         return _metadataURI;
     }
 
-    // Explicitly block every public ERC-721 transfer entrypoint.
-    // Minting remains possible because _safeMint calls _update directly.
-    function transferFrom(
-        address,
-        address,
-        uint256
-    ) public pure override {
-        revert SoulboundTransfer();
-    }
-
-    function safeTransferFrom(
-        address,
-        address,
-        uint256
-    ) public pure override {
-        revert SoulboundTransfer();
-    }
-
-    function safeTransferFrom(
-        address,
-        address,
-        uint256,
-        bytes memory
-    ) public pure override {
-        revert SoulboundTransfer();
-    }
-
-    // Defense in depth for any internal transfer path.
+    // OpenZeppelin 5 routes ERC-721 transfers through _update.
+    // Blocking transfers here also covers transferFrom and safeTransferFrom.
     function _update(
         address to,
         uint256 tokenId,
@@ -125,6 +99,7 @@ contract Gen0BoundNFTV2 is ERC721 {
     ) internal override returns (address) {
         address from = _ownerOf(tokenId);
 
+        // Allow minting (from == 0) but reject every owner-to-owner transfer.
         if (from != address(0) && to != address(0)) {
             revert SoulboundTransfer();
         }
