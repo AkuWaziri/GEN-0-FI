@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle2, ExternalLink, Gem, Loader2, ShieldCheck, Sparkles } from 'lucide-react';
-import { decodeEventLog } from 'viem';
+import { decodeErrorResult, decodeEventLog } from 'viem';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { getArcScanTxUrl } from '../../config/arc';
 import { recordConfirmedAction } from '../../services/points/pointsService';
@@ -13,6 +13,10 @@ const NFT_ABI = [
   { type: 'function', name: 'feeRecipient', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'address' }] },
   { type: 'function', name: 'MINT_PRICE', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'uint256' }] },
   { type: 'function', name: 'mint', stateMutability: 'nonpayable', inputs: [], outputs: [] },
+  { type: 'error', name: 'AlreadyMinted', inputs: [] },
+  { type: 'error', name: 'NonTransferable', inputs: [] },
+  { type: 'error', name: 'ZeroAddress', inputs: [] },
+  { type: 'error', name: 'EmptyMetadataURI', inputs: [] },
 ] as const;
 
 const USDC_ABI = [
@@ -148,13 +152,41 @@ export const Gen0BoundNFTView: React.FC = () => {
           chainId: GEN0_BOUND_CHAIN_ID,
         });
       } catch (simulationError: any) {
+        let decoded = '';
+        const revertData = simulationError?.data
+          || simulationError?.cause?.data
+          || simulationError?.cause?.cause?.data;
+
+        if (revertData) {
+          try {
+            const result = decodeErrorResult({ abi: NFT_ABI, data: revertData });
+            decoded = result.errorName === 'NonTransferable'
+              ? 'Live contract returned NonTransferable during mint.'
+              : result.errorName === 'AlreadyMinted'
+                ? 'Live contract returned AlreadyMinted during mint.'
+                : result.errorName === 'ZeroAddress'
+                  ? 'Live contract returned ZeroAddress during mint.'
+                  : result.errorName === 'EmptyMetadataURI'
+                    ? 'Live contract returned EmptyMetadataURI during mint.'
+                    : `Live contract returned ${result.errorName}.`;
+          } catch {
+            // Keep the provider message if the payload is not one of the
+            // errors declared by the current source ABI.
+          }
+        }
+
         const raw = simulationError?.shortMessage
           || simulationError?.details
           || simulationError?.cause?.shortMessage
           || simulationError?.cause?.message
           || simulationError?.message
           || 'Unknown mint simulation revert.';
-        throw new Error(`Mint simulation failed before broadcast: ${String(raw)}`);
+
+        throw new Error(
+          decoded
+            ? `Mint simulation failed before broadcast: ${decoded} Provider: ${String(raw)}`
+            : `Mint simulation failed before broadcast: ${String(raw)}`
+        );
       }
 
       setStatus('Mint simulation passed. Confirm the GEN-0 Bound mint in your wallet…');
