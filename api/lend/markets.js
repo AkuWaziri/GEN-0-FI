@@ -1,10 +1,26 @@
-import { applyApiSecurity } from '../_security.js';
-
 const AAVE_API = 'https://api.v4.aave.com/graphql';
 const MORPHO_API = 'https://api.morpho.org';
 const ARC_CHAIN_ID = 5042;
 const USDC = '0x3600000000000000000000000000000000000000'.toLowerCase();
 const EURC = '0xbEf5f6d51CB62b58e6A8f77868681825C6fe21c1'.toLowerCase();
+
+const buckets = new Map();
+const WINDOW_MS = 60_000;
+const MAX_REQUESTS = 30;
+
+function applyApiSecurity(req, res) {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  if (req.method === 'OPTIONS') { res.status(204).end(); return false; }
+  const ip = String(req.headers?.['x-forwarded-for'] || req.headers?.['x-real-ip'] || req.socket?.remoteAddress || 'unknown').split(',')[0].trim();
+  const now = Date.now();
+  const bucket = buckets.get(ip);
+  if (!bucket || now >= bucket.resetAt) { buckets.set(ip, { count: 1, resetAt: now + WINDOW_MS }); return true; }
+  if (bucket.count >= MAX_REQUESTS) { res.setHeader('Retry-After', Math.ceil((bucket.resetAt - now) / 1000)); res.status(429).json({ error: 'Too many requests. Please try again shortly.' }); return false; }
+  bucket.count += 1;
+  return true;
+}
 
 async function fetchJson(url) {
   const response = await fetch(url, {
