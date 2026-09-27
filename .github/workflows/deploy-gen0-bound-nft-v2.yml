@@ -19,8 +19,8 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
+      - name: Install deployment dependencies
+        run: npm install --no-audit --no-fund --no-save --legacy-peer-deps solc@0.8.30 viem@2.56.0
 
       - name: Deploy GEN-0 Bound NFT V2 to Arc Mainnet
         env:
