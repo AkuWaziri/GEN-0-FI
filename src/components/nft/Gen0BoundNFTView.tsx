@@ -8,6 +8,10 @@ import { GEN0_BOUND_ARTWORK_GATEWAYS, GEN0_BOUND_CHAIN_ID, GEN0_BOUND_FEE_WALLET
 
 const NFT_ABI = [
   { type: 'function', name: 'hasMinted', stateMutability: 'view', inputs: [{ name: '', type: 'address' }], outputs: [{ name: '', type: 'bool' }] },
+  { type: 'function', name: 'balanceOf', stateMutability: 'view', inputs: [{ name: 'owner', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] },
+  { type: 'function', name: 'usdc', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'address' }] },
+  { type: 'function', name: 'feeRecipient', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'address' }] },
+  { type: 'function', name: 'MINT_PRICE', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'uint256' }] },
   { type: 'function', name: 'mint', stateMutability: 'nonpayable', inputs: [], outputs: [] },
 ] as const;
 
@@ -53,54 +57,117 @@ export const Gen0BoundNFTView: React.FC = () => {
     if (chainId !== GEN0_BOUND_CHAIN_ID) { setError('Switch your wallet to Arc Mainnet.'); return; }
     if (checkingOwnership) { setError('Checking your GEN-0 Bound ownership on Arc…'); return; }
     if (owned) { setShowOwned(true); return; }
-    setMinting(true); setError(''); setStatus('Checking Arc Mainnet and your USDC balance…'); setTxHash('');
+
+    setMinting(true);
+    setError('');
+    setStatus('Running a read-only GEN-0 Bound preflight…');
+    setTxHash('');
+
     try {
-      try {
-        await publicClient.getChainId();
-      } catch {
-        throw new Error('Arc Mainnet RPC is temporarily unreachable. The app will retry through the ArcScan public RPC automatically. Refresh once if the problem persists.');
+      const rpcChainId = await publicClient.getChainId();
+      if (rpcChainId !== GEN0_BOUND_CHAIN_ID) {
+        throw new Error(`Connected RPC chain is ${rpcChainId}, expected Arc Mainnet ${GEN0_BOUND_CHAIN_ID}.`);
       }
 
-      const alreadyMinted = await publicClient.readContract({
-        address: contractAddress,
-        abi: NFT_ABI,
-        functionName: 'hasMinted',
-        args: [address],
-      });
-      if (alreadyMinted) {
+      const [
+        alreadyMinted,
+        balance,
+        allowance,
+        contractUsdc,
+        contractFeeRecipient,
+        contractMintPrice,
+        nftBalance,
+      ] = await Promise.all([
+        publicClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'hasMinted', args: [address] }),
+        publicClient.readContract({ address: GEN0_BOUND_USDC_ADDRESS, abi: USDC_ABI, functionName: 'balanceOf', args: [address] }),
+        publicClient.readContract({ address: GEN0_BOUND_USDC_ADDRESS, abi: USDC_ABI, functionName: 'allowance', args: [address, contractAddress] }),
+        publicClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'usdc' }),
+        publicClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'feeRecipient' }),
+        publicClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'MINT_PRICE' }),
+        publicClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'balanceOf', args: [address] }),
+      ]);
+
+      if (alreadyMinted || nftBalance > 0n) {
         setOwned(true);
         setStatus('This wallet already owns GEN-0 Bound.');
         setShowOwned(true);
         return;
       }
 
-      const [balance, allowance] = await Promise.all([
-        publicClient.readContract({
-          address: GEN0_BOUND_USDC_ADDRESS,
-          abi: USDC_ABI,
-          functionName: 'balanceOf',
-          args: [address],
-        }),
-        publicClient.readContract({
-          address: GEN0_BOUND_USDC_ADDRESS,
-          abi: USDC_ABI,
-          functionName: 'allowance',
-          args: [address, contractAddress],
-        }),
-      ]);
+      if (contractUsdc.toLowerCase() !== GEN0_BOUND_USDC_ADDRESS.toLowerCase()) {
+        throw new Error(`Contract USDC mismatch. Live contract points to ${contractUsdc}, expected ${GEN0_BOUND_USDC_ADDRESS}.`);
+      }
+
+      if (contractFeeRecipient.toLowerCase() !== GEN0_BOUND_FEE_WALLET.toLowerCase()) {
+        throw new Error(`Fee recipient mismatch. Live contract points to ${contractFeeRecipient}, expected ${GEN0_BOUND_FEE_WALLET}.`);
+      }
+
+      if (contractMintPrice !== GEN0_BOUND_MINT_PRICE) {
+        throw new Error(`Mint price mismatch. Live contract reports ${contractMintPrice.toString()} base units, expected ${GEN0_BOUND_MINT_PRICE.toString()}.`);
+      }
 
       if (balance < GEN0_BOUND_MINT_PRICE) {
         throw new Error('You need at least 1 USDC on Arc Mainnet to mint GEN-0 Bound.');
       }
-      if (allowance < GEN0_BOUND_MINT_PRICE) {
-        setStatus('Confirm the 1 USDC approval in your wallet…');
-        const approval = await walletClient.writeContract({ account: address, address: GEN0_BOUND_USDC_ADDRESS, abi: USDC_ABI, functionName: 'approve', args: [contractAddress, GEN0_BOUND_MINT_PRICE], chainId: GEN0_BOUND_CHAIN_ID });
+
+      setStatus(allowance < GEN0_BOUND_MINT_PRICE
+        ? 'Preflight passed. Approve 1 USDC so the mint can be simulated…'
+        : 'Preflight passed. Simulating the mint without sending a transaction…');
+
+      let currentAllowance = allowance;
+
+      if (currentAllowance < GEN0_BOUND_MINT_PRICE) {
+        const approval = await walletClient.writeContract({
+          account: address,
+          address: GEN0_BOUND_USDC_ADDRESS,
+          abi: USDC_ABI,
+          functionName: 'approve',
+          args: [contractAddress, GEN0_BOUND_MINT_PRICE],
+          chainId: GEN0_BOUND_CHAIN_ID,
+        });
         await publicClient.waitForTransactionReceipt({ hash: approval });
+
+        currentAllowance = await publicClient.readContract({
+          address: GEN0_BOUND_USDC_ADDRESS,
+          abi: USDC_ABI,
+          functionName: 'allowance',
+          args: [address, contractAddress],
+        });
+
+        if (currentAllowance < GEN0_BOUND_MINT_PRICE) {
+          throw new Error('USDC approval confirmed, but the live allowance is still below 1 USDC.');
+        }
       }
-      setStatus('Confirm the GEN-0 Bound mint in your wallet…');
-      const hash = await walletClient.writeContract({ account: address, address: contractAddress, abi: NFT_ABI, functionName: 'mint', chainId: GEN0_BOUND_CHAIN_ID });
+
+      try {
+        await publicClient.simulateContract({
+          account: address,
+          address: contractAddress,
+          abi: NFT_ABI,
+          functionName: 'mint',
+          chainId: GEN0_BOUND_CHAIN_ID,
+        });
+      } catch (simulationError: any) {
+        const raw = simulationError?.shortMessage
+          || simulationError?.details
+          || simulationError?.cause?.shortMessage
+          || simulationError?.cause?.message
+          || simulationError?.message
+          || 'Unknown mint simulation revert.';
+        throw new Error(`Mint simulation failed before broadcast: ${String(raw)}`);
+      }
+
+      setStatus('Mint simulation passed. Confirm the GEN-0 Bound mint in your wallet…');
+      const hash = await walletClient.writeContract({
+        account: address,
+        address: contractAddress,
+        abi: NFT_ABI,
+        functionName: 'mint',
+        chainId: GEN0_BOUND_CHAIN_ID,
+      });
       setTxHash(hash);
       setStatus('Waiting for your GEN-0 Bound NFT to confirm on Arc…');
+
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       if (receipt.status !== 'success') throw new Error('The mint transaction reverted.');
 
@@ -126,6 +193,7 @@ export const Gen0BoundNFTView: React.FC = () => {
           return false;
         }
       });
+
       if (!paidExactly) {
         throw new Error('Mint confirmed, but the expected 1 USDC payment to the GEN-0 fee wallet was not found in the receipt.');
       }
@@ -136,24 +204,33 @@ export const Gen0BoundNFTView: React.FC = () => {
         functionName: 'hasMinted',
         args: [address],
       });
+
       if (!confirmedOwnership) {
         throw new Error('Mint transaction confirmed, but the contract did not report this wallet as minted.');
       }
 
       setOwned(true);
       setStatus('Mint confirmed on Arc Mainnet. Recording +1,000 points…');
+
       try {
         await recordConfirmedAction(address, hash, 'nft_mint');
         setStatus('Mint confirmed on Arc Mainnet. +1,000 points recorded.');
       } catch {
         setStatus('Mint confirmed on Arc Mainnet. +1,000 points will sync when points indexing is available.');
       }
+
       setShowOwned(true);
     } catch (e: any) {
-      const message = e?.shortMessage || e?.details || e?.cause?.shortMessage || e?.cause?.message || e?.message || 'Mint failed.';
+      const message = e?.shortMessage
+        || e?.details
+        || e?.cause?.shortMessage
+        || e?.cause?.message
+        || e?.message
+        || 'Mint failed.';
       setError(String(message).replace(/^HTTP request failed$/i, 'Arc Mainnet RPC request failed. Check your network or wallet extension and try again.'));
+    } finally {
+      setMinting(false);
     }
-    finally { setMinting(false); }
   };
 
   return <div className="p-4 sm:p-6"><div className="mx-auto max-w-5xl">
