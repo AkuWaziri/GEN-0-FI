@@ -1,9 +1,8 @@
 import { Address } from 'viem';
 import { ARC_MAINNET_CHAIN_ID } from './arc';
 
-export const GEN0_BOUND_NFT_ADDRESS = (
-  (import.meta.env.VITE_GEN0_BOUND_NFT_ADDRESS || '0x02Acc0f0e5bdC1757710dF93F3fabD3Ad88C9b9C').trim()
-) as Address;
+export const GEN0_BOUND_NFT_ADDRESS =
+  '0x8bb24be3e446302a4902e763908d439325e0003a' as Address;
 
 export const GEN0_BOUND_ARTWORK_CID =
   'bafkreihfz54tnigct6ys6l7nj2sia3zrvxpo7cmbihfrrt5srazv3itmda';
