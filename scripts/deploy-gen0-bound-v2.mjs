@@ -45,7 +45,12 @@ const source = fs.readFileSync(sourcePath, "utf8");
 function findImports(importPath) {
   const candidates = [
     path.resolve("node_modules", importPath),
-    path.resolve("node_modules/@openzeppelin/contracts", importPath.replace(/^@openzeppelin\\/contracts\\//, "")),
+    path.resolve(
+      "node_modules/@openzeppelin/contracts",
+      importPath.startsWith("@openzeppelin/contracts/")
+        ? importPath.slice("@openzeppelin/contracts/".length)
+        : importPath
+    ),
   ];
 
   for (const candidate of candidates) {
@@ -72,7 +77,9 @@ const input = {
   },
 };
 
-const compiled = JSON.parse(solc.compile(JSON.stringify(input), { import: findImports }));
+const compiled = JSON.parse(
+  solc.compile(JSON.stringify(input), { import: findImports })
+);
 
 if (compiled.errors) {
   const errors = compiled.errors.filter((e) => e.severity === "error");
@@ -80,7 +87,9 @@ if (compiled.errors) {
   if (errors.length) throw new Error("Solidity compilation failed");
 }
 
-const artifact = compiled.contracts["contracts/Gen0BoundNFTV2.sol"]?.Gen0BoundNFTV2;
+const artifact =
+  compiled.contracts["contracts/Gen0BoundNFTV2.sol"]?.Gen0BoundNFTV2;
+
 if (!artifact?.abi || !artifact?.evm?.bytecode?.object) {
   throw new Error("Gen0BoundNFTV2 artifact was not produced");
 }
