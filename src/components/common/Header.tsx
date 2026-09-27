@@ -14,7 +14,6 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onSelectTab, onOpenCo
       case 'overview': return 'Dashboard';
       case 'playmemes': return 'Playmemes';
       case 'activity': return 'Activity';
-      case 'copilot': return 'COPILOT';
       case 'swap': return 'Swap & Bridge';
       case 'wallet': return 'Send & Receive';
       case 'savings': return 'Savings';
