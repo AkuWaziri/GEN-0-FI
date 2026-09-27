@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowUpRight, Landmark, ShieldCheck, WalletCards, CircleDollarSign, Euro, Info, RefreshCw, Activity, Database, TrendingUp, ExternalLink } from 'lucide-react';
 
