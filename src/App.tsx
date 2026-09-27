@@ -7,7 +7,6 @@ import { MobileNav } from './components/common/MobileNav';
 import { LandingView } from './components/landing/LandingView';
 import { OverviewView } from './components/dashboard/OverviewView';
 import { ActivityView } from './components/activity/ActivityView';
-import { AskGen0View } from './components/ask/AskGen0View';
 import { GMStreakView } from './components/gm/GMStreakView';
 import { WalletView } from './components/wallet/WalletView';
 import { Gen0BoundNFTView } from './components/nft/Gen0BoundNFTView';
@@ -76,7 +75,6 @@ const AppContent: React.FC = () => {
                 }}
               />
             )}
-            {activeTab === 'copilot' && <AskGen0View />}
             {activeTab === 'playmemes' && <PlaymemesView />}
             {activeTab === 'swap' && <SwapView />}
             {activeTab === 'wallet' && <WalletView initialMode={walletMode} />}
@@ -87,7 +85,7 @@ const AppContent: React.FC = () => {
             {activeTab === 'points' && <PointsLeaderboardView />}
             {activeTab === 'settings' && <SettingsView />}
           </div>
-          {activeTab !== 'copilot' && <Footer />}
+          <Footer />
         </main>
       </div>
       <MobileNav activeTab={activeTab} onSelectTab={setActiveTab} />
