@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import './responsive.css';
 import { WalletProvider, useWallet } from './context/WalletContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Sidebar, TabType } from './components/common/Sidebar';
