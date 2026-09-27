@@ -1,4 +1,4 @@
-import { applyApiSecurity } from '../_security.js';
+import { applyApiSecurity } from '../_security';
 
 const AAVE_API = 'https://api.v4.aave.com/graphql';
 const MORPHO_API = 'https://api.morpho.org';
