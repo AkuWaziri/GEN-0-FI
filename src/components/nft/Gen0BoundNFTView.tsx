@@ -25,6 +25,26 @@ const USDC_ABI = [
   { type: 'function', name: 'approve', stateMutability: 'nonpayable', inputs: [{ name: 'spender', type: 'address' }, { name: 'value', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }] },
 ] as const;
 
+const RPC_RETRY_DELAYS = [0, 500, 1200, 2500];
+
+async function readArcWithRetry<T>(operation: () => Promise<T>): Promise<T> {
+  let lastError: unknown = null;
+
+  for (let attempt = 0; attempt < RPC_RETRY_DELAYS.length; attempt += 1) {
+    if (RPC_RETRY_DELAYS[attempt] > 0) {
+      await new Promise((resolve) => setTimeout(resolve, RPC_RETRY_DELAYS[attempt]));
+    }
+
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('Arc Mainnet RPC request failed.');
+}
+
 export const Gen0BoundNFTView: React.FC = () => {
   const { address, chainId } = useAccount();
   const { data: walletClient } = useWalletClient({ chainId: GEN0_BOUND_CHAIN_ID });
@@ -68,28 +88,43 @@ export const Gen0BoundNFTView: React.FC = () => {
     setTxHash('');
 
     try {
-      const rpcChainId = await publicClient.getChainId();
+      const rpcChainId = await readArcWithRetry(() => publicClient.getChainId());
       if (rpcChainId !== GEN0_BOUND_CHAIN_ID) {
         throw new Error(`Connected RPC chain is ${rpcChainId}, expected Arc Mainnet ${GEN0_BOUND_CHAIN_ID}.`);
       }
 
-      const [
-        alreadyMinted,
-        balance,
-        allowance,
-        contractUsdc,
-        contractFeeRecipient,
-        contractMintPrice,
-        nftBalance,
-      ] = await Promise.all([
-        publicClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'hasMinted', args: [address] }),
-        publicClient.readContract({ address: GEN0_BOUND_USDC_ADDRESS, abi: USDC_ABI, functionName: 'balanceOf', args: [address] }),
-        publicClient.readContract({ address: GEN0_BOUND_USDC_ADDRESS, abi: USDC_ABI, functionName: 'allowance', args: [address, contractAddress] }),
-        publicClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'usdc' }),
-        publicClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'feeRecipient' }),
-        publicClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'MINT_PRICE' }),
-        publicClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'balanceOf', args: [address] }),
-      ]);
+      // Keep the preflight deliberately sequential. Arc's public RPC is rate-limited,
+      // and a burst of independent reads can otherwise surface as a generic
+      // "HTTP request failed" before the wallet is ever asked to sign.
+      const alreadyMinted = await readArcWithRetry(() =>
+        publicClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'hasMinted', args: [address] })
+      );
+      const nftBalance = await readArcWithRetry(() =>
+        publicClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'balanceOf', args: [address] })
+      );
+
+      if (alreadyMinted || nftBalance > 0n) {
+        setOwned(true);
+        setStatus('This wallet already owns GEN-0 Bound.');
+        setShowOwned(true);
+        return;
+      }
+
+      const balance = await readArcWithRetry(() =>
+        publicClient.readContract({ address: GEN0_BOUND_USDC_ADDRESS, abi: USDC_ABI, functionName: 'balanceOf', args: [address] })
+      );
+      const allowance = await readArcWithRetry(() =>
+        publicClient.readContract({ address: GEN0_BOUND_USDC_ADDRESS, abi: USDC_ABI, functionName: 'allowance', args: [address, contractAddress] })
+      );
+      const contractUsdc = await readArcWithRetry(() =>
+        publicClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'usdc' })
+      );
+      const contractFeeRecipient = await readArcWithRetry(() =>
+        publicClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'feeRecipient' })
+      );
+      const contractMintPrice = await readArcWithRetry(() =>
+        publicClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'MINT_PRICE' })
+      );
 
       if (alreadyMinted || nftBalance > 0n) {
         setOwned(true);
@@ -131,12 +166,14 @@ export const Gen0BoundNFTView: React.FC = () => {
         });
         await publicClient.waitForTransactionReceipt({ hash: approval });
 
-        currentAllowance = await publicClient.readContract({
-          address: GEN0_BOUND_USDC_ADDRESS,
-          abi: USDC_ABI,
-          functionName: 'allowance',
-          args: [address, contractAddress],
-        });
+        currentAllowance = await readArcWithRetry(() =>
+          publicClient.readContract({
+            address: GEN0_BOUND_USDC_ADDRESS,
+            abi: USDC_ABI,
+            functionName: 'allowance',
+            args: [address, contractAddress],
+          })
+        );
 
         if (currentAllowance < GEN0_BOUND_MINT_PRICE) {
           throw new Error('USDC approval confirmed, but the live allowance is still below 1 USDC.');
@@ -230,12 +267,14 @@ export const Gen0BoundNFTView: React.FC = () => {
         throw new Error('Mint confirmed, but the expected 1 USDC payment to the GEN-0 fee wallet was not found in the receipt.');
       }
 
-      const confirmedOwnership = await publicClient.readContract({
-        address: contractAddress,
-        abi: NFT_ABI,
-        functionName: 'hasMinted',
-        args: [address],
-      });
+      const confirmedOwnership = await readArcWithRetry(() =>
+        publicClient.readContract({
+          address: contractAddress,
+          abi: NFT_ABI,
+          functionName: 'hasMinted',
+          args: [address],
+        })
+      );
 
       if (!confirmedOwnership) {
         throw new Error('Mint transaction confirmed, but the contract did not report this wallet as minted.');
