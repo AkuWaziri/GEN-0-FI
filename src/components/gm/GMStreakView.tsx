@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Flame, Check, Trophy, CalendarDays, RefreshCw, ExternalLink } from 'lucide-react';
 import { useWallet } from '../../context/WalletContext';
-import { usePublicClient, useWriteContract } from 'wagmi';
+import { usePublicClient, useWalletClient, useWriteContract } from 'wagmi';
 import { GM_CONTRACT_ABI, GM_CONTRACT_ADDRESS, GM_FEE_WEI, isGMContractConfigured } from '../../config/gmContract';
 import { getGMStreakPoints, indexConfirmedGM, indexConfirmedGMDays, getGMLeaderboard, getGMStats, GMLeaderboardRow, GMStats } from '../../services/gm/gmService';
 import { isSupabaseConfigured } from '../../lib/supabase';
@@ -46,6 +46,7 @@ const markConfirmedToday = (current: GMStats | null): GMStats => {
 export const GMStreakView: React.FC = () => {
   const { address, isCorrectNetwork } = useWallet();
   const { writeContractAsync } = useWriteContract();
+  const { data: walletClient } = useWalletClient({ chainId: ARC_CHAIN_ID });
   const publicClient = usePublicClient({ chainId: ARC_CHAIN_ID });
   const [stats, setStats] = useState<GMStats | null>(null);
   const [leaderboard, setLeaderboard] = useState<GMLeaderboardRow[]>([]);
@@ -222,31 +223,43 @@ export const GMStreakView: React.FC = () => {
       setTxHash(hash);
       window.localStorage.setItem(PENDING_GM_TX_KEY, hash);
 
-      // Arc confirmation is the success gate. Supabase/indexing must never
-      // keep the button in a pending state after the transaction is finalized.
-      if (!publicClient) throw new Error('Arc public client is unavailable.');
+      // Use the connected wallet provider as the primary confirmation source.
+      // Arc public RPCs can lag even when the transaction is already finalized.
+      if (!walletClient && !publicClient) {
+        throw new Error('Arc wallet provider is unavailable.');
+      }
 
       let receiptConfirmed = false;
-      for (let attempt = 0; attempt < 12; attempt += 1) {
+      for (let attempt = 0; attempt < 30; attempt += 1) {
         try {
-          const receipt = await publicClient.getTransactionReceipt({ hash });
-          if (receipt.status === 'success') {
+          let status: string | undefined;
+
+          if (walletClient) {
+            const receipt = await walletClient.request({
+              method: 'eth_getTransactionReceipt',
+              params: [hash],
+            });
+            status = receipt?.status;
+          } else if (publicClient) {
+            const receipt = await publicClient.getTransactionReceipt({ hash });
+            status = receipt.status;
+          }
+
+          if (status === '0x1' || status === '0x01' || status === 'success') {
             receiptConfirmed = true;
             break;
           }
-          if (receipt.status === 'reverted') {
+
+          if (status === '0x0' || status === '0x00' || status === 'reverted') {
             throw new Error('GM transaction reverted on Arc.');
           }
         } catch (receiptError: any) {
-          // Some Arc RPC responses can briefly lag behind the explorer.
-          // Keep polling instead of making the user retry a successful GM.
           if (/revert/i.test(String(receiptError?.message || ''))) throw receiptError;
         }
 
-        // Contract state is also authoritative for this wallet/day. Since
-        // checkIn() forbids a second check-in on the same day, seeing today's
-        // day here proves this transaction (or an earlier same-day check-in)
-        // has finalized on Arc.
+        // Contract state is a secondary confirmation path. If the wallet provider
+        // has not exposed the receipt yet, a successful lastCheckInDay proves that
+        // the onchain check-in completed because the contract prevents duplicates.
         if (await reconcileConfirmedToday(hash)) {
           receiptConfirmed = true;
           break;
