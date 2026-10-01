@@ -262,15 +262,23 @@ export const GMStreakView: React.FC = () => {
           simulationError?.cause?.message || simulationError?.message || ''
         );
 
-        if (/already checked in today/i.test(simulationMessage)) {
+        // A simulation revert can be caused by the contract's daily lock
+        // without exposing the exact custom-error text. Reconcile against Arc
+        // before reporting failure so an already-confirmed GM can never be
+        // shown as an unrecorded failure.
+        const confirmed = await reconcileOnchainState(address).catch(() => false);
+        if (confirmed || /already checked in today|already checked in/i.test(simulationMessage)) {
           setConfirmedToday(true);
           setStats((current) => ({ ...current, checkedInToday: true }));
           setError('You already checked in today.');
-          await reconcileOnchainState(address).catch(() => {});
           return;
         }
 
-        throw simulationError;
+        // Preserve the actual simulation reason for diagnosis instead of
+        // collapsing every preflight failure into "No GM was recorded."
+        throw new Error(
+          simulationMessage || 'Arc rejected the GM check-in simulation.'
+        );
       }
 
       const hash = await writeContractAsync({
