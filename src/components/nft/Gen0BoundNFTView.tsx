@@ -172,44 +172,35 @@ export const Gen0BoundNFTView: React.FC = () => {
         setTxHash(approval);
         setStatus('Approval submitted. Waiting for Arc to confirm it…');
 
-        try {
-          await readArcWithRetry(() =>
-            arcRpcClient.waitForTransactionReceipt({ hash: approval })
-          );
-        } catch {
-          // If the dedicated Arc read RPC is temporarily unavailable, do not
-          // surface "HTTP request failed" and do not prevent the next wallet
-          // action. The wallet/provider has already accepted the approval tx.
-          setStatus('Approval submitted. Confirm the GEN-0 Bound mint in your wallet…');
-        }
+        // Confirm the approval through the connected wallet provider itself.
+        // The public Arc RPC has been intermittently unavailable, so relying on
+        // it here can leave the flow stuck after a perfectly valid approval.
+        setStatus('Approval submitted. Waiting for your wallet to confirm it…');
+        const approvalDeadline = Date.now() + 30_000;
+        let approvalConfirmed = false;
 
-        // Do not race the approval against the mint. The mint contract uses
-        // safeTransferFrom and will revert until this exact allowance is visible.
-        const allowanceDeadline = Date.now() + 30_000;
-        let allowanceConfirmed = currentAllowance >= GEN0_BOUND_MINT_PRICE;
-
-        while (!allowanceConfirmed && Date.now() < allowanceDeadline) {
+        while (Date.now() < approvalDeadline) {
           try {
-            currentAllowance = await readArcWithRetry(() =>
-              arcRpcClient.readContract({
-                address: GEN0_BOUND_USDC_ADDRESS,
-                abi: USDC_ABI,
-                functionName: 'allowance',
-                args: [address, contractAddress],
-              })
-            );
-            allowanceConfirmed = currentAllowance >= GEN0_BOUND_MINT_PRICE;
-          } catch {
-            // Keep polling until Arc exposes the confirmed approval.
+            const receipt = await walletClient.request({
+              method: 'eth_getTransactionReceipt',
+              params: [approval],
+            });
+            if (receipt?.status === '0x1') {
+              approvalConfirmed = true;
+              break;
+            }
+            if (receipt?.status === '0x0') {
+              throw new Error('USDC approval transaction was rejected onchain.');
+            }
+          } catch (approvalError: any) {
+            if (approvalError?.message?.includes('rejected onchain')) throw approvalError;
           }
 
-          if (!allowanceConfirmed) {
-            await new Promise((resolve) => setTimeout(resolve, 1500));
-          }
+          await new Promise((resolve) => setTimeout(resolve, 1200));
         }
 
-        if (!allowanceConfirmed) {
-          throw new Error('USDC approval was submitted, but Arc has not yet confirmed the 1 USDC allowance. Please retry shortly.');
+        if (!approvalConfirmed) {
+          throw new Error('USDC approval was submitted, but your wallet provider has not yet reported it confirmed. Please retry shortly.');
         }
       }
 
