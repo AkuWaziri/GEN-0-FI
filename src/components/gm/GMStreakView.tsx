@@ -166,6 +166,7 @@ export const GMStreakView: React.FC = () => {
       if (receipt.status === 'success') {
         setTxHash(pendingHash);
         setOnchainConfirmedToday(true);
+        setCheckingIn(false);
         try {
           const repairedStats = await indexConfirmedGM(address, pendingHash);
           setStats(repairedStats);
@@ -173,6 +174,8 @@ export const GMStreakView: React.FC = () => {
           window.localStorage.removeItem(PENDING_GM_TX_KEY);
         } catch (indexError) {
           console.warn('Pending GM points indexing deferred:', indexError);
+          // Keep the button completed immediately; retry persistence on the
+          // next reconciliation/load rather than returning to "Confirming".
           setStats((current) => markConfirmedToday(current));
         }
       }
@@ -279,19 +282,23 @@ export const GMStreakView: React.FC = () => {
         throw new Error('GM transaction is not yet confirmed on Arc.');
       }
 
+      // Receipt success is the confirmation gate. From this point onward
+      // the GM is done even if Supabase or an Arc RPC is temporarily behind.
       setOnchainConfirmedToday(true);
+      setCheckingIn(false);
       setStats((current) => markConfirmedToday(current));
 
-      // Persist the confirmed GM immediately. If Supabase is temporarily
-      // unavailable, the hash stays in local storage and is retried on load.
+      // Persist the confirmed GM directly from the confirmed tx hash. This
+      // path no longer depends on lastCheckInDay or the explorer indexer.
       try {
-        const synced = await reconcileConfirmedToday(hash);
-        if (synced) {
-          setStats(await getGMStats(address));
-          setLeaderboard(await getGMLeaderboard(20));
-        }
+        const repairedStats = await indexConfirmedGM(address, hash);
+        setStats(repairedStats);
+        setLeaderboard(await getGMLeaderboard(20));
+        window.localStorage.removeItem(PENDING_GM_TX_KEY);
       } catch (indexError) {
         console.warn('GM points indexing deferred:', indexError);
+        // Leave the completed state visible. The pending hash is retained so
+        // the next load can reconcile the points without another GM tx.
       }
 
     } catch (err: any) {
