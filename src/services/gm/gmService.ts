@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import { getAddress, parseAbiItem, keccak256, toHex } from 'viem';
+import { decodeEventLog, keccak256, toHex } from 'viem';
 import { GM_CONTRACT_ADDRESS, isGMContractConfigured } from '../../config/gmContract';
 
 export interface GMStats {
@@ -81,7 +81,7 @@ export async function indexConfirmedGM(walletAddress: string, txHash: string): P
   if (!supabase) throw new Error('GM indexing is not configured.');
   const normalized = walletAddress.toLowerCase();
   const today = dateKey();
-  const { error } = await supabase.from('gm_checkins').insert({ wallet_address: normalized, checkin_date: today, tx_hash: txHash.toLowerCase(), chain_id: 5042 });
+  const { error } = await supabase.from('gm_checkins').insert({ wallet_address: normalized, checkin_date: today, chain_id: 5042 });
   if (error && error.code !== '23505') throw error;
   return getGMStats(normalized);
 }
@@ -126,10 +126,14 @@ const ARC_SCAN_API = 'https://api.arc-scan.org/v1';
 
 type ArcscanLog = {
   transaction_hash?: string;
+  transactionHash?: string;
   tx_hash?: string;
+  hash?: string;
   args?: { wallet?: string; day?: string | number };
   wallet?: string;
   day?: string | number;
+  topics?: string[];
+  data?: string;
 };
 
 const extractArcscanRows = (payload: any): ArcscanLog[] => {
@@ -147,17 +151,46 @@ const extractArcscanCursor = (payload: any): string | null => {
   return root?.next_cursor ?? root?.nextCursor ?? root?.pagination?.next_cursor ?? null;
 };
 
+const GM_EVENT_ABI = [{
+  type: 'event',
+  name: 'GMCheckedIn',
+  anonymous: false,
+  inputs: [
+    { indexed: true, name: 'wallet', type: 'address' },
+    { indexed: true, name: 'day', type: 'uint256' },
+    { indexed: false, name: 'timestamp', type: 'uint256' },
+    { indexed: false, name: 'fee', type: 'uint256' },
+  ],
+}] as const;
+
 const decodeGMLog = (log: ArcscanLog) => {
-  const args = log.args || {};
-  const wallet = String(args.wallet || log.wallet || '').toLowerCase();
-  const dayValue = args.day ?? log.day;
+  let wallet = String(log.args?.wallet || log.wallet || '').toLowerCase();
+  let dayValue: string | number | undefined = log.args?.day ?? log.day;
+
+  // Arcscan can return either decoded args or raw EVM log topics/data.
+  // Decode raw logs locally so history recovery does not depend on one API shape.
+  if ((!/^0x[a-f0-9]{40}$/.test(wallet) || dayValue == null) && log.topics?.length) {
+    try {
+      const decoded = decodeEventLog({
+        abi: GM_EVENT_ABI,
+        data: (log.data || '0x') as `0x${string}`,
+        topics: log.topics as readonly `0x${string}`[],
+      });
+      wallet = String((decoded.args as any)?.wallet || '').toLowerCase();
+      dayValue = (decoded.args as any)?.day;
+    } catch {
+      // Ignore malformed/non-GM rows.
+    }
+  }
+
   if (!/^0x[a-f0-9]{40}$/.test(wallet) || dayValue == null) return null;
   const day = Number(dayValue);
   if (!Number.isSafeInteger(day) || day < 0) return null;
+
   return {
     wallet_address: wallet,
     checkin_date: new Date(day * 86400000).toISOString().slice(0, 10),
-    tx_hash: String(log.transaction_hash || log.tx_hash || '').toLowerCase() || null,
+    tx_hash: String(log.transaction_hash || log.transactionHash || log.tx_hash || log.hash || '').toLowerCase() || null,
     chain_id: 5042,
   };
 };
