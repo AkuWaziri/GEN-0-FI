@@ -6,6 +6,8 @@ import { NormalizedTransaction, WalletSummary } from '../../types/blockchain.js'
 const ARCSCAN_API_BASE = 'https://api.arc-scan.org/api';
 const ARCSCAN_V1_BASE = 'https://api.arc-scan.org/v1';
 const ARCSCAN_API_KEY = process.env.ARCSCAN_API_KEY || 'YourApiKeyToken';
+const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || process.env.ARCSCAN_API_KEY || '';
+const ETHERSCAN_V2_BASE = 'https://api.etherscan.io/v2/api';
 const ARCSCAN_RPC_URL = 'https://rpc.arc-scan.org';
 const NATIVE_DECIMALS = 18;
 const ERC20_USDC = '0x3600000000000000000000000000000000000000'.toLowerCase();
@@ -118,6 +120,55 @@ function timestampMs(value: any): number {
   return numeric > 1e12 ? numeric : numeric * 1000;
 }
 
+async function fetchEtherscanTransactions(address: string): Promise<any[]> {
+  if (!ETHERSCAN_API_KEY || ETHERSCAN_API_KEY === 'YourApiKeyToken') throw new Error('Etherscan API key not configured');
+  const all: any[] = [];
+  for (let page = 1; page <= 100; page += 1) {
+    const url = new URL(ETHERSCAN_V2_BASE);
+    url.searchParams.set('chainid', '5042');
+    url.searchParams.set('module', 'account');
+    url.searchParams.set('action', 'txlist');
+    url.searchParams.set('address', address);
+    url.searchParams.set('startblock', '0');
+    url.searchParams.set('endblock', '999999999');
+    url.searchParams.set('page', String(page));
+    url.searchParams.set('offset', '10000');
+    url.searchParams.set('sort', 'desc');
+    url.searchParams.set('apikey', ETHERSCAN_API_KEY);
+    const data = await fetchJson(url.toString(), 12_000);
+    if (String(data?.status) !== '1') {
+      if (/no transactions/i.test(String(data?.message || data?.result || ''))) return all;
+      throw new Error(String(data?.result || data?.message || 'Etherscan transaction query failed'));
+    }
+    const rows = Array.isArray(data.result) ? data.result : [];
+    all.push(...rows);
+    if (rows.length < 10000) break;
+  }
+  return all;
+}
+
+async function fetchEtherscanUSDCTransfers(address: string): Promise<any[]> {
+  if (!ETHERSCAN_API_KEY || ETHERSCAN_API_KEY === 'YourApiKeyToken') throw new Error('Etherscan API key not configured');
+  const url = new URL(ETHERSCAN_V2_BASE);
+  url.searchParams.set('chainid', '5042');
+  url.searchParams.set('module', 'account');
+  url.searchParams.set('action', 'tokentx');
+  url.searchParams.set('address', address);
+  url.searchParams.set('contractaddress', ERC20_USDC);
+  url.searchParams.set('startblock', '0');
+  url.searchParams.set('endblock', '999999999');
+  url.searchParams.set('page', '1');
+  url.searchParams.set('offset', '10000');
+  url.searchParams.set('sort', 'desc');
+  url.searchParams.set('apikey', ETHERSCAN_API_KEY);
+  const data = await fetchJson(url.toString(), 12_000);
+  if (String(data?.status) !== '1') {
+    if (/no transactions/i.test(String(data?.message || data?.result || ''))) return [];
+    throw new Error(String(data?.result || data?.message || 'Etherscan token transfer query failed'));
+  }
+  return Array.isArray(data.result) ? data.result : [];
+}
+
 async function fetchAddressTransactions(address: string): Promise<any[]> {
   // Arcscan's typed address transaction index is the canonical mainnet source.
   // It is cursor-paginated and includes the complete address history from block 0.
@@ -150,6 +201,13 @@ async function fetchAddressTransactions(address: string): Promise<any[]> {
   }
 
   if (all.length > 0) return all;
+
+  try {
+    const etherscanRows = await fetchEtherscanTransactions(address);
+    if (etherscanRows.length > 0) return etherscanRows;
+  } catch (error) {
+    console.warn('[GEN-0FI] Etherscan transaction fallback unavailable:', error);
+  }
 
   // Compatibility fallback. The Etherscan-shaped txlist endpoint remains
   // useful if the typed filter surface is temporarily unavailable.
@@ -527,6 +585,41 @@ async function fetchActivityTotals(address: string, fallbackTransactions: Normal
     const next = data?.page?.next ?? data?.next_cursor ?? data?.nextCursor;
     if (!next || rows.length === 0) break;
     cursor = String(next);
+  }
+
+  // If the typed activity stream fails or returns no rows, use the Etherscan Arc
+  // index when configured. It is a secondary real-data source, never a mock.
+  if (activityRows === 0) {
+    try {
+      const nativeRows = await fetchEtherscanTransactions(address);
+      for (const row of nativeRows) {
+        if (row?.isError === '1' || row?.txreceipt_status === '0') continue;
+        const from = addressOf(row?.from);
+        const to = addressOf(row?.to);
+        const value = parseArcAmount(row?.value, 18);
+        if (!value || value.raw <= 0n) continue;
+        const incoming = to === target && from !== target;
+        const outgoing = from === target;
+        if (incoming === outgoing) continue;
+        if (incoming) received += value.raw; else sent += value.raw;
+      }
+      const tokenRows = await fetchEtherscanUSDCTransfers(address);
+      for (const row of tokenRows) {
+        if (row?.isError === '1' || row?.txreceipt_status === '0') continue;
+        const from = addressOf(row?.from);
+        const to = addressOf(row?.to);
+        const incoming = to === target && from !== target;
+        const outgoing = from === target;
+        if (incoming === outgoing) continue;
+        const raw = parseArcAmount(row?.value, Number(row?.tokenDecimal ?? 18));
+        if (!raw || raw.raw <= 0n) continue;
+        const normalized = to18Decimals(raw.raw, raw.decimals);
+        if (incoming) received += normalized; else sent += normalized;
+      }
+      if (nativeRows.length > 0 || tokenRows.length > 0) return { received, sent };
+    } catch (error) {
+      console.warn('[GEN-0FI] Etherscan activity fallback unavailable:', error);
+    }
   }
 
   // If the typed activity stream returns no rows, fall back to Arcscan's
