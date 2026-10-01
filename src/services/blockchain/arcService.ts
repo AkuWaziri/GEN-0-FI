@@ -52,13 +52,38 @@ function requestHeaders(): HeadersInit {
   };
 }
 
+const ARCSCAN_INTERNAL_BASE = 'https://arc-scan.org/_api';
+
 async function fetchJson(url: string, timeoutMs = 15_000): Promise<any> {
-  const response = await fetch(url, {
-    headers: requestHeaders(),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
-  if (!response.ok) throw new Error(`Arcscan HTTP ${response.status}`);
-  return response.json();
+  const candidates = [url];
+
+  // Arcscan's public API hostname can fail independently of the explorer
+  // itself. Keep the dashboard on real Arcscan indexed data by falling back
+  // to the explorer's server-side API rewrite. This does not change chain,
+  // data semantics, or introduce mock values.
+  if (url.startsWith(ARCSCAN_V1_BASE)) {
+    candidates.push(ARCSCAN_INTERNAL_BASE + url.slice(ARCSCAN_V1_BASE.length));
+  } else if (url.startsWith(ARCSCAN_API_BASE)) {
+    candidates.push(ARCSCAN_INTERNAL_BASE + url.slice(ARCSCAN_API_BASE.length));
+  }
+
+  let lastError: unknown = null;
+  for (const candidate of candidates) {
+    try {
+      const response = await fetch(candidate, {
+        headers: requestHeaders(),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (!response.ok) {
+        throw new Error(`Arcscan HTTP ${response.status}`);
+      }
+      return response.json();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('Arcscan request failed');
 }
 
 function scalarString(value: any, fallback = ''): string {
