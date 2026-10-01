@@ -493,216 +493,88 @@ function isTransferLikeActivityRow(row: any): boolean {
 
 async function fetchActivityTotals(address: string, fallbackTransactions: NormalizedTransaction[] = []): Promise<{ received: bigint; sent: bigint }> {
   const target = address.toLowerCase();
-  let received = 0n;
-  let sent = 0n;
-  let cursor = '';
-  const seenMovements = new Set<string>();
-  let activityRows = 0;
-
-  // Arcscan's typed activity feed is the preferred source for merged native/ERC-20
-  // value flow. It is currently public and does not require an API key.
-  for (let page = 0; page < 500; page++) {
-    const url = new URL(`${ARCSCAN_V1_BASE}/address/${address}/activity`);
-    url.searchParams.set('limit', '100');
-    if (cursor) url.searchParams.set('cursor', cursor);
-
-    const data = await fetchJson(url.toString());
-    const rows = Array.isArray(data?.items)
-      ? data.items
-      : Array.isArray(data?.activity)
-        ? data.activity
-        : Array.isArray(data?.result)
-          ? data.result
-          : [];
-
-    activityRows += rows.length;
-
-    for (const row of rows) {
-      if (!isSuccessfulActivityRow(row) || !isTransferLikeActivityRow(row)) continue;
-
-      const tokenAddress = activityTokenAddress(row);
-      const symbol = activitySymbol(row);
-      if (tokenAddress && tokenAddress !== ERC20_USDC) continue;
-      if (symbol && symbol !== 'USDC') continue;
-
-      const from = addressOf(row?.from);
-      const to = addressOf(row?.to);
-      const direction = String(row?.direction || row?.flow || '').toLowerCase();
-
-      const explicitNativeAmount =
-        parseArcAmount(row?.value_18dec, 18) ||
-        parseArcAmount(row?.amount_18dec, 18);
-
-      const amount = explicitNativeAmount ||
-        parseArcAmount(row?.value, Number(row?.decimals ?? row?.token?.decimals ?? row?.asset?.decimals ?? 18)) ||
-        parseArcAmount(row?.amount, Number(row?.decimals ?? row?.token?.decimals ?? row?.asset?.decimals ?? 18)) ||
-        parseArcAmount(row?.quantity, Number(row?.decimals ?? row?.token?.decimals ?? row?.asset?.decimals ?? 18)) ||
-        parseArcAmount(row?.value_raw, 18) ||
-        parseArcAmount(row?.amount_raw, 18);
-
-      if (!amount) continue;
-
-      const incoming =
-        to === target ||
-        direction === 'in' ||
-        direction === 'incoming' ||
-        direction === 'received';
-
-      const outgoing =
-        from === target ||
-        direction === 'out' ||
-        direction === 'outgoing' ||
-        direction === 'sent';
-
-      if (incoming === outgoing) continue;
-
-      const normalized = to18Decimals(amount.raw, amount.decimals);
-      if (normalized <= 0n) continue;
-
-      const txHash = String(
-        row?.tx_hash ||
-        row?.txHash ||
-        row?.hash ||
-        row?.transaction_hash ||
-        ''
-      ).toLowerCase();
-
-      const movementId = [
-        txHash,
-        from || '',
-        to || '',
-        incoming ? 'in' : 'out',
-        normalized.toString(),
-      ].join(':');
-
-      if (seenMovements.has(movementId)) continue;
-      seenMovements.add(movementId);
-
-      if (incoming) received += normalized;
-      else sent += normalized;
-    }
-
-    const next = data?.page?.next ?? data?.next_cursor ?? data?.nextCursor;
-    if (!next || rows.length === 0) break;
-    cursor = String(next);
-  }
-
-  // If the typed activity stream fails or returns no rows, use the Etherscan Arc
-  // index when configured. It is a secondary real-data source, never a mock.
-  if (activityRows === 0) {
+  if (ETHERSCAN_API_KEY && ETHERSCAN_API_KEY !== 'YourApiKeyToken') {
     try {
+      let received = 0n, sent = 0n;
       const nativeRows = await fetchEtherscanTransactions(address);
       for (const row of nativeRows) {
         if (row?.isError === '1' || row?.txreceipt_status === '0') continue;
-        const from = addressOf(row?.from);
-        const to = addressOf(row?.to);
+        const from = addressOf(row?.from), to = addressOf(row?.to);
         const value = parseArcAmount(row?.value, 18);
         if (!value || value.raw <= 0n) continue;
-        const incoming = to === target && from !== target;
-        const outgoing = from === target;
+        const incoming = to === target && from !== target, outgoing = from === target;
         if (incoming === outgoing) continue;
         if (incoming) received += value.raw; else sent += value.raw;
       }
       const tokenRows = await fetchEtherscanUSDCTransfers(address);
       for (const row of tokenRows) {
         if (row?.isError === '1' || row?.txreceipt_status === '0') continue;
-        const from = addressOf(row?.from);
-        const to = addressOf(row?.to);
-        const incoming = to === target && from !== target;
-        const outgoing = from === target;
+        const from = addressOf(row?.from), to = addressOf(row?.to);
+        const incoming = to === target && from !== target, outgoing = from === target;
         if (incoming === outgoing) continue;
-        const raw = parseArcAmount(row?.value, Number(row?.tokenDecimal ?? 18));
+        const raw = parseArcAmount(row?.value, Number(row?.tokenDecimal ?? 6));
         if (!raw || raw.raw <= 0n) continue;
         const normalized = to18Decimals(raw.raw, raw.decimals);
         if (incoming) received += normalized; else sent += normalized;
       }
       if (nativeRows.length > 0 || tokenRows.length > 0) return { received, sent };
     } catch (error) {
-      console.warn('[GEN-0FI] Etherscan activity fallback unavailable:', error);
+      console.warn('[GEN-0FI] Etherscan activity index unavailable:', error);
     }
   }
 
-  // If the typed activity stream returns no rows, fall back to Arcscan's
-  // Etherscan-compatible USDC transfer feed plus the already-indexed native
-  // transaction list. This prevents a temporary activity-feed gap from
-  // turning verified wallet totals into "Unavailable".
-  if (activityRows === 0) {
-    received = 0n;
-    sent = 0n;
-    seenMovements.clear();
-
-    for (const tx of fallbackTransactions) {
-      if (tx.status !== 'success') continue;
-      const value = BigInt(tx.rawValue || '0');
-      if (value <= 0n) continue;
-
-      const from = addressOf(tx.from);
-      const to = addressOf(tx.to);
-      const incoming = to === target && from !== target;
-      const outgoing = from === target;
-      if (incoming === outgoing) continue;
-
-      const movementId = [tx.hash.toLowerCase(), from || '', to || '', incoming ? 'in' : 'out', value.toString()].join(':');
-      if (seenMovements.has(movementId)) continue;
-      seenMovements.add(movementId);
-
-      if (incoming) received += value;
-      else sent += value;
-    }
-
-    try {
-      const url = new URL(ARCSCAN_API_BASE);
-      url.searchParams.set('module', 'account');
-      url.searchParams.set('action', 'tokentx');
-      url.searchParams.set('address', address);
-      url.searchParams.set('contractaddress', ERC20_USDC);
-      url.searchParams.set('startblock', '0');
-      url.searchParams.set('endblock', '999999999');
-      url.searchParams.set('page', '1');
-      url.searchParams.set('offset', '10000');
-      url.searchParams.set('sort', 'desc');
-      url.searchParams.set('apikey', ARCSCAN_API_KEY);
-
+  let received = 0n, sent = 0n, cursor = '', activityRows = 0;
+  const seenMovements = new Set<string>();
+  try {
+    for (let page = 0; page < 500; page++) {
+      const url = new URL('${ARCSCAN_V1_BASE}/address/' + address + '/activity');
+      url.searchParams.set('limit', '100');
+      if (cursor) url.searchParams.set('cursor', cursor);
       const data = await fetchJson(url.toString());
-      const rows = Array.isArray(data?.result) ? data.result : [];
-
+      const rows = Array.isArray(data?.items) ? data.items : Array.isArray(data?.activity) ? data.activity : Array.isArray(data?.result) ? data.result : [];
+      activityRows += rows.length;
       for (const row of rows) {
-        if (row?.isError === '1' || row?.txreceipt_status === '0') continue;
-        const from = addressOf(row?.from);
-        const to = addressOf(row?.to);
-        const incoming = to === target && from !== target;
-        const outgoing = from === target;
+        if (!isSuccessfulActivityRow(row) || !isTransferLikeActivityRow(row)) continue;
+        const tokenAddress = activityTokenAddress(row), symbol = activitySymbol(row);
+        if (tokenAddress && tokenAddress !== ERC20_USDC) continue;
+        if (symbol && symbol !== 'USDC') continue;
+        const from = addressOf(row?.from), to = addressOf(row?.to);
+        const direction = String(row?.direction || row?.flow || '').toLowerCase();
+        const amount = parseArcAmount(row?.value_18dec, 18) || parseArcAmount(row?.amount_18dec, 18) ||
+          parseArcAmount(row?.value, Number(row?.decimals ?? row?.token?.decimals ?? row?.asset?.decimals ?? 18)) ||
+          parseArcAmount(row?.amount, Number(row?.decimals ?? row?.token?.decimals ?? row?.asset?.decimals ?? 18)) ||
+          parseArcAmount(row?.quantity, Number(row?.decimals ?? row?.token?.decimals ?? row?.asset?.decimals ?? 18)) ||
+          parseArcAmount(row?.value_raw, 18) || parseArcAmount(row?.amount_raw, 18);
+        if (!amount) continue;
+        const incoming = to === target || ['in','incoming','received'].includes(direction);
+        const outgoing = from === target || ['out','outgoing','sent'].includes(direction);
         if (incoming === outgoing) continue;
-
-        const decimals = Number(row?.tokenDecimal ?? 6);
-        const raw = parseArcAmount(row?.value, decimals);
-        if (!raw) continue;
-        const normalized = to18Decimals(raw.raw, raw.decimals);
+        const normalized = to18Decimals(amount.raw, amount.decimals);
         if (normalized <= 0n) continue;
-
-        const movementId = [
-          String(row?.hash || '').toLowerCase(),
-          from || '',
-          to || '',
-          incoming ? 'in' : 'out',
-          normalized.toString(),
-        ].join(':');
-
+        const movementId = [String(row?.tx_hash || row?.txHash || row?.hash || row?.transaction_hash || '').toLowerCase(), from || '', to || '', incoming ? 'in' : 'out', normalized.toString()].join(':');
         if (seenMovements.has(movementId)) continue;
         seenMovements.add(movementId);
-
-        if (incoming) received += normalized;
-        else sent += normalized;
+        if (incoming) received += normalized; else sent += normalized;
       }
-    } catch (error) {
-      console.warn('[GEN-0FI] Arcscan USDC transfer fallback unavailable:', error);
+      const next = data?.page?.next ?? data?.next_cursor ?? data?.nextCursor;
+      if (!next || rows.length === 0) break;
+      cursor = String(next);
     }
+  } catch (error) {
+    console.warn('[GEN-0FI] Arcscan activity index unavailable:', error);
   }
+  if (activityRows > 0) return { received, sent };
 
-  if (activityRows === 0 && received === 0n && sent === 0n && fallbackTransactions.length === 0) {
-    throw new Error('Arcscan activity returned no rows');
+  for (const tx of fallbackTransactions) {
+    if (tx.status !== 'success') continue;
+    const value = BigInt(tx.rawValue || '0');
+    if (value <= 0n) continue;
+    const from = addressOf(tx.from), to = addressOf(tx.to);
+    const incoming = to === target && from !== target, outgoing = from === target;
+    if (incoming === outgoing) continue;
+    if (incoming) received += value; else sent += value;
   }
-
+  if (received === 0n && sent === 0n && activityRows === 0 && fallbackTransactions.length === 0) throw new Error('Arc Mainnet activity unavailable');
   return { received, sent };
 }
 async function fetchGasAndValueFallback(address: string, transactions: NormalizedTransaction[]): Promise<{ received: bigint; sent: bigint; gas: bigint }> {
