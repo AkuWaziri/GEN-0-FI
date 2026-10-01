@@ -125,7 +125,11 @@ async function fetchAddressTransactions(address: string): Promise<any[]> {
   let cursor = '';
 
   for (let page = 0; page < 500; page++) {
-    const url = new URL(ARCSCAN_V1_BASE + '/address/' + address + '/txs');
+    // Arcscan's address/txs route is not a supported mainnet capability on
+    // the current index. Use the documented filter endpoint for complete
+    // address transaction history instead.
+    const url = new URL(ARCSCAN_V1_BASE + '/filter/transactions');
+    url.searchParams.set('address', address);
     url.searchParams.set('limit', '100');
     if (cursor) url.searchParams.set('cursor', cursor);
 
@@ -147,8 +151,8 @@ async function fetchAddressTransactions(address: string): Promise<any[]> {
 
   if (all.length > 0) return all;
 
-  // Compatibility fallback. Arcscan documents the Etherscan-shaped txlist
-  // endpoint as equivalent to the typed address transaction index.
+  // Compatibility fallback. The Etherscan-shaped txlist endpoint remains
+  // useful if the typed filter surface is temporarily unavailable.
   const legacy: any[] = [];
   const offset = 100;
 
