@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import { getAddress, parseAbiItem } from 'viem';
+import { getAddress, parseAbiItem, keccak256, toHex } from 'viem';
 import { GM_CONTRACT_ADDRESS, isGMContractConfigured } from '../../config/gmContract';
 
 export interface GMStats {
@@ -121,7 +121,7 @@ export async function indexConfirmedGMDays(walletAddress: string, onchainDays: A
   return getGMStats(normalized);
 }
 
-const GM_EVENT_SIGNATURE = 'GMCheckedIn(address,uint256,uint256,uint256)' as const;
+const GM_EVENT_TOPIC0 = keccak256(toHex('GMCheckedIn(address,uint256,uint256,uint256)'));
 const ARC_SCAN_API = 'https://api.arc-scan.org/v1';
 
 type ArcscanLog = {
@@ -167,7 +167,7 @@ async function fetchConfirmedGMRows() {
   let cursor: string | null = null;
   const seenCursors = new Set<string>();
   for (let page = 0; page < 1000; page += 1) {
-    const params = new URLSearchParams({ limit: '100', topic0: GM_EVENT_SIGNATURE });
+    const params = new URLSearchParams({ limit: '100', topic0: GM_EVENT_TOPIC0 });
     if (cursor) params.set('cursor', cursor);
     const response = await fetch(ARC_SCAN_API + '/address/' + GM_CONTRACT_ADDRESS + '/logs?' + params.toString(), { headers: { Accept: 'application/json' } });
     if (!response.ok) throw new Error('Arcscan GM logs request failed: ' + response.status);
