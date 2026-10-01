@@ -121,49 +121,81 @@ export async function indexConfirmedGMDays(walletAddress: string, onchainDays: A
   return getGMStats(normalized);
 }
 
-export async function syncConfirmedGMEvents(publicClient: any, lookbackBlocks = 600000): Promise<number> {
+const GM_EVENT_SIGNATURE = 'GMCheckedIn(address,uint256,uint256,uint256)' as const;
+const ARC_SCAN_API = 'https://api.arc-scan.org/v1';
+
+type ArcscanLog = {
+  transaction_hash?: string;
+  tx_hash?: string;
+  args?: { wallet?: string; day?: string | number };
+  wallet?: string;
+  day?: string | number;
+};
+
+const extractArcscanRows = (payload: any): ArcscanLog[] => {
+  const root = payload?.data ?? payload?.result ?? payload;
+  if (Array.isArray(root)) return root;
+  if (Array.isArray(root?.items)) return root.items;
+  if (Array.isArray(root?.logs)) return root.logs;
+  if (Array.isArray(root?.data)) return root.data;
+  if (Array.isArray(root?.result)) return root.result;
+  return [];
+};
+
+const extractArcscanCursor = (payload: any): string | null => {
+  const root = payload?.data ?? payload?.result ?? payload;
+  return root?.next_cursor ?? root?.nextCursor ?? root?.pagination?.next_cursor ?? null;
+};
+
+const decodeGMLog = (log: ArcscanLog) => {
+  const args = log.args || {};
+  const wallet = String(args.wallet || log.wallet || '').toLowerCase();
+  const dayValue = args.day ?? log.day;
+  if (!/^0x[a-f0-9]{40}$/.test(wallet) || dayValue == null) return null;
+  const day = Number(dayValue);
+  if (!Number.isSafeInteger(day) || day < 0) return null;
+  return {
+    wallet_address: wallet,
+    checkin_date: new Date(day * 86400000).toISOString().slice(0, 10),
+    tx_hash: String(log.transaction_hash || log.tx_hash || '').toLowerCase() || null,
+    chain_id: 5042,
+  };
+};
+
+async function fetchConfirmedGMRows() {
+  const rows: Array<{ wallet_address: string; checkin_date: string; tx_hash: string | null; chain_id: number }> = [];
+  let cursor: string | null = null;
+  const seenCursors = new Set<string>();
+  for (let page = 0; page < 1000; page += 1) {
+    const params = new URLSearchParams({ limit: '100', topic0: GM_EVENT_SIGNATURE });
+    if (cursor) params.set('cursor', cursor);
+    const response = await fetch(ARC_SCAN_API + '/address/' + GM_CONTRACT_ADDRESS + '/logs?' + params.toString(), { headers: { Accept: 'application/json' } });
+    if (!response.ok) throw new Error('Arcscan GM logs request failed: ' + response.status);
+    const payload = await response.json();
+    const pageRows = extractArcscanRows(payload).map(decodeGMLog).filter(Boolean) as typeof rows;
+    rows.push(...pageRows);
+    const next = extractArcscanCursor(payload);
+    if (!next || seenCursors.has(next) || pageRows.length === 0) break;
+    seenCursors.add(next);
+    cursor = next;
+  }
+  return rows;
+}
+
+export async function syncConfirmedGMEvents(_publicClient?: any, _lookbackBlocks = 0): Promise<number> {
   if (!supabase || !isGMContractConfigured) return 0;
-
   try {
-    const latestBlock = await publicClient.getBlockNumber();
-    const startBlock = latestBlock > BigInt(lookbackBlocks) ? latestBlock - BigInt(lookbackBlocks) : 0n;
-    const chunkSize = 20000n;
-    const event = parseAbiItem('event GMCheckedIn(address indexed wallet, uint256 indexed day, uint256 timestamp, uint256 fee)');
-    let indexed = 0;
-
-    for (let fromBlock = startBlock; fromBlock <= latestBlock; fromBlock += chunkSize) {
-      const toBlock = fromBlock + chunkSize - 1n > latestBlock ? latestBlock : fromBlock + chunkSize - 1n;
-      const logs = await publicClient.getLogs({
-        address: getAddress(GM_CONTRACT_ADDRESS),
-        event,
-        fromBlock,
-        toBlock,
-      });
-
-      if (!logs.length) continue;
-
-      const rows = logs.map((log: any) => ({
-        wallet_address: String(log.args.wallet).toLowerCase(),
-        checkin_date: new Date(Number(log.args.day) * 86400000).toISOString().slice(0, 10),
-        tx_hash: String(log.transactionHash).toLowerCase(),
-        chain_id: 5042,
-      }));
-
-      const { error } = await supabase.from('gm_checkins').upsert(rows, {
-        onConflict: 'wallet_address,checkin_date',
-        ignoreDuplicates: true,
-      });
-      if (error) throw error;
-      indexed += rows.length;
-    }
-
-    return indexed;
+    const rows = await fetchConfirmedGMRows();
+    if (!rows.length) return 0;
+    const deduped = [...new Map(rows.map((row) => [row.wallet_address + ':' + row.checkin_date, row])).values()];
+    const { error } = await supabase.from('gm_checkins').upsert(deduped, { onConflict: 'wallet_address,checkin_date', ignoreDuplicates: true });
+    if (error) throw error;
+    return deduped.length;
   } catch (error) {
     console.warn('GM event sync failed:', error);
     return 0;
   }
 }
-
 export async function getGMLeaderboard(limit = 20): Promise<GMLeaderboardRow[]> {
   if (!supabase) return [];
   const { data, error } = await supabase.from('gm_checkins').select('wallet_address, checkin_date').order('wallet_address', { ascending: true }).order('checkin_date', { ascending: true });
