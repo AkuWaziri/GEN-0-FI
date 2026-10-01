@@ -176,18 +176,50 @@ export async function indexConfirmedGM(
   if (!supabase) throw new Error('GM indexing is not configured.');
 
   const normalized = walletAddress.toLowerCase();
-  const today = dateKey();
+  const normalizedHash = txHash.toLowerCase();
+
+  // The Arc contract is authoritative. Resolve the UTC GM day from the
+  // confirmed GMCheckedIn event instead of trusting the browser clock.
+  let checkinDate = dateKey();
+  try {
+    const receipt = await gmChainClient.getTransactionReceipt({
+      hash: normalizedHash as `0x${string}`,
+    });
+    if (receipt.status !== 'success') throw new Error('GM transaction is not successful.');
+
+    const logs = await gmChainClient.getLogs({
+      address: GM_CONTRACT_ADDRESS as `0x${string}`,
+      event: GM_EVENT,
+      fromBlock: receipt.blockNumber,
+      toBlock: receipt.blockNumber,
+    });
+
+    const matching = logs.find((log: any) =>
+      String(log.transactionHash).toLowerCase() === normalizedHash &&
+      String(log.args.wallet || '').toLowerCase() === normalized
+    );
+
+    if (matching?.args?.day !== undefined) {
+      checkinDate = new Date(Number(matching.args.day) * 86400000).toISOString().slice(0, 10);
+    }
+  } catch (error) {
+    // A wallet provider can see a finalized transaction before a public RPC
+    // exposes its receipt/event. The caller can retry reconciliation.
+    console.warn('GM receipt/event lookup deferred:', error);
+  }
 
   const { error } = await supabase
     .from('gm_checkins')
-    .insert({
+    .upsert({
       wallet_address: normalized,
-      checkin_date: today,
-      tx_hash: txHash.toLowerCase(),
+      checkin_date: checkinDate,
+      tx_hash: normalizedHash,
       chain_id: 5042,
+    }, {
+      onConflict: 'wallet_address,checkin_date',
     });
 
-  if (error && error.code !== '23505') throw error;
+  if (error) throw error;
   return getGMStats(normalized);
 }
 
