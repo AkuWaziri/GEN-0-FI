@@ -3,7 +3,7 @@ import { Flame, Check, Trophy, CalendarDays, RefreshCw, ExternalLink } from 'luc
 import { useWallet } from '../../context/WalletContext';
 import { usePublicClient, useWriteContract } from 'wagmi';
 import { GM_CONTRACT_ABI, GM_CONTRACT_ADDRESS, GM_FEE_WEI, isGMContractConfigured } from '../../config/gmContract';
-import { getGMStreakPoints, indexConfirmedGMDays, getGMLeaderboard, getGMStats, GMLeaderboardRow, GMStats } from '../../services/gm/gmService';
+import { getGMStreakPoints, indexConfirmedGM, indexConfirmedGMDays, getGMLeaderboard, getGMStats, GMLeaderboardRow, GMStats } from '../../services/gm/gmService';
 import { isSupabaseConfigured } from '../../lib/supabase';
 import { ARC_CHAIN_ID, getArcScanTxUrl } from '../../config/arc';
 
@@ -91,11 +91,12 @@ export const GMStreakView: React.FC = () => {
           setOnchainConfirmedToday(true);
           if (confirmedHash) {
             setTxHash(confirmedHash);
-            window.localStorage.removeItem(PENDING_GM_TX_KEY);
           }
 
           try {
-            const repairedStats = await indexConfirmedGMDays(address, [lastCheckInDay]);
+            const repairedStats = confirmedHash
+              ? await indexConfirmedGM(address, confirmedHash)
+              : await indexConfirmedGMDays(address, [lastCheckInDay]);
             setStats(repairedStats);
             setLeaderboard(await getGMLeaderboard(20));
           } catch (indexError) {
@@ -254,7 +255,6 @@ export const GMStreakView: React.FC = () => {
         console.warn('GM points indexing deferred:', indexError);
       }
 
-      window.localStorage.removeItem(PENDING_GM_TX_KEY);
     } catch (err: any) {
       console.error('GM check-in failed:', err);
       const message = String(err?.shortMessage || err?.message || '');
