@@ -3,7 +3,7 @@ import {
   fetchAllConfirmedGMEvents,
   persistGMRows,
   statsForWallet,
-} from './_service.js';
+} from '../../src/services/gm/gmServerService.js';
 import { applyApiSecurity } from '../_security.js';
 
 export default async function handler(req: any, res: any) {
