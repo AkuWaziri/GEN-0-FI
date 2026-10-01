@@ -80,38 +80,74 @@ export const GMStreakView: React.FC = () => {
     if (!address || !isGMContractConfigured) return false;
 
     try {
-      // Derive "today" from the Arc chain itself, not the browser clock.
-      // The GM contract uses UTC day numbers from block.timestamp.
-      if (publicClient) {
-        const latestBlock = await publicClient.getBlock();
-        const todayDay = String(latestBlock.timestamp / 86400n);
-        const onchainDay = await publicClient.readContract({
+      if (!publicClient) return false;
+
+      // Read the actual GM event from Arc. This is stronger than relying on
+      // Supabase and avoids a browser-day mismatch with the contract.
+      const latestBlock = await publicClient.getBlock();
+      const todayDay = latestBlock.timestamp / 86400n;
+      const lookbackStart = latestBlock.number > 200000n ? latestBlock.number - 200000n : 0n;
+      const event = GM_CONTRACT_ABI.find((item) => item.type === 'event' && item.name === 'GMCheckedIn') as any;
+
+      if (event) {
+        const logs = await publicClient.getLogs({
           address: GM_CONTRACT_ADDRESS as `0x${string}`,
-          abi: GM_CONTRACT_ABI,
-          functionName: 'lastCheckInDay',
-          args: [address as `0x${string}`],
+          event,
+          args: { wallet: address as `0x${string}` },
+          fromBlock: lookbackStart,
+          toBlock: latestBlock.number,
         });
-        const lastCheckInDay = String(onchainDay);
-        if (lastCheckInDay === todayDay) {
+
+        const latestToday = logs
+          .filter((log: any) => log.args?.day != null && BigInt(log.args.day) === todayDay)
+          .sort((a: any, b: any) => Number(a.blockNumber - b.blockNumber))
+          .at(-1);
+
+        if (latestToday) {
           setOnchainConfirmedToday(true);
-          if (confirmedHash) {
-            setTxHash(confirmedHash);
+          const eventHash = confirmedHash || latestToday.transactionHash;
+          if (eventHash) {
+            setTxHash(eventHash);
             window.localStorage.removeItem(PENDING_GM_TX_KEY);
           }
 
           try {
-            const repairedStats = await indexConfirmedGMDays(address, [lastCheckInDay]);
+            const repairedStats = await indexConfirmedGMDays(address, [todayDay]);
             setStats(repairedStats);
             setLeaderboard(await getGMLeaderboard(20));
           } catch (indexError) {
-            // Keep the confirmed onchain state visible even if browser-side
-            // Supabase indexing is temporarily blocked or unavailable.
             setStats((current) => markConfirmedToday(current));
             console.warn('GM index sync deferred:', indexError);
           }
 
           return true;
         }
+      }
+
+      // Contract state remains a fallback when the event query is temporarily
+      // unavailable or the RPC does not return historical logs.
+      const onchainDay = await publicClient.readContract({
+        address: GM_CONTRACT_ADDRESS as `0x${string}`,
+        abi: GM_CONTRACT_ABI,
+        functionName: 'lastCheckInDay',
+        args: [address as `0x${string}`],
+      });
+
+      if (String(onchainDay) === String(todayDay)) {
+        setOnchainConfirmedToday(true);
+        if (confirmedHash) {
+          setTxHash(confirmedHash);
+          window.localStorage.removeItem(PENDING_GM_TX_KEY);
+        }
+        try {
+          const repairedStats = await indexConfirmedGMDays(address, [String(onchainDay)]);
+          setStats(repairedStats);
+          setLeaderboard(await getGMLeaderboard(20));
+        } catch (indexError) {
+          setStats((current) => markConfirmedToday(current));
+          console.warn('GM index sync deferred:', indexError);
+        }
+        return true;
       }
 
       return false;
