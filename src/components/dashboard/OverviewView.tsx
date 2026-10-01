@@ -150,10 +150,9 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
     return fromSummary || derivedGasSpent || '0.000000';
   }, [walletSummary, derivedGasSpent]);
 
-  const totalTransactions = Math.max(walletSummary?.txCount ?? 0, transactions.length);
-  const contractInteractionsCount =
-    walletSummary?.activeContractsCount ??
-    transactions.filter((t) => t.isContractInteraction || t.direction === 'contract_interaction').length;
+  const historyAvailable = walletSummary?.historyStatus === 'complete';
+  const totalTransactions = historyAvailable ? Math.max(walletSummary?.txCount ?? 0, transactions.length) : 'Unavailable';
+  const contractInteractionsCount = historyAvailable ? (walletSummary?.activeContractsCount ?? transactions.filter((t) => t.isContractInteraction || t.direction === 'contract_interaction').length) : 'Unavailable';
 
   const walletAgeDisplay = useMemo(() => {
     const firstActivity = walletSummary?.firstActivityTime;
@@ -172,7 +171,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
     return months > 0 ? `${years}y ${months}mo` : `${years}y`;
   }, [walletSummary?.firstActivityTime, walletSummary?.historyStatus]);
 
-  const tokenApprovalsCount = walletSummary?.tokenApprovalsCount ?? 0;
+  const tokenApprovalsCount = historyAvailable ? (walletSummary?.tokenApprovalsCount ?? 0) : 'Unavailable';
 
   if (!isConnected || !address) {
     return (
