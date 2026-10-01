@@ -141,9 +141,14 @@ export const GMStreakView: React.FC = () => {
       // Arc Mainnet is the authority for today's GM. Check it first so a
       // confirmed check-in can immediately put the button into the done state.
       // Supabase is only an index for points and leaderboard data.
+      let onchainConfirmed = false;
+
       if (isGMContractConfigured) {
         try {
-          await reconcileOnchainState(address);
+          onchainConfirmed = await reconcileOnchainState(address);
+          // Do not wait for Supabase or the leaderboard. Arc Mainnet confirmation
+          // alone must lock today's button.
+          if (onchainConfirmed) setConfirmedToday(true);
         } catch (chainError) {
           console.warn('GM onchain reconciliation deferred:', chainError);
         }
@@ -158,7 +163,7 @@ export const GMStreakView: React.FC = () => {
       const nextStats = await getGMStats(address);
       setStats((current) => ({
         ...nextStats,
-        checkedInToday: current.checkedInToday || confirmedToday,
+        checkedInToday: current.checkedInToday || onchainConfirmed || confirmedToday,
       }));
 
       await refreshLeaderboard();
