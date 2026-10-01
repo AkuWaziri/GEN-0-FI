@@ -3,7 +3,7 @@ import { Flame, Check, Trophy, CalendarDays, RefreshCw, ExternalLink } from 'luc
 import { useWallet } from '../../context/WalletContext';
 import { usePublicClient, useWalletClient, useWriteContract } from 'wagmi';
 import { GM_CONTRACT_ABI, GM_CONTRACT_ADDRESS, GM_FEE_WEI, isGMContractConfigured } from '../../config/gmContract';
-import { getGMStreakPoints, indexConfirmedGM, indexConfirmedGMDays, getGMLeaderboard, getGMStats, GMLeaderboardRow, GMStats } from '../../services/gm/gmService';
+import { getGMStreakPoints, indexConfirmedGM, indexConfirmedGMDays, getGMLeaderboard, getGMStats, syncConfirmedGMEvents, GMLeaderboardRow, GMStats } from '../../services/gm/gmService';
 import { isSupabaseConfigured } from '../../lib/supabase';
 import { ARC_CHAIN_ID, getArcScanTxUrl } from '../../config/arc';
 
@@ -61,6 +61,13 @@ export const GMStreakView: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
+      // Reconcile the contract's confirmed GM events before rendering the leaderboard.
+      // This backfills historical GMs and incrementally imports new confirmed days.
+      try {
+        await syncConfirmedGMEvents();
+      } catch (syncError) {
+        console.warn('GM event backfill deferred:', syncError);
+      }
       const [nextStats, nextLeaderboard] = await Promise.all([getGMStats(address), getGMLeaderboard(20)]);
       setStats(nextStats);
       setLeaderboard(nextLeaderboard);
@@ -338,7 +345,7 @@ export const GMStreakView: React.FC = () => {
 
         <div className="rounded-2xl border border-zinc-800 bg-[#111317] p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
           <div><div className="text-sm font-semibold text-white">{onchainConfirmedToday || stats?.checkedInToday ? 'GM confirmed on Arc Mainnet' : 'You have not checked in today'}</div><div className="text-xs text-zinc-500 mt-1">{onchainConfirmedToday || stats?.checkedInToday ? 'Come back tomorrow to extend the streak.' : 'A successful transaction is recorded on Arc Mainnet.'}</div></div>
-          <button onClick={handleCheckIn} disabled={checkingIn || loading || onchainConfirmedToday || Boolean(stats?.checkedInToday)} className="w-full sm:w-auto min-w-36 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white text-black text-sm font-bold hover:bg-zinc-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">{checkingIn ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}{checkingIn ? 'Confirming…' : (onchainConfirmedToday || stats?.checkedInToday) ? 'GM Done' : 'GM Today'}</button>
+          <button onClick={handleCheckIn} disabled={checkingIn || loading || onchainConfirmedToday || Boolean(stats?.checkedInToday)} className="w-full sm:w-auto min-w-36 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white text-black text-sm font-bold hover:bg-zinc-200 disabled:opacity-25 disabled:cursor-not-allowed transition-all duration-500">{checkingIn ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}{checkingIn ? 'Confirming…' : (onchainConfirmedToday || stats?.checkedInToday) ? 'GM Done' : 'GM Today'}</button>
         </div>
 
         {txHash && <a href={getArcScanTxUrl(txHash)} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-xs text-blue-400 hover:text-blue-300">Transaction: {short(txHash)} <ExternalLink className="w-3.5 h-3.5" /></a>}
