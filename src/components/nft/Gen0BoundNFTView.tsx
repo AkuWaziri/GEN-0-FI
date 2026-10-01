@@ -78,29 +78,16 @@ export const Gen0BoundNFTView: React.FC = () => {
     }
     let active = true;
     setCheckingOwnership(true);
-    readArcWithRetry(() =>
-      arcRpcClient.readContract({
-        address: contractAddress,
-        abi: NFT_ABI,
-        functionName: 'hasMinted',
-        args: [address],
+    fetch(`/api/nft/ownership/${address}`, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Ownership API unavailable');
+        return response.json();
       })
-    )
-      .then(async (hasMinted) => {
-        const balance = await readArcWithRetry(() =>
-          arcRpcClient.readContract({
-            address: contractAddress,
-            abi: NFT_ABI,
-            functionName: 'balanceOf',
-            args: [address],
-          })
-        );
-        if (active) {
-          const isOwned = Boolean(hasMinted) || balance > 0n;
-          setOwned(isOwned);
-          setOwnershipUnavailable(false);
-          setError('');
-        }
+      .then((data) => {
+        if (!active) return;
+        setOwned(Boolean(data.owned));
+        setOwnershipUnavailable(false);
+        setError('');
       })
       .catch((ownershipError: any) => {
         // Never turn an RPC outage into a false "not minted" state.
@@ -122,13 +109,16 @@ export const Gen0BoundNFTView: React.FC = () => {
     setOwnershipUnavailable(false);
     setError('');
     try {
-      const value = await readArcWithRetry(() => arcRpcClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'hasMinted', args: [address] }));
-      setOwned(Boolean(value));
-      if (Boolean(value)) setShowOwned(true);
+      const response = await fetch(`/api/nft/ownership/${address}`, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } });
+      if (!response.ok) throw new Error('Ownership API unavailable');
+      const data = await response.json();
+      const isOwned = Boolean(data.owned);
+      setOwned(isOwned);
+      if (isOwned) setShowOwned(true);
     } catch {
       setOwned(false);
       setOwnershipUnavailable(true);
-      setError('Unable to verify ownership on Arc Mainnet. Check your connection and retry.');
+      setError('Unable to verify ownership on Arc Mainnet. Please retry.');
     } finally {
       setCheckingOwnership(false);
     }
