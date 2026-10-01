@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle2, ExternalLink, Gem, Loader2, ShieldCheck, Sparkles } from 'lucide-react';
-import { decodeErrorResult, decodeEventLog } from 'viem';
+import { createPublicClient, decodeErrorResult, decodeEventLog, fallback, http } from 'viem';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
-import { getArcScanTxUrl } from '../../config/arc';
+import { arcMainnetChain, getArcScanTxUrl } from '../../config/arc';
 import { recordConfirmedAction } from '../../services/points/pointsService';
 import { GEN0_BOUND_ARTWORK_GATEWAYS, GEN0_BOUND_CHAIN_ID, GEN0_BOUND_FEE_WALLET, GEN0_BOUND_MINT_PRICE, GEN0_BOUND_NFT_ADDRESS, GEN0_BOUND_USDC_ADDRESS } from '../../config/gen0BoundNFT';
 
@@ -26,6 +26,14 @@ const USDC_ABI = [
 ] as const;
 
 const RPC_RETRY_DELAYS = [0, 500, 1200, 2500];
+
+const arcRpcClient = createPublicClient({
+  chain: arcMainnetChain,
+  transport: fallback([
+    http('https://rpc.arc-scan.org'),
+    http('https://rpc.mainnet.arc.io'),
+  ]),
+});
 
 async function readArcWithRetry<T>(operation: () => Promise<T>): Promise<T> {
   let lastError: unknown = null;
@@ -57,20 +65,22 @@ export const Gen0BoundNFTView: React.FC = () => {
   const [owned, setOwned] = useState(false);
   const [showOwned, setShowOwned] = useState(false);
   const [checkingOwnership, setCheckingOwnership] = useState(true);
+  const [ownershipUnavailable, setOwnershipUnavailable] = useState(false);
   const [imageGatewayIndex, setImageGatewayIndex] = useState(0);
   const [imageFailed, setImageFailed] = useState(false);
   const imageSrc = GEN0_BOUND_ARTWORK_GATEWAYS[imageGatewayIndex] || GEN0_BOUND_ARTWORK_GATEWAYS[0];
 
   useEffect(() => {
-    if (!address || !publicClient) {
+    if (!address) {
       setCheckingOwnership(false);
       setOwned(false);
+      setOwnershipUnavailable(false);
       return;
     }
     let active = true;
     setCheckingOwnership(true);
     readArcWithRetry(() =>
-      publicClient.readContract({
+      arcRpcClient.readContract({
         address: contractAddress,
         abi: NFT_ABI,
         functionName: 'hasMinted',
@@ -80,6 +90,7 @@ export const Gen0BoundNFTView: React.FC = () => {
       .then((value) => {
         if (active) {
           setOwned(Boolean(value));
+          setOwnershipUnavailable(false);
           setError('');
         }
       })
@@ -87,22 +98,39 @@ export const Gen0BoundNFTView: React.FC = () => {
         // Never turn an RPC outage into a false "not minted" state.
         if (active) {
           setOwned(false);
-          setError(
-            ownershipError?.shortMessage ||
-            ownershipError?.cause?.shortMessage ||
-            ownershipError?.message ||
-            'Unable to verify GEN-0 Bound ownership on Arc Mainnet. Please retry.'
-          );
+          setOwnershipUnavailable(true);
+          // Do not surface an RPC failure on initial render or turn it into a
+          // false ownership state. The user can explicitly retry verification.
+          setError('');
         }
       })
       .finally(() => { if (active) setCheckingOwnership(false); });
     return () => { active = false; };
-  }, [address, contractAddress, publicClient]);
+  }, [address, contractAddress]);
+
+  const retryOwnership = async () => {
+    if (!address) return;
+    setCheckingOwnership(true);
+    setOwnershipUnavailable(false);
+    setError('');
+    try {
+      const value = await readArcWithRetry(() => arcRpcClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'hasMinted', args: [address] }));
+      setOwned(Boolean(value));
+      if (Boolean(value)) setShowOwned(true);
+    } catch {
+      setOwned(false);
+      setOwnershipUnavailable(true);
+      setError('Unable to verify ownership on Arc Mainnet. Check your connection and retry.');
+    } finally {
+      setCheckingOwnership(false);
+    }
+  };
 
   const mint = async () => {
-    if (!walletClient || !publicClient || !address) { setError('Connect your wallet first.'); return; }
+    if (!walletClient || !address) { setError('Connect your wallet first.'); return; }
     if (chainId !== GEN0_BOUND_CHAIN_ID) { setError('Switch your wallet to Arc Mainnet.'); return; }
     if (checkingOwnership) { setError('Checking your GEN-0 Bound ownership on Arc…'); return; }
+    if (ownershipUnavailable) { setError('Unable to verify ownership. Click retry to check the live Arc contract before minting.'); return; }
     if (owned) { setShowOwned(true); return; }
 
     setMinting(true);
@@ -111,7 +139,7 @@ export const Gen0BoundNFTView: React.FC = () => {
     setTxHash('');
 
     try {
-      const rpcChainId = await readArcWithRetry(() => publicClient.getChainId());
+      const rpcChainId = await readArcWithRetry(() => arcRpcClient.getChainId());
       if (rpcChainId !== GEN0_BOUND_CHAIN_ID) {
         throw new Error(`Connected RPC chain is ${rpcChainId}, expected Arc Mainnet ${GEN0_BOUND_CHAIN_ID}.`);
       }
@@ -120,14 +148,15 @@ export const Gen0BoundNFTView: React.FC = () => {
       // and a burst of independent reads can otherwise surface as a generic
       // "HTTP request failed" before the wallet is ever asked to sign.
       const alreadyMinted = await readArcWithRetry(() =>
-        publicClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'hasMinted', args: [address] })
+        arcRpcClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'hasMinted', args: [address] })
       );
       const nftBalance = await readArcWithRetry(() =>
-        publicClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'balanceOf', args: [address] })
+        arcRpcClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'balanceOf', args: [address] })
       );
 
       if (alreadyMinted || nftBalance > 0n) {
         setOwned(true);
+        setOwnershipUnavailable(false);
         setStatus('This wallet already owns GEN-0 Bound.');
         setShowOwned(true);
         return;
@@ -151,6 +180,7 @@ export const Gen0BoundNFTView: React.FC = () => {
 
       if (alreadyMinted || nftBalance > 0n) {
         setOwned(true);
+        setOwnershipUnavailable(false);
         setStatus('This wallet already owns GEN-0 Bound.');
         setShowOwned(true);
         return;
@@ -187,7 +217,7 @@ export const Gen0BoundNFTView: React.FC = () => {
           args: [contractAddress, GEN0_BOUND_MINT_PRICE],
           chainId: GEN0_BOUND_CHAIN_ID,
         });
-        await publicClient.waitForTransactionReceipt({ hash: approval });
+        await arcRpcClient.waitForTransactionReceipt({ hash: approval });
 
         currentAllowance = await readArcWithRetry(() =>
           publicClient.readContract({
@@ -204,7 +234,7 @@ export const Gen0BoundNFTView: React.FC = () => {
       }
 
       try {
-        await publicClient.simulateContract({
+        await arcRpcClient.simulateContract({
           account: address,
           address: contractAddress,
           abi: NFT_ABI,
@@ -260,7 +290,7 @@ export const Gen0BoundNFTView: React.FC = () => {
       setTxHash(hash);
       setStatus('Waiting for your GEN-0 Bound NFT to confirm on Arc…');
 
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      const receipt = await arcRpcClient.waitForTransactionReceipt({ hash });
       if (receipt.status !== 'success') throw new Error('The mint transaction reverted.');
 
       const transferAbi = [{
@@ -349,7 +379,7 @@ export const Gen0BoundNFTView: React.FC = () => {
         {status&&<div className="mt-4 rounded-xl border border-white/[.07] bg-black/20 px-3 py-2.5 text-[10px] leading-5 text-slate-400">{status}</div>}
         {error&&<div className="mt-3 rounded-xl border border-rose-400/15 bg-rose-400/[.04] px-3 py-2.5 text-[10px] leading-5 text-rose-200">{error}</div>}
         {txHash&&<a href={getArcScanTxUrl(txHash)} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-[10px] text-cyan-300">View transaction <ExternalLink className="h-3 w-3"/> </a>}
-        <button disabled={minting||owned||checkingOwnership} onClick={()=>void mint()} className="mt-5 flex w-full items-center justify-center rounded-xl bg-cyan-400 py-3 text-xs font-extrabold text-slate-950 hover:bg-cyan-300 disabled:bg-white/[.06] disabled:text-slate-500">{minting||checkingOwnership?<Loader2 className="mr-2 h-4 w-4 animate-spin"/>:<Gem className="mr-2 h-4 w-4"/>}{owned?'YOU OWN GEN-0 BOUND':checkingOwnership?'CHECKING OWNERSHIP…':minting?'MINTING…':'MINT · 1 USDC'}</button>
+        <button disabled={minting||owned||checkingOwnership} onClick={()=>void (ownershipUnavailable ? retryOwnership() : mint())} className="mt-5 flex w-full items-center justify-center rounded-xl bg-cyan-400 py-3 text-xs font-extrabold text-slate-950 hover:bg-cyan-300 disabled:bg-white/[.06] disabled:text-slate-500">{minting||checkingOwnership?<Loader2 className="mr-2 h-4 w-4 animate-spin"/>:<Gem className="mr-2 h-4 w-4"/>}{owned?'YOU OWN GEN-0 BOUND':checkingOwnership?'CHECKING OWNERSHIP…':ownershipUnavailable?'RETRY OWNERSHIP CHECK':minting?'MINTING…':'MINT · 1 USDC'}</button>
         <p className="mt-3 text-center text-[9px] leading-5 text-slate-600">1 USDC is transferred directly onchain to the GEN-0 fee wallet. NFT transfers are disabled.</p>
       </section>
     </div>
