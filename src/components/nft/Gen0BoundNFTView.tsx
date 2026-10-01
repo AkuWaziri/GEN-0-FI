@@ -69,9 +69,32 @@ export const Gen0BoundNFTView: React.FC = () => {
     }
     let active = true;
     setCheckingOwnership(true);
-    publicClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'hasMinted', args: [address] })
-      .then((value) => { if (active) setOwned(Boolean(value)); })
-      .catch(() => { if (active) setOwned(false); })
+    readArcWithRetry(() =>
+      publicClient.readContract({
+        address: contractAddress,
+        abi: NFT_ABI,
+        functionName: 'hasMinted',
+        args: [address],
+      })
+    )
+      .then((value) => {
+        if (active) {
+          setOwned(Boolean(value));
+          setError('');
+        }
+      })
+      .catch((ownershipError: any) => {
+        // Never turn an RPC outage into a false "not minted" state.
+        if (active) {
+          setOwned(false);
+          setError(
+            ownershipError?.shortMessage ||
+            ownershipError?.cause?.shortMessage ||
+            ownershipError?.message ||
+            'Unable to verify GEN-0 Bound ownership on Arc Mainnet. Please retry.'
+          );
+        }
+      })
       .finally(() => { if (active) setCheckingOwnership(false); });
     return () => { active = false; };
   }, [address, contractAddress, publicClient]);
