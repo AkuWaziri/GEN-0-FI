@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle2, ExternalLink, Gem, Loader2, ShieldCheck, Sparkles } from 'lucide-react';
-import { createPublicClient, decodeEventLog, fallback, http } from 'viem';
+import { createPublicClient, fallback, http } from 'viem';
 import { useAccount, useWalletClient } from 'wagmi';
 import { arcMainnetChain, getArcScanTxUrl } from '../../config/arc';
 import { recordConfirmedAction } from '../../services/points/pointsService';
-import { GEN0_BOUND_ARTWORK_GATEWAYS, GEN0_BOUND_CHAIN_ID, GEN0_BOUND_FEE_WALLET, GEN0_BOUND_MINT_PRICE, GEN0_BOUND_NFT_ADDRESS, GEN0_BOUND_USDC_ADDRESS } from '../../config/gen0BoundNFT';
+import { GEN0_BOUND_ARTWORK_GATEWAYS, GEN0_BOUND_CHAIN_ID, GEN0_BOUND_MINT_PRICE, GEN0_BOUND_NFT_ADDRESS, GEN0_BOUND_USDC_ADDRESS } from '../../config/gen0BoundNFT';
 
 const NFT_ABI = [
   { type: 'function', name: 'hasMinted', stateMutability: 'view', inputs: [{ name: '', type: 'address' }], outputs: [{ name: '', type: 'bool' }] },
