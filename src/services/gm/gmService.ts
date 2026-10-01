@@ -40,7 +40,7 @@ const previousDateKey = (date: string) => {
 
 export const GM_STREAK_DAILY_CAP = 300;
 
-const GM_SYNC_BLOCK_KEY = 'gen0fi:gm-sync-last-block';
+const GM_SYNC_BLOCK_KEY = 'gen0fi:gm-sync-last-block-v2';
 const GM_EVENT = parseAbiItem('event GMCheckedIn(address indexed wallet, uint256 indexed day, uint256 timestamp, uint256 fee)');
 const gmChainClient = createPublicClient({
   chain: arcMainnetChain,
