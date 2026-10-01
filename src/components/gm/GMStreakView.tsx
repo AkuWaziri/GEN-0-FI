@@ -13,6 +13,7 @@ import {
   getGMLeaderboard,
   getGMStats,
   indexConfirmedGMDays,
+  syncConfirmedGMEvents,
   GMLeaderboardRow,
   GMStats,
 } from '../../services/gm/gmService';
@@ -94,6 +95,12 @@ export const GMStreakView: React.FC = () => {
     setError(null);
 
     try {
+      // Rebuild the historical GM index from confirmed Arc events before calculating
+      // streaks or points. Arc events are authoritative; Supabase is the index.
+      if (isGMContractConfigured) {
+        await syncConfirmedGMEvents(publicClient, 600000);
+      }
+
       const nextStats = await getGMStats(address);
       setStats(nextStats);
 
