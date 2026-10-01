@@ -111,7 +111,7 @@ function extractRows(payload: any): any[] {
 
 function extractCursor(payload: any): string | null {
   const root = payload?.data ?? payload?.result ?? payload;
-  return root?.next_cursor ?? root?.nextCursor ?? root?.pagination?.next_cursor ?? null;
+  return root?.page?.next ?? root?.next_cursor ?? root?.nextCursor ?? root?.pagination?.next_cursor ?? null;
 }
 
 function decodeRow(log: any): GMOnchainRow | null {
