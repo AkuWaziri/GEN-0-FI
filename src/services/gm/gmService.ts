@@ -89,14 +89,34 @@ export async function indexConfirmedGM(walletAddress: string, txHash: string): P
 export async function indexConfirmedGMDays(walletAddress: string, onchainDays: Array<string | bigint>): Promise<GMStats> {
   if (!supabase) throw new Error('GM indexing is not configured.');
   const normalized = walletAddress.toLowerCase();
-  const rows = [...new Set(onchainDays.map((day) => day.toString()))].map((day) => Number(day)).filter((day) => Number.isSafeInteger(day) && day >= 0).map((day) => ({
-    wallet_address: normalized,
-    checkin_date: new Date(day * 86400000).toISOString().slice(0, 10),
-    chain_id: 5042,
-  }));
+  const rows = [...new Set(onchainDays.map((day) => day.toString()))]
+    .map((day) => Number(day))
+    .filter((day) => Number.isSafeInteger(day) && day >= 0)
+    .map((day) => ({
+      wallet_address: normalized,
+      checkin_date: new Date(day * 86400000).toISOString().slice(0, 10),
+      chain_id: 5042,
+    }));
+
   if (rows.length) {
-    const { error } = await supabase.from('gm_checkins').upsert(rows, { onConflict: 'wallet_address,checkin_date', ignoreDuplicates: true });
-    if (error) throw error;
+    // Do not depend on a database UNIQUE constraint for reconciliation.
+    // Some existing deployments only have the base gm_checkins columns.
+    const dates = rows.map((row) => row.checkin_date);
+    const { data: existing, error: lookupError } = await supabase
+      .from('gm_checkins')
+      .select('checkin_date')
+      .eq('wallet_address', normalized)
+      .in('checkin_date', dates);
+
+    if (lookupError) throw lookupError;
+
+    const existingDates = new Set((existing || []).map((row) => row.checkin_date));
+    const missingRows = rows.filter((row) => !existingDates.has(row.checkin_date));
+
+    if (missingRows.length) {
+      const { error: insertError } = await supabase.from('gm_checkins').insert(missingRows);
+      if (insertError && insertError.code !== '23505') throw insertError;
+    }
   }
   return getGMStats(normalized);
 }
