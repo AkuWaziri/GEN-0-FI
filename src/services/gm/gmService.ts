@@ -1,4 +1,6 @@
 import { supabase } from '../../lib/supabase';
+import { getAddress, parseAbiItem } from 'viem';
+import { GM_CONTRACT_ADDRESS, isGMContractConfigured } from '../../config/gmContract';
 
 export interface GMStats {
   currentStreak: number;
@@ -97,6 +99,49 @@ export async function indexConfirmedGMDays(walletAddress: string, onchainDays: A
     if (error) throw error;
   }
   return getGMStats(normalized);
+}
+
+export async function syncConfirmedGMEvents(publicClient: any, lookbackBlocks = 600000): Promise<number> {
+  if (!supabase || !isGMContractConfigured) return 0;
+
+  try {
+    const latestBlock = await publicClient.getBlockNumber();
+    const startBlock = latestBlock > BigInt(lookbackBlocks) ? latestBlock - BigInt(lookbackBlocks) : 0n;
+    const chunkSize = 20000n;
+    const event = parseAbiItem('event GMCheckedIn(address indexed wallet, uint256 indexed day, uint256 timestamp, uint256 fee)');
+    let indexed = 0;
+
+    for (let fromBlock = startBlock; fromBlock <= latestBlock; fromBlock += chunkSize) {
+      const toBlock = fromBlock + chunkSize - 1n > latestBlock ? latestBlock : fromBlock + chunkSize - 1n;
+      const logs = await publicClient.getLogs({
+        address: getAddress(GM_CONTRACT_ADDRESS),
+        event,
+        fromBlock,
+        toBlock,
+      });
+
+      if (!logs.length) continue;
+
+      const rows = logs.map((log: any) => ({
+        wallet_address: String(log.args.wallet).toLowerCase(),
+        checkin_date: new Date(Number(log.args.day) * 86400000).toISOString().slice(0, 10),
+        tx_hash: String(log.transactionHash).toLowerCase(),
+        chain_id: 5042,
+      }));
+
+      const { error } = await supabase.from('gm_checkins').upsert(rows, {
+        onConflict: 'wallet_address,checkin_date',
+        ignoreDuplicates: true,
+      });
+      if (error) throw error;
+      indexed += rows.length;
+    }
+
+    return indexed;
+  } catch (error) {
+    console.warn('GM event sync failed:', error);
+    return 0;
+  }
 }
 
 export async function getGMLeaderboard(limit = 20): Promise<GMLeaderboardRow[]> {
