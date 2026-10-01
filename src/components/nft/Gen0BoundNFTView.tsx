@@ -207,49 +207,56 @@ export const Gen0BoundNFTView: React.FC = () => {
         chainId: GEN0_BOUND_CHAIN_ID,
       });
       setTxHash(hash);
-      setStatus('Waiting for your GEN-0 Bound NFT to confirm on Arc…');
+      setStatus('Mint submitted. Waiting for Arc to confirm ownership…');
 
-      const receipt = await arcRpcClient.waitForTransactionReceipt({ hash });
-      if (receipt.status !== 'success') throw new Error('The mint transaction reverted.');
+      // Do not make the UI depend on a single RPC receipt call. Arc can have
+      // the transaction finalized while the RPC receipt/indexer is briefly
+      // unavailable. Poll the server-side ownership check instead. Once the
+      // live contract reports ownership, the mint is confirmed for this wallet.
+      const ownershipDeadline = Date.now() + 45_000;
+      let confirmedOwnership = false;
 
-      const transferAbi = [{
-        type: 'event',
-        name: 'Transfer',
-        inputs: [
-          { name: 'from', type: 'address', indexed: true },
-          { name: 'to', type: 'address', indexed: true },
-          { name: 'value', type: 'uint256', indexed: false },
-        ],
-      }] as const;
-
-      const paidExactly = receipt.logs.some((log) => {
-        if (log.address.toLowerCase() !== GEN0_BOUND_USDC_ADDRESS.toLowerCase()) return false;
+      while (Date.now() < ownershipDeadline) {
         try {
-          const decoded = decodeEventLog({ abi: transferAbi, data: log.data, topics: log.topics });
-          return decoded.eventName === 'Transfer'
-            && decoded.args.from.toLowerCase() === address.toLowerCase()
-            && decoded.args.to.toLowerCase() === GEN0_BOUND_FEE_WALLET.toLowerCase()
-            && decoded.args.value === GEN0_BOUND_MINT_PRICE;
-        } catch {
-          return false;
-        }
-      });
+          const response = await fetch(`/api/nft/ownership/${address}?tx=${hash}`, {
+            cache: 'no-store',
+            headers: { 'Cache-Control': 'no-cache' },
+          });
 
-      if (!paidExactly) {
-        throw new Error('Mint confirmed, but the expected 1 USDC payment to the GEN-0 fee wallet was not found in the receipt.');
+          if (response.ok) {
+            const data = await response.json();
+            if (Boolean(data.owned)) {
+              confirmedOwnership = true;
+              break;
+            }
+          }
+        } catch {
+          // Keep polling. A temporary API/RPC outage must not leave the
+          // confirmed mint stuck on "MINTING".
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       }
 
-      const confirmedOwnership = await readArcWithRetry(() =>
-        arcRpcClient.readContract({
-          address: contractAddress,
-          abi: NFT_ABI,
-          functionName: 'hasMinted',
-          args: [address],
-        })
-      );
+      // If the ownership index is still catching up, do one direct contract
+      // read before giving up.
+      if (!confirmedOwnership) {
+        try {
+          confirmedOwnership = await readArcWithRetry(() =>
+            arcRpcClient.readContract({
+              address: contractAddress,
+              abi: NFT_ABI,
+              functionName: 'hasMinted',
+              args: [address],
+            })
+          );
+        } catch {
+          confirmedOwnership = false;
+        }
+      }
 
       if (!confirmedOwnership) {
-        throw new Error('Mint transaction confirmed, but the contract did not report this wallet as minted.');
+        throw new Error('Mint transaction was submitted, but Arc has not yet reported NFT ownership. Your transaction is linked below; please retry verification shortly.');
       }
 
       setOwned(true);
