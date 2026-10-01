@@ -18,7 +18,6 @@ import {
   GMLeaderboardRow,
   GMStats,
 } from '../../services/gm/gmService';
-import { isSupabaseConfigured } from '../../lib/supabase';
 import {
   ARC_CHAIN_ID,
   ARC_MAINNET_RPC_URL,
@@ -244,7 +243,7 @@ export const GMStreakView: React.FC = () => {
 
   const isDone = confirmedToday || stats.checkedInToday;
 
-  if (!isSupabaseConfigured || !isGMContractConfigured) {
+  if (!isGMContractConfigured) {
     return (
       <div className="min-h-[calc(100vh-3.5rem)] p-5 sm:p-8 lg:p-10">
         <div className="max-w-3xl mx-auto rounded-2xl border border-blue-500/20 bg-[#111317] p-6 sm:p-8">
@@ -253,9 +252,7 @@ export const GMStreakView: React.FC = () => {
             <h1 className="text-xl font-bold text-white">GM Streak</h1>
           </div>
           <p className="mt-3 text-sm text-zinc-400 leading-relaxed">
-            {!isSupabaseConfigured
-              ? 'GM indexing is not configured. Add the Supabase browser variables in Vercel.'
-              : 'The Arc Mainnet GM contract is not configured.'}
+            The Arc Mainnet GM contract is not configured.
           </p>
         </div>
       </div>
