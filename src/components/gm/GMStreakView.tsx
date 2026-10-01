@@ -240,42 +240,52 @@ export const GMStreakView: React.FC = () => {
       }
 
       let receiptConfirmed = false;
-      for (let attempt = 0; attempt < 30; attempt += 1) {
-        try {
-          let status: string | undefined;
 
+      // Use viem's receipt waiter as the primary confirmation path. This waits
+      // for the actual Arc receipt instead of polling the wallet transport,
+      // which can remain undefined after the transaction is already finalized.
+      if (publicClient) {
+        try {
+          const receipt = await publicClient.waitForTransactionReceipt({
+            hash: hash as `0x${string}`,
+            confirmations: 1,
+            timeout: 90_000,
+            pollingInterval: 1_500,
+          });
+
+          if (receipt.status !== 'success') {
+            throw new Error('GM transaction reverted on Arc.');
+          }
+
+          receiptConfirmed = true;
+        } catch (receiptError: any) {
+          if (/revert|reverted/i.test(String(receiptError?.message || ''))) {
+            throw receiptError;
+          }
+        }
+      }
+
+      // Contract state is the definitive fallback. A successful lastCheckInDay
+      // proves the check-in was accepted even if the RPC receipt waiter lagged.
+      if (!receiptConfirmed && await reconcileConfirmedToday(hash)) {
+        receiptConfirmed = true;
+      }
+
+      if (!receiptConfirmed) {
+        // One final provider receipt check before reporting a pending state.
+        try {
           if (walletClient) {
             const receipt = await walletClient.request({
               method: 'eth_getTransactionReceipt',
               params: [hash],
             });
-            status = receipt?.status;
-          } else if (publicClient) {
-            const receipt = await publicClient.getTransactionReceipt({ hash });
-            status = receipt.status;
+            if (receipt?.status === '0x1' || receipt?.status === '0x01') {
+              receiptConfirmed = true;
+            }
           }
-
-          if (status === '0x1' || status === '0x01' || status === 'success') {
-            receiptConfirmed = true;
-            break;
-          }
-
-          if (status === '0x0' || status === '0x00' || status === 'reverted') {
-            throw new Error('GM transaction reverted on Arc.');
-          }
-        } catch (receiptError: any) {
-          if (/revert/i.test(String(receiptError?.message || ''))) throw receiptError;
+        } catch {
+          // Keep the pending hash for recovery on the next load.
         }
-
-        // Contract state is a secondary confirmation path. If the wallet provider
-        // has not exposed the receipt yet, a successful lastCheckInDay proves that
-        // the onchain check-in completed because the contract prevents duplicates.
-        if (await reconcileConfirmedToday(hash)) {
-          receiptConfirmed = true;
-          break;
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, 1500));
       }
 
       if (!receiptConfirmed) {
