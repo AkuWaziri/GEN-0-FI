@@ -116,23 +116,35 @@ function extractCursor(payload: any): string | null {
 
 function decodeRow(log: any): GMOnchainRow | null {
   try {
-    const decoded = decodeEventLog({
-      abi: GM_EVENT_ABI,
-      data: (log.data || '0x') as `0x${string}`,
-      topics: (log.topics || []) as readonly `0x${string}`[],
-    });
+    const decodedArgs = log.args || log.decoded?.args || log.decoded || {};
+    let wallet = String(log.wallet || decodedArgs.wallet || '').toLowerCase();
+    let dayValue = log.day ?? decodedArgs.day;
 
-    if (decoded.eventName !== 'GMCheckedIn') return null;
+    if ((!isAddress(wallet, { strict: false }) || dayValue == null) && log.topics?.length) {
+      const decoded = decodeEventLog({
+        abi: GM_EVENT_ABI,
+        data: (log.data || '0x') as `0x${string}`,
+        topics: (log.topics || []) as readonly `0x${string}`[],
+      });
 
-    const args = decoded.args as any;
-    const wallet = String(args.wallet || '').toLowerCase();
-    const day = BigInt(args.day);
-    const txHash = String(
-      log.transaction_hash || log.transactionHash || log.tx_hash || log.hash || ''
-    ).toLowerCase();
+      if (decoded.eventName !== 'GMCheckedIn') return null;
+      const args = decoded.args as any;
+      wallet = String(args.wallet || '').toLowerCase();
+      dayValue = args.day;
+    }
 
-    if (!isAddress(wallet, { strict: false })) return null;
+    if (!isAddress(wallet, { strict: false }) || dayValue == null) return null;
+
+    const day = BigInt(dayValue);
     if (day < 0n) return null;
+
+    const txHash = String(
+      log.transaction_hash ||
+      log.transactionHash ||
+      log.tx_hash ||
+      log.hash ||
+      ''
+    ).toLowerCase();
 
     return {
       wallet_address: wallet,
