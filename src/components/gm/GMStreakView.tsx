@@ -47,7 +47,8 @@ const markConfirmedToday = (current: GMStats | null): GMStats => {
 export const GMStreakView: React.FC = () => {
   const { address, isCorrectNetwork } = useWallet();
   const { writeContractAsync } = useWriteContract();
-  // Never use the broken explorer RPC as a confirmation fallback.\n  const publicClient = createPublicClient({ chain: arcChain, transport: http(ARC_MAINNET_RPC_URL) });
+  // Never use the broken explorer RPC as a confirmation fallback.
+  const publicClient = createPublicClient({ chain: arcChain, transport: http(ARC_MAINNET_RPC_URL) });
   const [stats, setStats] = useState<GMStats | null>(null);
   const [leaderboard, setLeaderboard] = useState<GMLeaderboardRow[]>([]);
   const [loading, setLoading] = useState(true);
