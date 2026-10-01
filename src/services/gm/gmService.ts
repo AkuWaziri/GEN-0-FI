@@ -1,4 +1,7 @@
+import { createPublicClient, fallback, http, parseAbiItem } from 'viem';
 import { supabase } from '../../lib/supabase';
+import { ARC_MAINNET_RPC_URL, ARC_FALLBACK_RPC_URL, arcMainnetChain } from '../../config/arc';
+import { GM_CONTRACT_ADDRESS, isGMContractConfigured } from '../../config/gmContract';
 
 export interface GMStats {
   currentStreak: number;
@@ -36,6 +39,62 @@ const previousDateKey = (date: string) => {
 };
 
 export const GM_STREAK_DAILY_CAP = 300;
+
+const GM_SYNC_BLOCK_KEY = 'gen0fi:gm-sync-last-block';
+const GM_EVENT = parseAbiItem('event GMCheckedIn(address indexed wallet, uint256 indexed day, uint256 timestamp, uint256 fee)');
+const gmChainClient = createPublicClient({
+  chain: arcMainnetChain,
+  transport: fallback([http(ARC_MAINNET_RPC_URL), http(ARC_FALLBACK_RPC_URL)]),
+});
+
+/**
+ * Backfill every confirmed GMCheckedIn event from Arc Mainnet into Supabase.
+ * The contract is the source of truth; Supabase is only the leaderboard index.
+ * Scanning resumes from the last block so normal loads only inspect new blocks.
+ */
+export async function syncConfirmedGMEvents(): Promise<number> {
+  if (!supabase || !isGMContractConfigured) return 0;
+
+  const latestBlock = await gmChainClient.getBlockNumber();
+  const stored = Number(window.localStorage.getItem(GM_SYNC_BLOCK_KEY) || '0');
+  const startBlock = Number.isSafeInteger(stored) && stored >= 0 ? BigInt(stored + 1) : 0n;
+  if (startBlock > latestBlock) return 0;
+
+  const chunkSize = 1_000_000n;
+  let imported = 0;
+  let fromBlock = startBlock;
+
+  while (fromBlock <= latestBlock) {
+    const toBlock = fromBlock + chunkSize - 1n > latestBlock ? latestBlock : fromBlock + chunkSize - 1n;
+    const logs = await gmChainClient.getLogs({
+      address: GM_CONTRACT_ADDRESS as `0x${string}`,
+      event: GM_EVENT,
+      fromBlock,
+      toBlock,
+    });
+
+    if (logs.length) {
+      const rows = logs.map((log: any) => ({
+        wallet_address: String(log.args.wallet).toLowerCase(),
+        checkin_date: new Date(Number(log.args.day) * 86400000).toISOString().slice(0, 10),
+        tx_hash: String(log.transactionHash).toLowerCase(),
+        chain_id: 5042,
+      }));
+      const { error } = await supabase.from('gm_checkins').upsert(rows, {
+        onConflict: 'wallet_address,checkin_date',
+        ignoreDuplicates: true,
+      });
+      if (error) throw error;
+      imported += rows.length;
+    }
+
+    window.localStorage.setItem(GM_SYNC_BLOCK_KEY, toBlock.toString());
+    fromBlock = toBlock + 1n;
+  }
+
+  return imported;
+}
+
 
 /** Days 1-13 award 10 points per consecutive day; day 14 onward awards 300 per check-in. */
 export const getGMStreakPoints = (streak: number): number => {
