@@ -65,6 +65,9 @@ export const GMStreakView: React.FC = () => {
       const [nextStats, nextLeaderboard] = await Promise.all([getGMStats(address), getGMLeaderboard(20)]);
       setStats(nextStats);
       setLeaderboard(nextLeaderboard);
+      if (nextStats.checkedInToday) {
+        setOnchainConfirmedToday(true);
+      }
     } catch (err) {
       console.error('GM streak load failed:', err);
       setError('GM Streak is temporarily unavailable.');
@@ -76,12 +79,12 @@ export const GMStreakView: React.FC = () => {
   const reconcileConfirmedToday = async (confirmedHash?: string) => {
     if (!address || !isGMContractConfigured) return false;
 
-    const todayDay = String(Math.floor(Date.now() / 86400000));
-
     try {
-      // The GM contract is the source of truth. Do not wait for the explorer
-      // indexer to prove a transaction that is already confirmed on Arc.
+      // Derive "today" from the Arc chain itself, not the browser clock.
+      // The GM contract uses UTC day numbers from block.timestamp.
       if (publicClient) {
+        const latestBlock = await publicClient.getBlock();
+        const todayDay = String(latestBlock.timestamp / 86400n);
         const onchainDay = await publicClient.readContract({
           address: GM_CONTRACT_ADDRESS as `0x${string}`,
           abi: GM_CONTRACT_ABI,
@@ -132,6 +135,8 @@ export const GMStreakView: React.FC = () => {
   useEffect(() => {
     let cancelled = false;
     const initialise = async () => {
+      setOnchainConfirmedToday(false);
+      setTxHash(null);
       await recoverPendingGM();
       if (cancelled) return;
       await reconcileConfirmedToday();
