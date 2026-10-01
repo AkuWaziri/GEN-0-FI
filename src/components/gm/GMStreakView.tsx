@@ -80,57 +80,17 @@ export const GMStreakView: React.FC = () => {
     if (!address || !isGMContractConfigured) return false;
 
     try {
-      if (!publicClient) return false;
-
-      // Read the actual GM event from Arc. This is stronger than relying on
-      // Supabase and avoids a browser-day mismatch with the contract.
       const latestBlock = await publicClient.getBlock();
       const todayDay = latestBlock.timestamp / 86400n;
-      const lookbackStart = latestBlock.number > 200000n ? latestBlock.number - 200000n : 0n;
-      const event = GM_CONTRACT_ABI.find((item) => item.type === 'event' && item.name === 'GMCheckedIn') as any;
 
-      if (event) {
-        const logs = await publicClient.getLogs({
-          address: GM_CONTRACT_ADDRESS as `0x${string}`,
-          event,
-          args: { wallet: address as `0x${string}` },
-          fromBlock: lookbackStart,
-          toBlock: latestBlock.number,
-        });
-
-        const latestToday = logs
-          .filter((log: any) => log.args?.day != null && BigInt(log.args.day) === todayDay)
-          .sort((a: any, b: any) => Number(a.blockNumber - b.blockNumber))
-          .at(-1);
-
-        if (latestToday) {
-          setOnchainConfirmedToday(true);
-          const eventHash = confirmedHash || latestToday.transactionHash;
-          if (eventHash) {
-            setTxHash(eventHash);
-            window.localStorage.removeItem(PENDING_GM_TX_KEY);
-          }
-
-          try {
-            const repairedStats = await indexConfirmedGMDays(address, [todayDay]);
-            setStats(repairedStats);
-            setLeaderboard(await getGMLeaderboard(20));
-          } catch (indexError) {
-            setStats((current) => markConfirmedToday(current));
-            console.warn('GM index sync deferred:', indexError);
-          }
-
-          return true;
-        }
-      }
-
-      // Contract state remains a fallback when the event query is temporarily
-      // unavailable or the RPC does not return historical logs.
+      // The contract state is authoritative for the once-per-day rule.
+      // Read it before Supabase or event indexing so the button cannot remain
+      // enabled when the wallet has already checked in on Arc.
       const onchainDay = await publicClient.readContract({
-        address: GM_CONTRACT_ADDRESS as `0x${string}`,
+        address: GM_CONTRACT_ADDRESS as `0x\${string}`,
         abi: GM_CONTRACT_ABI,
         functionName: 'lastCheckInDay',
-        args: [address as `0x${string}`],
+        args: [address as `0x\${string}`],
       });
 
       if (String(onchainDay) === String(todayDay)) {
@@ -139,8 +99,9 @@ export const GMStreakView: React.FC = () => {
           setTxHash(confirmedHash);
           window.localStorage.removeItem(PENDING_GM_TX_KEY);
         }
+
         try {
-          const repairedStats = await indexConfirmedGMDays(address, [String(onchainDay)]);
+          const repairedStats = await indexConfirmedGMDays(address, [onchainDay]);
           setStats(repairedStats);
           setLeaderboard(await getGMLeaderboard(20));
         } catch (indexError) {
@@ -150,9 +111,40 @@ export const GMStreakView: React.FC = () => {
         return true;
       }
 
+      // Event lookup is only for historical/index repair.
+      const lookbackStart = latestBlock.number > 200000n ? latestBlock.number - 200000n : 0n;
+      const event = GM_CONTRACT_ABI.find(
+        (item) => item.type === 'event' && item.name === 'GMCheckedIn'
+      ) as any;
+
+      if (event) {
+        const logs = await publicClient.getLogs({
+          address: GM_CONTRACT_ADDRESS as `0x\${string}`,
+          event,
+          args: { wallet: address as `0x\${string}` },
+          fromBlock: lookbackStart,
+          toBlock: latestBlock.number,
+        });
+
+        const latest = logs
+          .filter((log: any) => log.args?.day != null)
+          .sort((a: any, b: any) => Number(a.blockNumber - b.blockNumber))
+          .at(-1);
+
+        if (latest?.args?.day != null) {
+          try {
+            const repairedStats = await indexConfirmedGMDays(address, [latest.args.day]);
+            setStats(repairedStats);
+            setLeaderboard(await getGMLeaderboard(20));
+          } catch (indexError) {
+            console.warn('GM historical index sync deferred:', indexError);
+          }
+        }
+      }
+
       return false;
     } catch (err) {
-      console.warn('GM reconciliation is still waiting:', err);
+      console.warn('GM reconciliation failed:', err);
       return false;
     }
   };
