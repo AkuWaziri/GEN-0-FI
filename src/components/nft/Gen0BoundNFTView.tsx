@@ -183,18 +183,33 @@ export const Gen0BoundNFTView: React.FC = () => {
           setStatus('Approval submitted. Confirm the GEN-0 Bound mint in your wallet…');
         }
 
-        try {
-          currentAllowance = await readArcWithRetry(() =>
-            arcRpcClient.readContract({
-              address: GEN0_BOUND_USDC_ADDRESS,
-              abi: USDC_ABI,
-              functionName: 'allowance',
-              args: [address, contractAddress],
-            })
-          );
-        } catch {
-          // The mint contract will enforce allowance onchain if the read RPC
-          // is still unavailable.
+        // Do not race the approval against the mint. The mint contract uses
+        // safeTransferFrom and will revert until this exact allowance is visible.
+        const allowanceDeadline = Date.now() + 30_000;
+        let allowanceConfirmed = currentAllowance >= GEN0_BOUND_MINT_PRICE;
+
+        while (!allowanceConfirmed && Date.now() < allowanceDeadline) {
+          try {
+            currentAllowance = await readArcWithRetry(() =>
+              arcRpcClient.readContract({
+                address: GEN0_BOUND_USDC_ADDRESS,
+                abi: USDC_ABI,
+                functionName: 'allowance',
+                args: [address, contractAddress],
+              })
+            );
+            allowanceConfirmed = currentAllowance >= GEN0_BOUND_MINT_PRICE;
+          } catch {
+            // Keep polling until Arc exposes the confirmed approval.
+          }
+
+          if (!allowanceConfirmed) {
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+          }
+        }
+
+        if (!allowanceConfirmed) {
+          throw new Error('USDC approval was submitted, but Arc has not yet confirmed the 1 USDC allowance. Please retry shortly.');
         }
       }
 
@@ -209,14 +224,14 @@ export const Gen0BoundNFTView: React.FC = () => {
       setTxHash(hash);
       setStatus('Mint submitted. Waiting for Arc to confirm ownership…');
 
-      // Do not make the UI depend on a single RPC receipt call. Arc can have
-      // the transaction finalized while the RPC receipt/indexer is briefly
-      // unavailable. Poll the server-side ownership check instead. Once the
-      // live contract reports ownership, the mint is confirmed for this wallet.
-      const ownershipDeadline = Date.now() + 45_000;
+      // A mint is not considered complete from the UI's perspective merely
+      // because the NFT exists. The exact mint transaction must also contain
+      // the 1 USDC Transfer from this wallet to the GEN-0 fee wallet.
+      const verificationDeadline = Date.now() + 60_000;
       let confirmedOwnership = false;
+      let confirmedPayment = false;
 
-      while (Date.now() < ownershipDeadline) {
+      while (Date.now() < verificationDeadline) {
         try {
           const response = await fetch(`/api/nft/ownership/${address}?tx=${hash}`, {
             cache: 'no-store',
@@ -225,42 +240,28 @@ export const Gen0BoundNFTView: React.FC = () => {
 
           if (response.ok) {
             const data = await response.json();
-            if (Boolean(data.owned)) {
-              confirmedOwnership = true;
-              break;
-            }
+            confirmedOwnership = Boolean(data.owned);
+            confirmedPayment = Boolean(data.paymentVerified);
+
+            if (confirmedOwnership && confirmedPayment) break;
           }
         } catch {
-          // Keep polling. A temporary API/RPC outage must not leave the
-          // confirmed mint stuck on "MINTING".
+          // Keep polling while Arc's receipt/indexer catches up.
         }
 
         await new Promise((resolve) => setTimeout(resolve, 2000));
       }
 
-      // If the ownership index is still catching up, do one direct contract
-      // read before giving up.
-      if (!confirmedOwnership) {
-        try {
-          confirmedOwnership = await readArcWithRetry(() =>
-            arcRpcClient.readContract({
-              address: contractAddress,
-              abi: NFT_ABI,
-              functionName: 'hasMinted',
-              args: [address],
-            })
-          );
-        } catch {
-          confirmedOwnership = false;
-        }
-      }
-
-      if (!confirmedOwnership) {
-        throw new Error('Mint transaction was submitted, but Arc has not yet reported NFT ownership. Your transaction is linked below; please retry verification shortly.');
+      if (!confirmedOwnership || !confirmedPayment) {
+        throw new Error(
+          confirmedOwnership
+            ? 'GEN-0 Bound ownership is confirmed, but the required 1 USDC payment to the GEN-0 fee wallet has not yet been verified. Your transaction is linked below; please retry verification shortly.'
+            : 'Mint transaction was submitted, but Arc has not yet confirmed both NFT ownership and the required 1 USDC payment. Your transaction is linked below; please retry verification shortly.'
+        );
       }
 
       setOwned(true);
-      setStatus('Mint confirmed on Arc Mainnet. Recording +1,000 points…');
+      setStatus('Mint confirmed on Arc Mainnet. 1 USDC paid to the GEN-0 fee wallet. Recording +1,000 points…');
 
       try {
         await recordConfirmedAction(address, hash, 'nft_mint');
