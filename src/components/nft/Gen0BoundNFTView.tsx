@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle2, ExternalLink, Gem, Loader2, ShieldCheck, Sparkles } from 'lucide-react';
 import { createPublicClient, decodeErrorResult, decodeEventLog, fallback, http } from 'viem';
-import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
+import { useAccount, useWalletClient } from 'wagmi';
 import { arcMainnetChain, getArcScanTxUrl } from '../../config/arc';
 import { recordConfirmedAction } from '../../services/points/pointsService';
 import { GEN0_BOUND_ARTWORK_GATEWAYS, GEN0_BOUND_CHAIN_ID, GEN0_BOUND_FEE_WALLET, GEN0_BOUND_MINT_PRICE, GEN0_BOUND_NFT_ADDRESS, GEN0_BOUND_USDC_ADDRESS } from '../../config/gen0BoundNFT';
@@ -56,7 +56,6 @@ async function readArcWithRetry<T>(operation: () => Promise<T>): Promise<T> {
 export const Gen0BoundNFTView: React.FC = () => {
   const { address, chainId } = useAccount();
   const { data: walletClient } = useWalletClient({ chainId: GEN0_BOUND_CHAIN_ID });
-  const publicClient = usePublicClient({ chainId: GEN0_BOUND_CHAIN_ID });
   const contractAddress = GEN0_BOUND_NFT_ADDRESS;
   const [minting, setMinting] = useState(false);
   const [status, setStatus] = useState('');
@@ -87,9 +86,18 @@ export const Gen0BoundNFTView: React.FC = () => {
         args: [address],
       })
     )
-      .then((value) => {
+      .then(async (hasMinted) => {
+        const balance = await readArcWithRetry(() =>
+          arcRpcClient.readContract({
+            address: contractAddress,
+            abi: NFT_ABI,
+            functionName: 'balanceOf',
+            args: [address],
+          })
+        );
         if (active) {
-          setOwned(Boolean(value));
+          const isOwned = Boolean(hasMinted) || balance > 0n;
+          setOwned(isOwned);
           setOwnershipUnavailable(false);
           setError('');
         }
@@ -163,19 +171,19 @@ export const Gen0BoundNFTView: React.FC = () => {
       }
 
       const balance = await readArcWithRetry(() =>
-        publicClient.readContract({ address: GEN0_BOUND_USDC_ADDRESS, abi: USDC_ABI, functionName: 'balanceOf', args: [address] })
+        arcRpcClient.readContract({ address: GEN0_BOUND_USDC_ADDRESS, abi: USDC_ABI, functionName: 'balanceOf', args: [address] })
       );
       const allowance = await readArcWithRetry(() =>
-        publicClient.readContract({ address: GEN0_BOUND_USDC_ADDRESS, abi: USDC_ABI, functionName: 'allowance', args: [address, contractAddress] })
+        arcRpcClient.readContract({ address: GEN0_BOUND_USDC_ADDRESS, abi: USDC_ABI, functionName: 'allowance', args: [address, contractAddress] })
       );
       const contractUsdc = await readArcWithRetry(() =>
-        publicClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'usdc' })
+        arcRpcClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'usdc' })
       );
       const contractFeeRecipient = await readArcWithRetry(() =>
-        publicClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'feeRecipient' })
+        arcRpcClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'feeRecipient' })
       );
       const contractMintPrice = await readArcWithRetry(() =>
-        publicClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'MINT_PRICE' })
+        arcRpcClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'MINT_PRICE' })
       );
 
       if (alreadyMinted || nftBalance > 0n) {
@@ -220,7 +228,7 @@ export const Gen0BoundNFTView: React.FC = () => {
         await arcRpcClient.waitForTransactionReceipt({ hash: approval });
 
         currentAllowance = await readArcWithRetry(() =>
-          publicClient.readContract({
+          arcRpcClient.readContract({
             address: GEN0_BOUND_USDC_ADDRESS,
             abi: USDC_ABI,
             functionName: 'allowance',
@@ -321,7 +329,7 @@ export const Gen0BoundNFTView: React.FC = () => {
       }
 
       const confirmedOwnership = await readArcWithRetry(() =>
-        publicClient.readContract({
+        arcRpcClient.readContract({
           address: contractAddress,
           abi: NFT_ABI,
           functionName: 'hasMinted',
