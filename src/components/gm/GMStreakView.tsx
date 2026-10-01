@@ -189,7 +189,13 @@ export const GMStreakView: React.FC = () => {
       await recoverPendingGM();
       if (cancelled) return;
       await load();
-      void syncConfirmedGMEvents().catch((e) => console.warn('GM event backfill deferred:', e));
+      void syncConfirmedGMEvents().then(async () => {
+        if (!cancelled && address) {
+          const [syncedStats, syncedLeaderboard] = await Promise.all([getGMStats(address), getGMLeaderboard(20)]);
+          setStats(syncedStats);
+          setLeaderboard(syncedLeaderboard);
+        }
+      }).catch((e) => console.warn('GM event backfill deferred:', e));
     };
     initialise();
     return () => { cancelled = true; };
