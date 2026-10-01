@@ -81,10 +81,24 @@ export const GMStreakView: React.FC = () => {
       window.localStorage.removeItem(PENDING_GM_TX_KEY);
     }
 
-    // Arc is authoritative. Supabase is only the points/leaderboard index.
-    const repairedStats = await indexConfirmedGMDays(wallet, [lastDay]);
-    setStats(repairedStats);
-    await refreshLeaderboard();
+    // Arc is authoritative. Mark the UI done immediately from confirmed
+    // contract state. Database indexing/leaderboard work must never be able
+    // to turn a confirmed onchain GM back into an active button.
+    setConfirmedToday(true);
+
+    if (confirmedHash) {
+      setTxHash(confirmedHash);
+      window.localStorage.removeItem(PENDING_GM_TX_KEY);
+    }
+
+    try {
+      const repairedStats = await indexConfirmedGMDays(wallet, [lastDay]);
+      setStats(repairedStats);
+      await refreshLeaderboard();
+    } catch (indexError) {
+      console.warn('GM points index deferred after confirmed onchain GM:', indexError);
+    }
+
     return true;
   }, [publicClient, refreshLeaderboard]);
 
@@ -95,17 +109,9 @@ export const GMStreakView: React.FC = () => {
     setError(null);
 
     try {
-      // Rebuild the historical GM index from confirmed Arc events before calculating
-      // streaks or points. Arc events are authoritative; Supabase is the index.
-      if (isGMContractConfigured) {
-        await syncConfirmedGMEvents(publicClient, 600000);
-      }
-
-      const nextStats = await getGMStats(address);
-      setStats(nextStats);
-
-      // Repair the index from the actual Arc contract state before trusting
-      // the cached daily state in Supabase.
+      // Arc Mainnet is the authority for today's GM. Check it first so a
+      // confirmed check-in can immediately put the button into the done state.
+      // Supabase is only an index for points and leaderboard data.
       if (isGMContractConfigured) {
         try {
           await reconcileOnchainState(address);
@@ -113,6 +119,18 @@ export const GMStreakView: React.FC = () => {
           console.warn('GM onchain reconciliation deferred:', chainError);
         }
       }
+
+      // Backfill historical confirmed events after the current-day state has
+      // been reconciled. A sync/indexing problem must never keep the button active.
+      if (isGMContractConfigured) {
+        await syncConfirmedGMEvents(publicClient, 600000);
+      }
+
+      const nextStats = await getGMStats(address);
+      setStats((current) => ({
+        ...nextStats,
+        checkedInToday: current.checkedInToday || confirmedToday,
+      }));
 
       await refreshLeaderboard();
     } catch (err) {
