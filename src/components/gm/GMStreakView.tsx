@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Flame, Check, Trophy, CalendarDays, RefreshCw, ExternalLink } from 'lucide-react';
 import { useWallet } from '../../context/WalletContext';
-import { usePublicClient, useWriteContract } from 'wagmi';
+import { useWriteContract } from 'wagmi';\nimport { createPublicClient, http } from 'viem';
 import { GM_CONTRACT_ABI, GM_CONTRACT_ADDRESS, GM_FEE_WEI, isGMContractConfigured } from '../../config/gmContract';
 import { getGMStreakPoints, indexConfirmedGMDays, getGMLeaderboard, getGMStats, GMLeaderboardRow, GMStats } from '../../services/gm/gmService';
 import { isSupabaseConfigured } from '../../lib/supabase';
-import { ARC_CHAIN_ID, getArcScanTxUrl } from '../../config/arc';
+import { ARC_CHAIN_ID, ARC_MAINNET_RPC_URL, arcChain, getArcScanTxUrl } from '../../config/arc';
 
 const short = (address: string) => `${address.slice(0, 6)}...${address.slice(-4)}`;
 const PENDING_GM_TX_KEY = 'gen0fi:pending-gm-tx';
@@ -46,7 +46,7 @@ const markConfirmedToday = (current: GMStats | null): GMStats => {
 export const GMStreakView: React.FC = () => {
   const { address, isCorrectNetwork } = useWallet();
   const { writeContractAsync } = useWriteContract();
-  const publicClient = usePublicClient({ chainId: ARC_CHAIN_ID });
+  // Never use the broken explorer RPC as a confirmation fallback.\n  const publicClient = createPublicClient({ chain: arcChain, transport: http(ARC_MAINNET_RPC_URL) });
   const [stats, setStats] = useState<GMStats | null>(null);
   const [leaderboard, setLeaderboard] = useState<GMLeaderboardRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -113,31 +113,7 @@ export const GMStreakView: React.FC = () => {
         }
       }
 
-      // Explorer reconciliation remains a backfill path, not the success gate.
-      const response = await fetch(`/api/blockchain/arc/gm-debug?address=${encodeURIComponent(address)}`, {
-        headers: { accept: 'application/json' },
-        cache: 'no-store',
-      });
-      if (!response.ok) throw new Error(`GM reconciliation HTTP ${response.status}`);
-
-      const body = await response.json();
-      const lastCheckInDay = String(body?.lastCheckInDay ?? '');
-      if (lastCheckInDay !== todayDay) return false;
-
-      setOnchainConfirmedToday(true);
-
-      const logs = Array.isArray(body?.logs) ? body.logs : [];
-      const latestLog = [...logs].reverse().find((log: any) => log?.transactionHash);
-      const resolvedHash = confirmedHash || latestLog?.transactionHash || null;
-      if (resolvedHash) {
-        setTxHash(resolvedHash);
-        window.localStorage.removeItem(PENDING_GM_TX_KEY);
-      }
-
-      const repairedStats = await indexConfirmedGMDays(address, [lastCheckInDay]);
-      setStats(repairedStats);
-      setLeaderboard(await getGMLeaderboard(20));
-      return true;
+      return false;
     } catch (err) {
       console.warn('GM reconciliation is still waiting:', err);
       return false;
@@ -158,11 +134,11 @@ export const GMStreakView: React.FC = () => {
   useEffect(() => {
     let cancelled = false;
     const initialise = async () => {
-      await load();
-      if (cancelled) return;
       await recoverPendingGM();
       if (cancelled) return;
       await reconcileConfirmedToday();
+      if (cancelled) return;
+      await load();
     };
     initialise();
     return () => { cancelled = true; };
