@@ -202,36 +202,58 @@ export const GMStreakView: React.FC = () => {
       setTxHash(hash);
       window.localStorage.setItem(PENDING_GM_TX_KEY, hash);
 
-      // Confirm the actual Arc transaction receipt first. Explorer indexing and
-      // Supabase bookkeeping must never turn a confirmed transaction into a UI failure.
+      // Arc confirmation is the success gate. Supabase/indexing must never
+      // keep the button in a pending state after the transaction is finalized.
       if (!publicClient) throw new Error('Arc public client is unavailable.');
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
-      if (receipt.status !== 'success') {
-        throw new Error('GM transaction reverted on Arc.');
+
+      let receiptConfirmed = false;
+      for (let attempt = 0; attempt < 12; attempt += 1) {
+        try {
+          const receipt = await publicClient.getTransactionReceipt({ hash });
+          if (receipt.status === 'success') {
+            receiptConfirmed = true;
+            break;
+          }
+          if (receipt.status === 'reverted') {
+            throw new Error('GM transaction reverted on Arc.');
+          }
+        } catch (receiptError: any) {
+          // Some Arc RPC responses can briefly lag behind the explorer.
+          // Keep polling instead of making the user retry a successful GM.
+          if (/revert/i.test(String(receiptError?.message || ''))) throw receiptError;
+        }
+
+        // Contract state is also authoritative for this wallet/day. Since
+        // checkIn() forbids a second check-in on the same day, seeing today's
+        // day here proves this transaction (or an earlier same-day check-in)
+        // has finalized on Arc.
+        if (await reconcileConfirmedToday(hash)) {
+          receiptConfirmed = true;
+          break;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+
+      if (!receiptConfirmed) {
+        throw new Error('GM transaction is not yet confirmed on Arc.');
       }
 
       setOnchainConfirmedToday(true);
+      setStats((current) => markConfirmedToday(current));
 
-      let confirmed = await reconcileConfirmedToday(hash);
-      if (!confirmed) {
-        // The receipt is authoritative even if the contract-read/indexer path
-        // is temporarily delayed. Keep the confirmed state visible and continue
-        // backfilling in the background.
-        setStats((current) => markConfirmedToday(current));
-        confirmed = true;
-        void reconcileConfirmedToday(hash);
-      }
-      if (!confirmed) {
-        for (let attempt = 0; attempt < 4; attempt += 1) {
-          await new Promise((resolve) => setTimeout(resolve, 1500));
-          confirmed = await reconcileConfirmedToday(hash);
-          if (confirmed) break;
+      // Persist the confirmed GM immediately. If Supabase is temporarily
+      // unavailable, the hash stays in local storage and is retried on load.
+      try {
+        const synced = await reconcileConfirmedToday(hash);
+        if (synced) {
+          setStats(await getGMStats(address));
+          setLeaderboard(await getGMLeaderboard(20));
         }
+      } catch (indexError) {
+        console.warn('GM points indexing deferred:', indexError);
       }
 
-      if (!confirmed) {
-        throw new Error('GM receipt confirmed, but daily contract state is temporarily delayed.'); 
-      }
       window.localStorage.removeItem(PENDING_GM_TX_KEY);
     } catch (err: any) {
       console.error('GM check-in failed:', err);
