@@ -155,7 +155,7 @@ export const Gen0BoundNFTView: React.FC = () => {
       if (alreadyMinted || nftBalance > 0n) {
         setOwned(true);
         setOwnershipUnavailable(false);
-        setStatus('This wallet already owns GEN-0 Bound.');
+        setStatus('Your own GEN0 Bound NFT.');
         setShowOwned(true);
         return;
       }
@@ -179,7 +179,7 @@ export const Gen0BoundNFTView: React.FC = () => {
       if (alreadyMinted || nftBalance > 0n) {
         setOwned(true);
         setOwnershipUnavailable(false);
-        setStatus('This wallet already owns GEN-0 Bound.');
+        setStatus('Your own GEN0 Bound NFT.');
         setShowOwned(true);
         return;
       }
@@ -377,11 +377,11 @@ export const Gen0BoundNFTView: React.FC = () => {
         {status&&<div className="mt-4 rounded-xl border border-white/[.07] bg-black/20 px-3 py-2.5 text-[10px] leading-5 text-slate-400">{status}</div>}
         {error&&<div className="mt-3 rounded-xl border border-rose-400/15 bg-rose-400/[.04] px-3 py-2.5 text-[10px] leading-5 text-rose-200">{error}</div>}
         {txHash&&<a href={getArcScanTxUrl(txHash)} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-[10px] text-cyan-300">View transaction <ExternalLink className="h-3 w-3"/> </a>}
-        <button disabled={minting||owned||checkingOwnership} onClick={()=>void (ownershipUnavailable ? retryOwnership() : mint())} className="mt-5 flex w-full items-center justify-center rounded-xl bg-cyan-400 py-3 text-xs font-extrabold text-slate-950 hover:bg-cyan-300 disabled:bg-white/[.06] disabled:text-slate-500">{minting||checkingOwnership?<Loader2 className="mr-2 h-4 w-4 animate-spin"/>:<Gem className="mr-2 h-4 w-4"/>}{owned?'YOU OWN GEN-0 BOUND':checkingOwnership?'CHECKING OWNERSHIP…':ownershipUnavailable?'RETRY OWNERSHIP CHECK':minting?'MINTING…':'MINT · 1 USDC'}</button>
-        <p className="mt-3 text-center text-[9px] leading-5 text-slate-600">1 USDC is transferred directly onchain to the GEN-0 fee wallet. NFT transfers are disabled.</p>
+        <button disabled={minting||owned||checkingOwnership} onClick={()=>void (ownershipUnavailable ? retryOwnership() : mint())} className="mt-5 flex w-full items-center justify-center rounded-xl bg-cyan-400 py-3 text-xs font-extrabold text-slate-950 hover:bg-cyan-300 disabled:bg-white/[.06] disabled:text-slate-500">{minting||checkingOwnership?<Loader2 className="mr-2 h-4 w-4 animate-spin"/>:<Gem className="mr-2 h-4 w-4"/>}{owned?'YOUR OWN GEN0 BOUND NFT':checkingOwnership?'CHECKING OWNERSHIP…':ownershipUnavailable?'RETRY OWNERSHIP CHECK':minting?'MINTING…':'MINT · 1 USDC'}</button>
+        <p className="mt-3 text-center text-[9px] leading-5 text-slate-600">Mint requires at least 1 USDC on Arc Mainnet. The 1 USDC mint payment is transferred directly onchain to the GEN-0 fee wallet. NFT transfers are disabled.</p>
       </section>
     </div>
   </div>
-  {showOwned&&<div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 p-5 backdrop-blur-md"><div className="w-full max-w-md rounded-3xl border border-cyan-300/20 bg-[#0b111a] p-5 shadow-[0_0_90px_rgba(34,211,238,.16)]"><div className="text-center"><span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/15 bg-emerald-300/[.06] px-3 py-1 text-[9px] uppercase tracking-wider text-emerald-300"><CheckCircle2 className="h-3.5 w-3.5"/> Confirmed on Arc</span><h2 className="mt-4 text-3xl font-black text-white">YOU OWN</h2><img src={imageSrc} alt="GEN-0 Bound you own" className="mt-5 aspect-square w-full rounded-2xl object-cover border border-white/10"/><button onClick={()=>setShowOwned(false)} className="mt-5 w-full rounded-xl border border-white/10 bg-white/[.05] py-2.5 text-xs font-bold text-white">CLOSE</button></div></div></div>}
+  {showOwned&&<div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 p-5 backdrop-blur-md"><div className="w-full max-w-md rounded-3xl border border-cyan-300/20 bg-[#0b111a] p-5 shadow-[0_0_90px_rgba(34,211,238,.16)]"><div className="text-center"><span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/15 bg-emerald-300/[.06] px-3 py-1 text-[9px] uppercase tracking-wider text-emerald-300"><CheckCircle2 className="h-3.5 w-3.5"/> Confirmed on Arc</span><h2 className="mt-4 text-2xl font-black text-white">YOUR OWN GEN0 BOUND NFT</h2><img src={imageSrc} alt="GEN-0 Bound you own" className="mt-5 aspect-square w-full rounded-2xl object-cover border border-white/10"/><button onClick={()=>setShowOwned(false)} className="mt-5 w-full rounded-xl border border-white/10 bg-white/[.05] py-2.5 text-xs font-bold text-white">CLOSE</button></div></div></div>}
   </div>;
 };
