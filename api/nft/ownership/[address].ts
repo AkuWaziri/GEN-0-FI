@@ -1,6 +1,6 @@
-import { applyApiSecurity } from '../_security.js';
+import { applyApiSecurity } from '../../_security.js';
 import { isAddress } from 'viem';
-import { arcClient } from '../../src/services/blockchain/arcService.js';
+import { arcClient } from '../../../src/services/blockchain/arcService.js';
 
 const CONTRACT = '0x8bb24be3e446302a4902e763908d439325e0003a' as const;
 const ABI = [
