@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { CalendarDays, Check, ExternalLink, Flame, RefreshCw, Trophy } from 'lucide-react';
 import { useWallet } from '../../context/WalletContext';
 import { useWriteContract } from 'wagmi';
@@ -11,9 +11,10 @@ import {
 } from '../../config/gmContract';
 import {
   getGMLeaderboard,
+  getGMStatus,
   getGMStats,
-  indexConfirmedGMDays,
-  syncConfirmedGMEvents,
+  statsWithOptimisticDay,
+  waitForConfirmedGM,
   GMLeaderboardRow,
   GMStats,
 } from '../../services/gm/gmService';
@@ -37,135 +38,48 @@ const emptyStats = (): GMStats => ({
   lastCheckinDate: null,
 });
 
-const getChainDay = (timestamp: bigint) => timestamp / 86400n;
-
 export const GMStreakView: React.FC = () => {
   const { address, isCorrectNetwork } = useWallet();
   const { writeContractAsync } = useWriteContract();
 
-  const publicClient = useMemo(
-    () => createPublicClient({ chain: arcChain, transport: http(ARC_MAINNET_RPC_URL) }),
-    []
-  );
+  const publicClient = createPublicClient({
+    chain: arcChain,
+    transport: http(ARC_MAINNET_RPC_URL, { timeout: 8_000 }),
+  });
 
   const [stats, setStats] = useState<GMStats>(emptyStats());
   const [leaderboard, setLeaderboard] = useState<GMLeaderboardRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [checkingIn, setCheckingIn] = useState(false);
+  const [phase, setPhase] = useState<'idle' | 'wallet' | 'onchain'>('idle');
   const [txHash, setTxHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmedToday, setConfirmedToday] = useState(false);
 
   const refreshLeaderboard = useCallback(async () => {
-    setLeaderboard(await getGMLeaderboard(20));
+    try {
+      setLeaderboard(await getGMLeaderboard(20));
+    } catch (err) {
+      console.warn('GM leaderboard refresh failed:', err);
+    }
   }, []);
 
-  const reconcileOnchainState = useCallback(async (wallet: string, confirmedHash?: string) => {
-    const block = await publicClient.getBlock();
-    const todayDay = getChainDay(block.timestamp);
-    const walletAddress = wallet as `0x${string}`;
-
-    let confirmedDay: bigint | null = null;
-    const lastDay = await publicClient.readContract({
-      address: GM_CONTRACT_ADDRESS as `0x${string}`,
-      abi: GM_CONTRACT_ABI,
-      functionName: 'lastCheckInDay',
-      args: [walletAddress],
-    });
-
-    if (String(lastDay) === String(todayDay)) {
-      confirmedDay = BigInt(lastDay);
-    } else {
-      // Also verify the immutable GMCheckedIn event. This catches a confirmed
-      // transaction even if the contract-state read is stale or the index is behind.
-      try {
-        const latestBlock = await publicClient.getBlockNumber();
-        const lookback = 9000n;
-        const fromBlock = latestBlock > lookback ? latestBlock - lookback : 0n;
-        const event = GM_CONTRACT_ABI.find(
-          (item) => item.type === 'event' && item.name === 'GMCheckedIn'
-        ) as any;
-
-        const logs = await publicClient.getLogs({
-          address: GM_CONTRACT_ADDRESS as `0x${string}`,
-          event,
-          args: { wallet: walletAddress },
-          fromBlock,
-          toBlock: latestBlock,
-        });
-
-        const todayLog = logs.find(
-          (log: any) => log.args?.day != null && String(log.args.day) === String(todayDay)
-        );
-
-        if (todayLog?.args?.day != null) {
-          confirmedDay = BigInt(todayLog.args.day);
-          if (!confirmedHash && todayLog.transactionHash) {
-            setTxHash(String(todayLog.transactionHash));
-          }
-        }
-      } catch (eventError) {
-        console.warn('GM event reconciliation deferred:', eventError);
-      }
-    }
-
-    if (confirmedDay == null) return false;
-
-    // Arc confirmation is the source of truth for the button. Indexing can
-    // fail without ever making a confirmed GM look available again.
-    setConfirmedToday(true);
-
-    if (confirmedHash) {
-      setTxHash(confirmedHash);
-      window.localStorage.removeItem(PENDING_GM_TX_KEY);
-    }
-
-    try {
-      const repairedStats = await indexConfirmedGMDays(wallet, [confirmedDay]);
-      setStats(repairedStats);
-      await refreshLeaderboard();
-    } catch (indexError) {
-      console.warn('GM points index deferred after confirmed onchain GM:', indexError);
-    }
-
-    return true;
-  }, [publicClient, refreshLeaderboard]);
-
   const load = useCallback(async () => {
-    if (!address) return;
+    if (!address) {
+      setStats(emptyStats());
+      setLeaderboard([]);
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     setError(null);
 
     try {
-      // Arc Mainnet is the authority for today's GM. Check it first so a
-      // confirmed check-in can immediately put the button into the done state.
-      // Supabase is only an index for points and leaderboard data.
-      let onchainConfirmed = false;
-
-      if (isGMContractConfigured) {
-        try {
-          onchainConfirmed = await reconcileOnchainState(address);
-          // Do not wait for Supabase or the leaderboard. Arc Mainnet confirmation
-          // alone must lock today's button.
-          if (onchainConfirmed) setConfirmedToday(true);
-        } catch (chainError) {
-          console.warn('GM onchain reconciliation deferred:', chainError);
-        }
-      }
-
-      // Backfill historical confirmed events after the current-day state has
-      // been reconciled. A sync/indexing problem must never keep the button active.
-      if (isGMContractConfigured) {
-        await syncConfirmedGMEvents(publicClient, 600000);
-      }
-
-      const nextStats = await getGMStats(address);
-      setStats((current) => ({
-        ...nextStats,
-        checkedInToday: current.checkedInToday || onchainConfirmed || confirmedToday,
-      }));
-
+      const status = await getGMStatus(address);
+      setStats(status.stats);
+      setConfirmedToday(status.stats.checkedInToday);
+      if (status.latestTxHash) setTxHash(status.latestTxHash);
       await refreshLeaderboard();
     } catch (err) {
       console.error('GM streak load failed:', err);
@@ -173,55 +87,48 @@ export const GMStreakView: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [address, reconcileOnchainState, refreshLeaderboard]);
+  }, [address, refreshLeaderboard]);
 
   const recoverPending = useCallback(async () => {
-    if (!address || !isGMContractConfigured) return;
+    if (!address) return;
 
     const pendingHash = window.localStorage.getItem(PENDING_GM_TX_KEY);
     if (!pendingHash) return;
 
     try {
-      const receipt = await publicClient.getTransactionReceipt({
-        hash: pendingHash as `0x${string}`,
-      });
+      setCheckingIn(true);
+      setPhase('onchain');
 
-      if (receipt.status === 'success') {
-        await reconcileOnchainState(address, pendingHash);
-      } else {
-        window.localStorage.removeItem(PENDING_GM_TX_KEY);
+      const confirmed = await waitForConfirmedGM(pendingHash, 20_000);
+      const status = await getGMStatus(address).catch(() => null);
+
+      if (status?.stats.checkedInToday) {
+        setStats(status.stats);
+        setConfirmedToday(true);
+      } else if (confirmed.checkinDate) {
+        const optimistic = status
+          ? statsWithOptimisticDay(status.confirmedDays, confirmed.checkinDate)
+          : statsWithOptimisticDay([], confirmed.checkinDate);
+        setStats(optimistic);
+        setConfirmedToday(true);
       }
-    } catch {
-      // The transaction may still be pending. Do not manufacture a GM result.
+
+      setTxHash(pendingHash);
+      window.localStorage.removeItem(PENDING_GM_TX_KEY);
+      await refreshLeaderboard();
+    } catch (err) {
+      console.warn('Pending GM recovery deferred:', err);
+    } finally {
+      setCheckingIn(false);
+      setPhase('idle');
     }
-  }, [address, publicClient, reconcileOnchainState]);
+  }, [address, refreshLeaderboard]);
 
   useEffect(() => {
     setConfirmedToday(false);
     setTxHash(null);
-
-    let cancelled = false;
-
-    const initialise = async () => {
-      if (!address) {
-        setStats(emptyStats());
-        setLeaderboard([]);
-        setLoading(false);
-        return;
-      }
-
-      await recoverPending();
-      if (cancelled) return;
-
-      await load();
-    };
-
-    void initialise();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [address, load, recoverPending]);
+    void recoverPending().then(() => load());
+  }, [address, recoverPending, load]);
 
   const handleCheckIn = async () => {
     if (!address || checkingIn || confirmedToday || stats.checkedInToday) return;
@@ -239,47 +146,26 @@ export const GMStreakView: React.FC = () => {
     setCheckingIn(true);
     setError(null);
     setTxHash(null);
+    setPhase('wallet');
 
     try {
-      // Preflight the exact contract call ourselves. This catches the contract's
-      // daily lock before wagmi/wallet simulation and lets us recover a confirmed
-      // GM even when the index is stale.
-      if (await reconcileOnchainState(address)) {
+      // The current Arc state is checked before opening the wallet.
+      // This prevents a duplicate daily transaction from being submitted.
+      const current = await getGMStatus(address);
+      if (current.stats.checkedInToday) {
+        setStats(current.stats);
+        setConfirmedToday(true);
+        setTxHash(current.latestTxHash);
         return;
       }
 
-      try {
-        await publicClient.simulateContract({
-          address: GM_CONTRACT_ADDRESS as `0x${string}`,
-          abi: GM_CONTRACT_ABI,
-          functionName: 'checkIn',
-          value: GM_FEE_WEI,
-          account: address as `0x${string}`,
-        });
-      } catch (simulationError: any) {
-        const simulationMessage = String(
-          simulationError?.shortMessage || simulationError?.cause?.shortMessage ||
-          simulationError?.cause?.message || simulationError?.message || ''
-        );
-
-        // A simulation revert can be caused by the contract's daily lock
-        // without exposing the exact custom-error text. Reconcile against Arc
-        // before reporting failure so an already-confirmed GM can never be
-        // shown as an unrecorded failure.
-        const confirmed = await reconcileOnchainState(address).catch(() => false);
-        if (confirmed || /already checked in today|already checked in/i.test(simulationMessage)) {
-          setConfirmedToday(true);
-          setStats((current) => ({ ...current, checkedInToday: true }));
-          setError('You already checked in today.');
-          return;
-        }
-
-        // Preserve the actual simulation reason for diagnosis instead of
-        // collapsing every preflight failure into "No GM was recorded."
-        throw new Error(
-          simulationMessage || 'Arc rejected the GM check-in simulation.'
-        );
-      }
+      await publicClient.simulateContract({
+        address: GM_CONTRACT_ADDRESS as `0x${string}`,
+        abi: GM_CONTRACT_ABI,
+        functionName: 'checkIn',
+        value: GM_FEE_WEI,
+        account: address as `0x${string}`,
+      });
 
       const hash = await writeContractAsync({
         address: GM_CONTRACT_ADDRESS as `0x${string}`,
@@ -291,82 +177,55 @@ export const GMStreakView: React.FC = () => {
 
       setTxHash(hash);
       window.localStorage.setItem(PENDING_GM_TX_KEY, hash);
+      setPhase('onchain');
 
-      // This is the only point at which the UI is allowed to call the GM
-      // confirmed: the Arc Mainnet transaction receipt is successful.
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      // Never wait on the old single-RPC receipt path.
+      // We check both Arc Mainnet RPC and Arcscan's public RPC.
+      const confirmed = await waitForConfirmedGM(hash);
 
-      if (receipt.status !== 'success') {
-        throw new Error('GM transaction reverted on Arc.');
-      }
-
-      // Verify the transaction emitted the GM contract event before awarding
-      // the daily index. This ties points to a confirmed onchain GM.
-      const event = GM_CONTRACT_ABI.find(
-        (item) => item.type === 'event' && item.name === 'GMCheckedIn'
-      ) as any;
-
-      let eventDay: bigint | null = null;
-
-      if (event) {
-        const logs = await publicClient.getLogs({
-          address: GM_CONTRACT_ADDRESS as `0x${string}`,
-          event,
-          fromBlock: receipt.blockNumber,
-          toBlock: receipt.blockNumber,
-        });
-
-        const matchingLog = logs.find(
-          (log: any) =>
-            String(log.transactionHash).toLowerCase() === hash.toLowerCase() &&
-            String(log.args?.wallet || '').toLowerCase() === address.toLowerCase()
-        );
-
-        if (matchingLog?.args?.day != null) {
-          eventDay = BigInt(matchingLog.args.day);
-        }
-      }
-
-      if (eventDay == null) {
-        const block = await publicClient.getBlock({ blockNumber: receipt.blockNumber });
-        const todayDay = getChainDay(block.timestamp);
-        const lastDay = await publicClient.readContract({
-          address: GM_CONTRACT_ADDRESS as `0x${string}`,
-          abi: GM_CONTRACT_ABI,
-          functionName: 'lastCheckInDay',
-          args: [address as `0x${string}`],
-        });
-
-        if (String(lastDay) !== String(todayDay)) {
-          throw new Error('Confirmed receipt did not produce the expected GM state.');
-        }
-
-        eventDay = BigInt(lastDay);
-      }
-
-      const nextStats = await indexConfirmedGMDays(address, [eventDay]);
-
-      setStats(nextStats);
+      // A successful receipt is enough to lock the button immediately.
       setConfirmedToday(true);
-      setTxHash(hash);
-      window.localStorage.removeItem(PENDING_GM_TX_KEY);
 
-      // Refresh from Supabase only after the confirmed Arc event has been indexed.
+      // Pull the complete verified event history for this wallet. If Arcscan's
+      // index is a few blocks behind, temporarily include the confirmed day so
+      // points/streak are still correct in this session.
+      let status = null as Awaited<ReturnType<typeof getGMStatus>> | null;
+
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        try {
+          status = await getGMStatus(address);
+          if (status.stats.checkedInToday) break;
+        } catch {
+          // The receipt is already authoritative; retry the index independently.
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1_000));
+      }
+
+      if (status?.stats.checkedInToday) {
+        setStats(status.stats);
+      } else if (confirmed.checkinDate) {
+        setStats(
+          status
+            ? statsWithOptimisticDay(status.confirmedDays, confirmed.checkinDate)
+            : statsWithOptimisticDay([], confirmed.checkinDate)
+        );
+      }
+
+      window.localStorage.removeItem(PENDING_GM_TX_KEY);
       await refreshLeaderboard();
     } catch (err: any) {
       console.error('GM check-in failed:', err);
       const message = String(err?.shortMessage || err?.message || '');
 
       if (/user rejected|user denied|rejected the request/i.test(message)) {
-        setError('GM transaction was cancelled in your wallet.');
+        setError('Rejected');
       } else if (/already checked in today|already checked in|execution reverted|reverted/i.test(message)) {
-        // A reverted duplicate check-in means the contract already has today's
-        // GM even if the local index is behind.
         try {
-          const confirmed = await reconcileOnchainState(address);
-          if (confirmed) {
+          const status = await getGMStatus(address);
+          if (status.stats.checkedInToday) {
+            setStats(status.stats);
             setConfirmedToday(true);
-            setStats((current) => ({ ...current, checkedInToday: true }));
+            setTxHash(status.latestTxHash);
             setError('You already checked in today.');
           } else {
             setError('GM transaction failed. No GM was recorded.');
@@ -379,6 +238,7 @@ export const GMStreakView: React.FC = () => {
       }
     } finally {
       setCheckingIn(false);
+      setPhase('idle');
     }
   };
 
@@ -419,7 +279,7 @@ export const GMStreakView: React.FC = () => {
           </div>
           <button
             onClick={() => void load()}
-            disabled={loading}
+            disabled={loading || checkingIn}
             aria-label="Refresh GM Streak"
             className="p-2.5 rounded-xl border border-zinc-800 text-zinc-400 hover:text-white hover:border-blue-500/30 transition-colors disabled:opacity-40"
           >
@@ -459,7 +319,7 @@ export const GMStreakView: React.FC = () => {
         <div className="rounded-2xl border border-zinc-800 bg-[#111317] p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
           <div>
             <div className="text-sm font-semibold text-white">
-              {isDone ? 'GM Done' : checkingIn ? 'Confirm transaction in your wallet' : 'GM Today'}
+              {isDone ? 'GM Done' : phase === 'wallet' ? 'Confirm in your wallet' : phase === 'onchain' ? 'Verifying on Arc Mainnet' : 'GM Today'}
             </div>
             <div className="text-xs text-zinc-500 mt-1">
               {isDone
@@ -482,7 +342,7 @@ export const GMStreakView: React.FC = () => {
             ) : (
               <Check className="w-4 h-4" />
             )}
-            {checkingIn ? 'Confirming…' : isDone ? 'GM Done' : 'GM Today'}
+            {checkingIn ? (phase === 'wallet' ? 'Waiting for wallet…' : 'Verifying…') : isDone ? 'GM Done' : 'GM Today'}
           </button>
         </div>
 
@@ -511,10 +371,7 @@ export const GMStreakView: React.FC = () => {
 
           <div className="divide-y divide-zinc-800/70">
             {leaderboard.map((row, index) => (
-              <div
-                key={row.walletAddress}
-                className="px-5 py-3.5 flex items-center gap-4"
-              >
+              <div key={row.walletAddress} className="px-5 py-3.5 flex items-center gap-4">
                 <span className="w-6 text-xs font-mono text-zinc-500">
                   {String(index + 1).padStart(2, '0')}
                 </span>
