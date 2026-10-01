@@ -80,7 +80,7 @@ export const GMStreakView: React.FC = () => {
       // transaction even if the contract-state read is stale or the index is behind.
       try {
         const latestBlock = await publicClient.getBlockNumber();
-        const lookback = 20000n;
+        const lookback = 9000n;
         const fromBlock = latestBlock > lookback ? latestBlock - lookback : 0n;
         const event = GM_CONTRACT_ABI.find(
           (item) => item.type === 'event' && item.name === 'GMCheckedIn'
@@ -241,10 +241,36 @@ export const GMStreakView: React.FC = () => {
     setTxHash(null);
 
     try {
-      // Preflight against the actual Arc contract. This prevents the wallet
-      // from being asked to simulate a transaction that the contract will reject.
+      // Preflight the exact contract call ourselves. This catches the contract's
+      // daily lock before wagmi/wallet simulation and lets us recover a confirmed
+      // GM even when the index is stale.
       if (await reconcileOnchainState(address)) {
         return;
+      }
+
+      try {
+        await publicClient.simulateContract({
+          address: GM_CONTRACT_ADDRESS as `0x${string}`,
+          abi: GM_CONTRACT_ABI,
+          functionName: 'checkIn',
+          value: GM_FEE_WEI,
+          account: address as `0x${string}`,
+        });
+      } catch (simulationError: any) {
+        const simulationMessage = String(
+          simulationError?.shortMessage || simulationError?.cause?.shortMessage ||
+          simulationError?.cause?.message || simulationError?.message || ''
+        );
+
+        if (/already checked in today/i.test(simulationMessage)) {
+          setConfirmedToday(true);
+          setStats((current) => ({ ...current, checkedInToday: true }));
+          setError('You already checked in today.');
+          await reconcileOnchainState(address).catch(() => {});
+          return;
+        }
+
+        throw simulationError;
       }
 
       const hash = await writeContractAsync({
@@ -325,11 +351,21 @@ export const GMStreakView: React.FC = () => {
 
       if (/user rejected|user denied|rejected the request/i.test(message)) {
         setError('GM transaction was cancelled in your wallet.');
-      } else if (/already checked in today/i.test(message)) {
-        setError('You already checked in today.');
+      } else if (/already checked in today|already checked in|execution reverted|reverted/i.test(message)) {
+        // A reverted duplicate check-in means the contract already has today's
+        // GM even if the local index is behind.
         try {
-          await reconcileOnchainState(address);
-        } catch {}
+          const confirmed = await reconcileOnchainState(address);
+          if (confirmed) {
+            setConfirmedToday(true);
+            setStats((current) => ({ ...current, checkedInToday: true }));
+            setError('You already checked in today.');
+          } else {
+            setError('GM transaction failed. No GM was recorded.');
+          }
+        } catch {
+          setError('GM transaction failed. No GM was recorded.');
+        }
       } else {
         setError('GM transaction failed. No GM was recorded.');
       }
