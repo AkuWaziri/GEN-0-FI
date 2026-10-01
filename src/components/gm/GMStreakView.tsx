@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Flame, Check, Trophy, CalendarDays, RefreshCw, ExternalLink } from 'lucide-react';
 import { useWallet } from '../../context/WalletContext';
-import { useWriteContract } from 'wagmi';\nimport { createPublicClient, http } from 'viem';
+import { useWriteContract } from 'wagmi';
+import { createPublicClient, http } from 'viem';
 import { GM_CONTRACT_ABI, GM_CONTRACT_ADDRESS, GM_FEE_WEI, isGMContractConfigured } from '../../config/gmContract';
 import { getGMStreakPoints, indexConfirmedGMDays, getGMLeaderboard, getGMStats, syncConfirmedGMEvents, GMLeaderboardRow, GMStats } from '../../services/gm/gmService';
 import { isSupabaseConfigured } from '../../lib/supabase';
