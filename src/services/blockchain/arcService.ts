@@ -170,75 +170,64 @@ async function fetchEtherscanUSDCTransfers(address: string): Promise<any[]> {
 }
 
 async function fetchAddressTransactions(address: string): Promise<any[]> {
-  // Arcscan's typed address transaction index is the canonical mainnet source.
-  // It is cursor-paginated and includes the complete address history from block 0.
-  const all: any[] = [];
-  let cursor = '';
-
-  for (let page = 0; page < 500; page++) {
-    // Arcscan's address/txs route is not a supported mainnet capability on
-    // the current index. Use the documented filter endpoint for complete
-    // address transaction history instead.
-    const url = new URL(ARCSCAN_V1_BASE + '/filter/transactions');
-    url.searchParams.set('address', address);
-    url.searchParams.set('limit', '100');
-    if (cursor) url.searchParams.set('cursor', cursor);
-
-    const data = await fetchJson(url.toString());
-    const rows = Array.isArray(data?.items)
-      ? data.items
-      : Array.isArray(data?.transactions)
-        ? data.transactions
-        : Array.isArray(data?.result)
-          ? data.result
-          : [];
-
-    all.push(...rows);
-
-    const next = data?.page?.next ?? data?.next_cursor ?? data?.nextCursor;
-    if (!next || rows.length === 0) break;
-    cursor = String(next);
+  if (ETHERSCAN_API_KEY && ETHERSCAN_API_KEY !== 'YourApiKeyToken') {
+    try {
+      const rows = await fetchEtherscanTransactions(address);
+      if (rows.length > 0) return rows;
+    } catch (error) {
+      console.warn('[GEN-0FI] Etherscan transaction index unavailable:', error);
+    }
   }
 
+  const all: any[] = [];
+  let cursor = '';
+  try {
+    for (let page = 0; page < 500; page++) {
+      const url = new URL(ARCSCAN_V1_BASE + '/filter/transactions');
+      url.searchParams.set('address', address);
+      url.searchParams.set('limit', '100');
+      if (cursor) url.searchParams.set('cursor', cursor);
+      const data = await fetchJson(url.toString());
+      const rows = Array.isArray(data?.items) ? data.items : Array.isArray(data?.transactions) ? data.transactions : Array.isArray(data?.result) ? data.result : [];
+      all.push(...rows);
+      const next = data?.page?.next ?? data?.next_cursor ?? data?.nextCursor;
+      if (!next || rows.length === 0) break;
+      cursor = String(next);
+    }
+  } catch (error) {
+    console.warn('[GEN-0FI] Arcscan transaction index unavailable:', error);
+  }
   if (all.length > 0) return all;
 
   try {
-    const etherscanRows = await fetchEtherscanTransactions(address);
-    if (etherscanRows.length > 0) return etherscanRows;
-  } catch (error) {
-    console.warn('[GEN-0FI] Etherscan transaction fallback unavailable:', error);
-  }
-
-  // Compatibility fallback. The Etherscan-shaped txlist endpoint remains
-  // useful if the typed filter surface is temporarily unavailable.
-  const legacy: any[] = [];
-  const offset = 100;
-
-  for (let page = 1; page <= 500; page++) {
-    const url = new URL(ARCSCAN_API_BASE);
-    url.searchParams.set('module', 'account');
-    url.searchParams.set('action', 'txlist');
-    url.searchParams.set('address', address);
-    url.searchParams.set('startblock', '0');
-    url.searchParams.set('endblock', '999999999');
-    url.searchParams.set('page', String(page));
-    url.searchParams.set('offset', String(offset));
-    url.searchParams.set('sort', 'desc');
-    url.searchParams.set('apikey', ARCSCAN_API_KEY);
-
-    const data = await fetchJson(url.toString());
-    if (data?.status !== '1') {
-      const message = typeof data?.result === 'string' ? data.result : data?.message;
-      if (page === 1 && /no transactions/i.test(String(message || ''))) return [];
-      throw new Error(String(message || 'Arcscan transaction query failed'));
+    const legacy: any[] = [];
+    const offset = 100;
+    for (let page = 1; page <= 500; page++) {
+      const url = new URL(ARCSCAN_API_BASE);
+      url.searchParams.set('module', 'account');
+      url.searchParams.set('action', 'txlist');
+      url.searchParams.set('address', address);
+      url.searchParams.set('startblock', '0');
+      url.searchParams.set('endblock', '999999999');
+      url.searchParams.set('page', String(page));
+      url.searchParams.set('offset', String(offset));
+      url.searchParams.set('sort', 'desc');
+      url.searchParams.set('apikey', ARCSCAN_API_KEY);
+      const data = await fetchJson(url.toString());
+      if (data?.status !== '1') {
+        const message = typeof data?.result === 'string' ? data.result : data?.message;
+        if (page === 1 && /no transactions/i.test(String(message || ''))) return [];
+        throw new Error(String(message || 'Arcscan transaction query failed'));
+      }
+      const rows = Array.isArray(data.result) ? data.result : [];
+      legacy.push(...rows);
+      if (rows.length < offset) break;
     }
-
-    const rows = Array.isArray(data.result) ? data.result : [];
-    legacy.push(...rows);
-    if (rows.length < offset) break;
+    return legacy;
+  } catch (error) {
+    console.warn('[GEN-0FI] Arcscan legacy transaction index unavailable:', error);
+    return [];
   }
-
-  return legacy;
 }
 function toRawTransaction(tx: any): RawTxInput {
   const blockNumberValue = tx.blockNumber ?? tx.block_number ?? 0;
