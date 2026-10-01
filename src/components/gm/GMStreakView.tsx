@@ -3,7 +3,7 @@ import { Flame, Check, Trophy, CalendarDays, RefreshCw, ExternalLink } from 'luc
 import { useWallet } from '../../context/WalletContext';
 import { useWriteContract } from 'wagmi';\nimport { createPublicClient, http } from 'viem';
 import { GM_CONTRACT_ABI, GM_CONTRACT_ADDRESS, GM_FEE_WEI, isGMContractConfigured } from '../../config/gmContract';
-import { getGMStreakPoints, indexConfirmedGMDays, getGMLeaderboard, getGMStats, GMLeaderboardRow, GMStats } from '../../services/gm/gmService';
+import { getGMStreakPoints, indexConfirmedGMDays, getGMLeaderboard, getGMStats, syncConfirmedGMEvents, GMLeaderboardRow, GMStats } from '../../services/gm/gmService';
 import { isSupabaseConfigured } from '../../lib/supabase';
 import { ARC_CHAIN_ID, ARC_MAINNET_RPC_URL, arcChain, getArcScanTxUrl } from '../../config/arc';
 
@@ -139,6 +139,23 @@ export const GMStreakView: React.FC = () => {
       await reconcileConfirmedToday();
       if (cancelled) return;
       await load();
+      if (cancelled) return;
+
+      // Backfill confirmed Arc events without blocking the GM button or initial render.
+      void syncConfirmedGMEvents(publicClient).then(async (indexed) => {
+        if (!cancelled && indexed > 0) {
+          const [freshStats, freshLeaderboard] = await Promise.all([
+            getGMStats(address),
+            getGMLeaderboard(20),
+          ]);
+          if (!cancelled) {
+            setStats(freshStats);
+            setLeaderboard(freshLeaderboard);
+          }
+        }
+      }).catch((syncError) => {
+        console.warn('GM event backfill deferred:', syncError);
+      });
     };
     initialise();
     return () => { cancelled = true; };
