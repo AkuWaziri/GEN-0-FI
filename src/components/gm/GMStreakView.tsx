@@ -103,10 +103,6 @@ export const GMStreakView: React.FC = () => {
             // Keep the confirmed onchain state visible even if browser-side
             // Supabase indexing is temporarily blocked or unavailable.
             setStats((current) => markConfirmedToday(current));
-            void fetch(`/api/blockchain/arc/gm-debug?address=${encodeURIComponent(address)}`, {
-              headers: { accept: 'application/json' },
-              cache: 'no-store',
-            }).catch(() => undefined);
             console.warn('GM index sync deferred:', indexError);
           }
 
