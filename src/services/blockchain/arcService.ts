@@ -924,6 +924,16 @@ export function computeWalletSummary(
   };
 }
 
+async function fetchAddressFacts(address: string): Promise<any> {
+  return fetchJson(`${ARCSCAN_V1_BASE}/address/${address}/facts`, 10_000);
+}
+
+async function fetchApprovalsCount(address: string): Promise<number> {
+  const data = await fetchJson(`${ARCSCAN_V1_BASE}/approvals/${address}?limit=100`, 10_000);
+  const rows = Array.isArray(data?.items) ? data.items : Array.isArray(data?.approvals) ? data.approvals : Array.isArray(data?.result) ? data.result : [];
+  return rows.length;
+}
+
 export interface CompleteWalletState {
   walletAddress: string;
   currentBalance: string;
@@ -947,62 +957,59 @@ export async function fetchCompleteWalletState(address: string): Promise<Complet
     fetchTransactionsForAddress(address, 50),
   ]);
 
-  if (history.isUnavailable) {
-    return {
-      walletAddress: address,
-      currentBalance: balance.formatted,
-      totalReceived: 'Unavailable',
-      totalSent: 'Unavailable',
-      totalGasSpent: 'Unavailable',
-      totalTransactions: 0,
-      contractInteractions: 0,
-      recentTransactions: [],
-      firstActivityTime: undefined,
-      failedTransactionCount: 0,
-      topProtocolUsed: 'None',
-      tokenApprovalsCount: 0,
-      historyStatus: 'unavailable',
-      historyStatusNote: 'Arc Mainnet indexed history is unavailable. Live balance remains independently verified when available.',
-    };
-  }
+  let received = 'Unavailable';
+  let sent = 'Unavailable';
+  let gas = 'Unavailable';
+  let firstActivityTime: number | undefined;
+  let tokenApprovalsCount: number | undefined;
 
-  // Prefer Arcscan's merged activity because txlist.value only contains
-  // top-level native value. ERC-20 USDC transfers commonly have txlist.value=0.
-  // fetchActivityTotals de-duplicates the merged movement representations.
-  let transferTotals: { received: bigint; sent: bigint };
   try {
-    transferTotals = await fetchActivityTotals(address, history.lifetimeTransactions);
+    const totals = await fetchActivityTotals(address, history.lifetimeTransactions);
+    received = formatUSDC(totals.received);
+    sent = formatUSDC(totals.sent);
   } catch (error) {
     console.warn('[GEN-0FI] Arc activity totals unavailable:', error);
-    // Do not silently present an incomplete lifetime total as authoritative.
-    // If activity cannot be read, expose the metric as unavailable instead.
-    transferTotals = { received: -1n, sent: -1n };
   }
 
-  const totalsAvailable = transferTotals.received >= 0n && transferTotals.sent >= 0n;
+  try {
+    const facts = await fetchAddressFacts(address);
+    const first = facts?.first_transaction ?? facts?.firstTransaction ?? facts?.first_activity ?? facts?.firstActivity;
+    const timestamp = timestampMs(first?.timestamp ?? first?.timeStamp ?? first?.block_timestamp ?? first);
+    if (timestamp > 0) firstActivityTime = timestamp;
+  } catch (error) {
+    console.warn('[GEN-0FI] Arc address facts unavailable:', error);
+  }
 
-  const summary = computeWalletSummary(
-    address,
-    balance.formatted,
-    history.lifetimeTransactions,
-    false,
-    transferTotals
-  );
+  try {
+    tokenApprovalsCount = await fetchApprovalsCount(address);
+  } catch (error) {
+    console.warn('[GEN-0FI] Arc approvals unavailable:', error);
+  }
+
+  let summary: WalletSummary | null = null;
+  if (!history.isUnavailable) {
+    summary = computeWalletSummary(address, balance.formatted, history.lifetimeTransactions, false);
+    gas = summary.gasSpentUSDC;
+    if (firstActivityTime === undefined) firstActivityTime = summary.firstActivityTime;
+    if (tokenApprovalsCount === undefined) tokenApprovalsCount = summary.tokenApprovalsCount;
+  }
 
   return {
     walletAddress: address,
-    currentBalance: summary.balanceUSDC,
-    totalReceived: totalsAvailable ? summary.totalReceivedUSDC : 'Unavailable',
-    totalSent: totalsAvailable ? summary.totalSentUSDC : 'Unavailable',
-    totalGasSpent: summary.gasSpentUSDC,
-    totalTransactions: summary.txCount,
-    contractInteractions: summary.contractInteractionsCount,
+    currentBalance: balance.formatted,
+    totalReceived: received,
+    totalSent: sent,
+    totalGasSpent: gas,
+    totalTransactions: history.isUnavailable ? 0 : history.lifetimeTransactions.length,
+    contractInteractions: history.isUnavailable ? 0 : history.lifetimeTransactions.filter(tx => tx.isContractInteraction && tx.status === 'success').length,
     recentTransactions: history.transactions,
-    firstActivityTime: summary.firstActivityTime,
-    failedTransactionCount: summary.failedTransactionCount ?? 0,
-    topProtocolUsed: summary.topProtocolUsed ?? 'None',
-    tokenApprovalsCount: summary.tokenApprovalsCount ?? 0,
-    historyStatus: 'complete',
-    historyStatusNote: summary.historyStatusNote || '',
+    firstActivityTime,
+    failedTransactionCount: history.isUnavailable ? 0 : history.lifetimeTransactions.filter(tx => tx.status === 'reverted').length,
+    topProtocolUsed: summary?.topProtocolUsed ?? 'None',
+    tokenApprovalsCount: tokenApprovalsCount ?? 0,
+    historyStatus: history.historyStatus,
+    historyStatusNote: history.isUnavailable
+      ? 'Arc Mainnet transaction history is unavailable. Individual metrics are shown only when independently verified.'
+      : 'Arc Mainnet transaction history was retrieved and normalized.',
   };
 }
