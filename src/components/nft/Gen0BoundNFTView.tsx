@@ -206,13 +206,6 @@ export const Gen0BoundNFTView: React.FC = () => {
         functionName: 'mint',
         chainId: GEN0_BOUND_CHAIN_ID,
       });
-      const hash = await walletClient.writeContract({
-        account: address,
-        address: contractAddress,
-        abi: NFT_ABI,
-        functionName: 'mint',
-        chainId: GEN0_BOUND_CHAIN_ID,
-      });
       setTxHash(hash);
       setStatus('Waiting for your GEN-0 Bound NFT to confirm on Arc…');
 
