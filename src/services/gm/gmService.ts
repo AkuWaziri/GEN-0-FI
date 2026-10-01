@@ -96,6 +96,37 @@ export async function syncConfirmedGMEvents(): Promise<number> {
 }
 
 
+const fetchConfirmedGMEvents = async () => {
+  const latestBlock = await gmChainClient.getBlockNumber();
+  const rows: Array<{ walletAddress: string; checkinDate: string; txHash: string }> = [];
+  const chunkSize = 1_000_000n;
+
+  for (let fromBlock = 0n; fromBlock <= latestBlock; fromBlock += chunkSize) {
+    const toBlock = fromBlock + chunkSize - 1n > latestBlock ? latestBlock : fromBlock + chunkSize - 1n;
+    const logs = await gmChainClient.getLogs({
+      address: GM_CONTRACT_ADDRESS as `0x${string}`,
+      event: GM_EVENT,
+      fromBlock,
+      toBlock,
+    });
+
+    for (const log of logs as any[]) {
+      const wallet = String(log.args?.wallet || '').toLowerCase();
+      const day = Number(log.args?.day);
+      if (!wallet || !Number.isSafeInteger(day)) continue;
+      rows.push({
+        walletAddress: wallet,
+        checkinDate: new Date(day * 86400000).toISOString().slice(0, 10),
+        txHash: String(log.transactionHash || '').toLowerCase(),
+      });
+    }
+  }
+
+  const unique = new Map<string, { walletAddress: string; checkinDate: string; txHash: string }>();
+  for (const row of rows) unique.set(`${row.walletAddress}:${row.checkinDate}`, row);
+  return [...unique.values()];
+};
+
 /** Days 1-13 award 10 points per consecutive day; day 14 onward awards 300 per check-in. */
 export const getGMStreakPoints = (streak: number): number => {
   if (streak <= 0) return 0;
@@ -144,15 +175,21 @@ export async function getGMStats(walletAddress: string): Promise<GMStats> {
   const normalized = walletAddress.toLowerCase();
   const today = dateKey();
 
+  // Read confirmed GM events directly from Arc. This keeps the GM button,
+  // streak and points correct even when the Supabase index is delayed or
+  // blocked by an RLS/persistence issue.
+  try {
+    const events = await fetchConfirmedGMEvents();
+    return calculateStats(
+      events.filter((event) => event.walletAddress === normalized).map((event) => event.checkinDate),
+      today,
+    );
+  } catch (chainError) {
+    console.warn('Onchain GM stats unavailable; using indexed records:', chainError);
+  }
+
   if (!supabase) {
-    return {
-      currentStreak: 0,
-      longestStreak: 0,
-      totalGmDays: 0,
-      points: 0,
-      checkedInToday: false,
-      lastCheckinDate: null,
-    };
+    return { currentStreak: 0, longestStreak: 0, totalGmDays: 0, points: 0, checkedInToday: false, lastCheckinDate: null };
   }
 
   const { data, error } = await supabase
@@ -254,14 +291,33 @@ export async function indexConfirmedGMDays(
 }
 
 export async function getGMLeaderboard(limit = 20): Promise<GMLeaderboardRow[]> {
-  if (!supabase) return [];
+  const today = dateKey();
 
+  try {
+    // The leaderboard is derived from confirmed Arc GMCheckedIn events.
+    // Supabase remains a cache/index, never the source of truth.
+    const events = await fetchConfirmedGMEvents();
+    const grouped = new Map<string, string[]>();
+    for (const event of events) {
+      const list = grouped.get(event.walletAddress) || [];
+      list.push(event.checkinDate);
+      grouped.set(event.walletAddress, list);
+    }
+
+    return [...grouped.entries()]
+      .map(([walletAddress, dates]) => ({ walletAddress, ...calculateStats(dates, today) }))
+      .sort((a, b) => b.points - a.points || b.longestStreak - a.longestStreak || b.totalGmDays - a.totalGmDays)
+      .slice(0, limit);
+  } catch (chainError) {
+    console.warn('Onchain GM leaderboard unavailable; using indexed records:', chainError);
+  }
+
+  if (!supabase) return [];
   const { data, error } = await supabase
     .from('gm_checkins')
     .select('wallet_address, checkin_date')
     .order('wallet_address', { ascending: true })
     .order('checkin_date', { ascending: true });
-
   if (error) throw error;
 
   const grouped = new Map<string, string[]>();
@@ -271,12 +327,8 @@ export async function getGMLeaderboard(limit = 20): Promise<GMLeaderboardRow[]> 
     grouped.set(row.wallet_address, list);
   }
 
-  const today = dateKey();
   return [...grouped.entries()]
-    .map(([walletAddress, dates]) => {
-      const stats = calculateStats(dates, today);
-      return { walletAddress, ...stats };
-    })
+    .map(([walletAddress, dates]) => ({ walletAddress, ...calculateStats(dates, today) }))
     .sort((a, b) => b.points - a.points || b.longestStreak - a.longestStreak || b.totalGmDays - a.totalGmDays)
     .slice(0, limit);
 }
