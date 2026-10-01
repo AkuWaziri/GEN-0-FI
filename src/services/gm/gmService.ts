@@ -60,7 +60,7 @@ export async function syncConfirmedGMEvents(): Promise<number> {
   const startBlock = Number.isSafeInteger(stored) && stored >= 0 ? BigInt(stored + 1) : 0n;
   if (startBlock > latestBlock) return 0;
 
-  const chunkSize = 1_000_000n;
+  const chunkSize = 50_000n;
   let imported = 0;
   let fromBlock = startBlock;
 
