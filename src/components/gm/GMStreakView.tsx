@@ -146,14 +146,33 @@ export const GMStreakView: React.FC = () => {
   };
 
   const recoverPendingGM = async () => {
-    if (!address || !isGMContractConfigured) return;
+    if (!address || !isGMContractConfigured || !publicClient) return;
     const pendingHash = window.localStorage.getItem(PENDING_GM_TX_KEY);
     if (!pendingHash) return;
-    if (await reconcileConfirmedToday(pendingHash)) {
+
+    try {
+      const receipt = await publicClient.getTransactionReceipt({
+        hash: pendingHash as `0x${string}`,
+      });
+
+      if (receipt.status === 'success') {
+        setTxHash(pendingHash);
+        setOnchainConfirmedToday(true);
+        try {
+          const repairedStats = await indexConfirmedGM(address, pendingHash);
+          setStats(repairedStats);
+          setLeaderboard(await getGMLeaderboard(20));
+          window.localStorage.removeItem(PENDING_GM_TX_KEY);
+        } catch (indexError) {
+          console.warn('Pending GM points indexing deferred:', indexError);
+          setStats((current) => markConfirmedToday(current));
+        }
+      }
+    } catch (err) {
+      console.warn('Pending GM recovery is still waiting:', err);
+    } finally {
       setCheckingIn(false);
-      return;
     }
-    setCheckingIn(false);
   };
 
   useEffect(() => {
