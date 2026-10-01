@@ -63,11 +63,6 @@ export const GMStreakView: React.FC = () => {
     try {
       // Reconcile the contract's confirmed GM events before rendering the leaderboard.
       // This backfills historical GMs and incrementally imports new confirmed days.
-      try {
-        await syncConfirmedGMEvents();
-      } catch (syncError) {
-        console.warn('GM event backfill deferred:', syncError);
-      }
       const [nextStats, nextLeaderboard] = await Promise.all([getGMStats(address), getGMLeaderboard(20)]);
       setStats(nextStats);
       setLeaderboard(nextLeaderboard);
@@ -189,11 +184,12 @@ export const GMStreakView: React.FC = () => {
   useEffect(() => {
     let cancelled = false;
     const initialise = async () => {
-      await load();
+      await reconcileConfirmedToday();
       if (cancelled) return;
       await recoverPendingGM();
       if (cancelled) return;
-      await reconcileConfirmedToday();
+      await load();
+      void syncConfirmedGMEvents().catch((e) => console.warn('GM event backfill deferred:', e));
     };
     initialise();
     return () => { cancelled = true; };
