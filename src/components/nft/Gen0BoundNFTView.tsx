@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle2, ExternalLink, Gem, Loader2, ShieldCheck, Sparkles } from 'lucide-react';
-import { createPublicClient, decodeErrorResult, decodeEventLog, fallback, http } from 'viem';
+import { createPublicClient, decodeEventLog, fallback, http } from 'viem';
 import { useAccount, useWalletClient } from 'wagmi';
 import { arcMainnetChain, getArcScanTxUrl } from '../../config/arc';
 import { recordConfirmedAction } from '../../services/points/pointsService';
@@ -133,90 +133,19 @@ export const Gen0BoundNFTView: React.FC = () => {
 
     setMinting(true);
     setError('');
-    setStatus('Running a read-only GEN-0 Bound preflight…');
+    setStatus('Preparing your GEN-0 Bound mint…');
     setTxHash('');
 
     try {
-      const rpcChainId = await readArcWithRetry(() => arcRpcClient.getChainId());
-      if (rpcChainId !== GEN0_BOUND_CHAIN_ID) {
-        throw new Error(`Connected RPC chain is ${rpcChainId}, expected Arc Mainnet ${GEN0_BOUND_CHAIN_ID}.`);
-      }
-
-      // Keep the preflight deliberately sequential. Arc's public RPC is rate-limited,
-      // and a burst of independent reads can otherwise surface as a generic
-      // "HTTP request failed" before the wallet is ever asked to sign.
-      const alreadyMinted = await readArcWithRetry(() =>
-        arcRpcClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'hasMinted', args: [address] })
-      );
-      const nftBalance = await readArcWithRetry(() =>
-        arcRpcClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'balanceOf', args: [address] })
-      );
-
-      if (alreadyMinted || nftBalance > 0n) {
-        setOwned(true);
-        setOwnershipUnavailable(false);
-        setStatus('Your own GEN0 Bound NFT.');
-        setShowOwned(true);
-        return;
-      }
-
-      const balance = await readArcWithRetry(() =>
-        arcRpcClient.readContract({ address: GEN0_BOUND_USDC_ADDRESS, abi: USDC_ABI, functionName: 'balanceOf', args: [address] })
-      );
-      const allowance = await readArcWithRetry(() =>
-        arcRpcClient.readContract({ address: GEN0_BOUND_USDC_ADDRESS, abi: USDC_ABI, functionName: 'allowance', args: [address, contractAddress] })
-      );
-      const contractUsdc = await readArcWithRetry(() =>
-        arcRpcClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'usdc' })
-      );
-      const contractFeeRecipient = await readArcWithRetry(() =>
-        arcRpcClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'feeRecipient' })
-      );
-      const contractMintPrice = await readArcWithRetry(() =>
-        arcRpcClient.readContract({ address: contractAddress, abi: NFT_ABI, functionName: 'MINT_PRICE' })
-      );
-
-      if (alreadyMinted || nftBalance > 0n) {
-        setOwned(true);
-        setOwnershipUnavailable(false);
-        setStatus('Your own GEN0 Bound NFT.');
-        setShowOwned(true);
-        return;
-      }
-
-      if (contractUsdc.toLowerCase() !== GEN0_BOUND_USDC_ADDRESS.toLowerCase()) {
-        throw new Error(`Contract USDC mismatch. Live contract points to ${contractUsdc}, expected ${GEN0_BOUND_USDC_ADDRESS}.`);
-      }
-
-      if (contractFeeRecipient.toLowerCase() !== GEN0_BOUND_FEE_WALLET.toLowerCase()) {
-        throw new Error(`Fee recipient mismatch. Live contract points to ${contractFeeRecipient}, expected ${GEN0_BOUND_FEE_WALLET}.`);
-      }
-
-      if (contractMintPrice !== GEN0_BOUND_MINT_PRICE) {
-        throw new Error(`Mint price mismatch. Live contract reports ${contractMintPrice.toString()} base units, expected ${GEN0_BOUND_MINT_PRICE.toString()}.`);
-      }
-
-      if (balance < GEN0_BOUND_MINT_PRICE) {
-        throw new Error('You need at least 1 USDC on Arc Mainnet to mint GEN-0 Bound.');
-      }
-
-      setStatus(allowance < GEN0_BOUND_MINT_PRICE
-        ? 'Preflight passed. Approve 1 USDC so the mint can be simulated…'
-        : 'Preflight passed. Simulating the mint without sending a transaction…');
-
-      let currentAllowance = allowance;
-
-      if (currentAllowance < GEN0_BOUND_MINT_PRICE) {
-        const approval = await walletClient.writeContract({
-          account: address,
-          address: GEN0_BOUND_USDC_ADDRESS,
-          abi: USDC_ABI,
-          functionName: 'approve',
-          args: [contractAddress, GEN0_BOUND_MINT_PRICE],
-          chainId: GEN0_BOUND_CHAIN_ID,
-        });
-        await arcRpcClient.waitForTransactionReceipt({ hash: approval });
-
+      // Do not run a long RPC preflight before opening the wallet.
+      // A transient Arc RPC failure here used to prevent the wallet popup
+      // from ever appearing. Ownership is already verified separately above.
+      //
+      // We only need allowance to decide whether the wallet needs an approval
+      // first. If this read is unavailable, treat the allowance as zero and
+      // let the wallet handle the approval request instead of blocking mint.
+      let currentAllowance = 0n;
+      try {
         currentAllowance = await readArcWithRetry(() =>
           arcRpcClient.readContract({
             address: GEN0_BOUND_USDC_ADDRESS,
@@ -225,59 +154,58 @@ export const Gen0BoundNFTView: React.FC = () => {
             args: [address, contractAddress],
           })
         );
-
-        if (currentAllowance < GEN0_BOUND_MINT_PRICE) {
-          throw new Error('USDC approval confirmed, but the live allowance is still below 1 USDC.');
-        }
+      } catch {
+        currentAllowance = 0n;
       }
 
-      try {
-        await arcRpcClient.simulateContract({
+      if (currentAllowance < GEN0_BOUND_MINT_PRICE) {
+        setStatus('Confirm the 1 USDC approval in your wallet…');
+        const approval = await walletClient.writeContract({
           account: address,
-          address: contractAddress,
-          abi: NFT_ABI,
-          functionName: 'mint',
+          address: GEN0_BOUND_USDC_ADDRESS,
+          abi: USDC_ABI,
+          functionName: 'approve',
+          args: [contractAddress, GEN0_BOUND_MINT_PRICE],
           chainId: GEN0_BOUND_CHAIN_ID,
         });
-      } catch (simulationError: any) {
-        let decoded = '';
-        const revertData = simulationError?.data
-          || simulationError?.cause?.data
-          || simulationError?.cause?.cause?.data;
 
-        if (revertData) {
-          try {
-            const result = decodeErrorResult({ abi: NFT_ABI, data: revertData });
-            decoded = result.errorName === 'NonTransferable'
-              ? 'Live contract returned NonTransferable during mint.'
-              : result.errorName === 'AlreadyMinted'
-                ? 'Live contract returned AlreadyMinted during mint.'
-                : result.errorName === 'ZeroAddress'
-                  ? 'Live contract returned ZeroAddress during mint.'
-                  : result.errorName === 'EmptyMetadataURI'
-                    ? 'Live contract returned EmptyMetadataURI during mint.'
-                    : `Live contract returned ${result.errorName}.`;
-          } catch {
-            // Keep the provider message if the payload is not one of the
-            // errors declared by the current source ABI.
-          }
+        setTxHash(approval);
+        setStatus('Approval submitted. Waiting for Arc to confirm it…');
+
+        try {
+          await readArcWithRetry(() =>
+            arcRpcClient.waitForTransactionReceipt({ hash: approval })
+          );
+        } catch {
+          // If the dedicated Arc read RPC is temporarily unavailable, do not
+          // surface "HTTP request failed" and do not prevent the next wallet
+          // action. The wallet/provider has already accepted the approval tx.
+          setStatus('Approval submitted. Confirm the GEN-0 Bound mint in your wallet…');
         }
 
-        const raw = simulationError?.shortMessage
-          || simulationError?.details
-          || simulationError?.cause?.shortMessage
-          || simulationError?.cause?.message
-          || simulationError?.message
-          || 'Unknown mint simulation revert.';
-
-        throw new Error(
-          decoded
-            ? `Mint simulation failed before broadcast: ${decoded} Provider: ${String(raw)}`
-            : `Mint simulation failed before broadcast: ${String(raw)}`
-        );
+        try {
+          currentAllowance = await readArcWithRetry(() =>
+            arcRpcClient.readContract({
+              address: GEN0_BOUND_USDC_ADDRESS,
+              abi: USDC_ABI,
+              functionName: 'allowance',
+              args: [address, contractAddress],
+            })
+          );
+        } catch {
+          // The mint contract will enforce allowance onchain if the read RPC
+          // is still unavailable.
+        }
       }
 
-      setStatus('Mint simulation passed. Confirm the GEN-0 Bound mint in your wallet…');
+      setStatus('Confirm the GEN-0 Bound mint in your wallet…');
+      const hash = await walletClient.writeContract({
+        account: address,
+        address: contractAddress,
+        abi: NFT_ABI,
+        functionName: 'mint',
+        chainId: GEN0_BOUND_CHAIN_ID,
+      });
       const hash = await walletClient.writeContract({
         account: address,
         address: contractAddress,
