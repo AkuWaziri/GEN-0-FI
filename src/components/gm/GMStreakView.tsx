@@ -63,27 +63,56 @@ export const GMStreakView: React.FC = () => {
   const reconcileOnchainState = useCallback(async (wallet: string, confirmedHash?: string) => {
     const block = await publicClient.getBlock();
     const todayDay = getChainDay(block.timestamp);
+    const walletAddress = wallet as `0x${string}`;
 
+    let confirmedDay: bigint | null = null;
     const lastDay = await publicClient.readContract({
       address: GM_CONTRACT_ADDRESS as `0x${string}`,
       abi: GM_CONTRACT_ABI,
       functionName: 'lastCheckInDay',
-      args: [wallet as `0x${string}`],
+      args: [walletAddress],
     });
 
-    if (String(lastDay) !== String(todayDay)) {
-      return false;
+    if (String(lastDay) === String(todayDay)) {
+      confirmedDay = BigInt(lastDay);
+    } else {
+      // Also verify the immutable GMCheckedIn event. This catches a confirmed
+      // transaction even if the contract-state read is stale or the index is behind.
+      try {
+        const latestBlock = await publicClient.getBlockNumber();
+        const lookback = 20000n;
+        const fromBlock = latestBlock > lookback ? latestBlock - lookback : 0n;
+        const event = GM_CONTRACT_ABI.find(
+          (item) => item.type === 'event' && item.name === 'GMCheckedIn'
+        ) as any;
+
+        const logs = await publicClient.getLogs({
+          address: GM_CONTRACT_ADDRESS as `0x${string}`,
+          event,
+          args: { wallet: walletAddress },
+          fromBlock,
+          toBlock: latestBlock,
+        });
+
+        const todayLog = logs.find(
+          (log: any) => log.args?.day != null && String(log.args.day) === String(todayDay)
+        );
+
+        if (todayLog?.args?.day != null) {
+          confirmedDay = BigInt(todayLog.args.day);
+          if (!confirmedHash && todayLog.transactionHash) {
+            setTxHash(String(todayLog.transactionHash));
+          }
+        }
+      } catch (eventError) {
+        console.warn('GM event reconciliation deferred:', eventError);
+      }
     }
 
-    setConfirmedToday(true);
-    if (confirmedHash) {
-      setTxHash(confirmedHash);
-      window.localStorage.removeItem(PENDING_GM_TX_KEY);
-    }
+    if (confirmedDay == null) return false;
 
-    // Arc is authoritative. Mark the UI done immediately from confirmed
-    // contract state. Database indexing/leaderboard work must never be able
-    // to turn a confirmed onchain GM back into an active button.
+    // Arc confirmation is the source of truth for the button. Indexing can
+    // fail without ever making a confirmed GM look available again.
     setConfirmedToday(true);
 
     if (confirmedHash) {
@@ -92,7 +121,7 @@ export const GMStreakView: React.FC = () => {
     }
 
     try {
-      const repairedStats = await indexConfirmedGMDays(wallet, [lastDay]);
+      const repairedStats = await indexConfirmedGMDays(wallet, [confirmedDay]);
       setStats(repairedStats);
       await refreshLeaderboard();
     } catch (indexError) {
