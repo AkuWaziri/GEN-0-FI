@@ -656,6 +656,58 @@ async function fetchTokenTransferCandidates(address: string): Promise<any[]> {
   return all;
 }
 
+const ERC20_TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+
+async function fetchTokenLogCandidates(address: string): Promise<any[]> {
+  let cursor = '';
+  const all: any[] = [];
+
+  for (let page = 0; page < 50; page += 1) {
+    try {
+      const url = new URL(`${ARCSCAN_V1_BASE}/address/${address}/logs`);
+      url.searchParams.set('topic0', ERC20_TRANSFER_TOPIC);
+      url.searchParams.set('limit', '100');
+      if (cursor) url.searchParams.set('cursor', cursor);
+
+      const data = await fetchJson(url.toString());
+      const rows = [
+        data?.items,
+        data?.logs,
+        data?.result,
+        data?.data?.items,
+        data?.data?.logs,
+      ].find(Array.isArray) || [];
+
+      for (const row of rows) {
+        const topic0 = String(row?.topic0 ?? row?.topics?.[0] ?? '').toLowerCase();
+        const tokenContract = addressOf(
+          row?.address ??
+          row?.contract_address ??
+          row?.contractAddress ??
+          row?.token_address ??
+          row?.token?.address
+        );
+        if (topic0 === ERC20_TRANSFER_TOPIC && tokenContract) {
+          all.push({
+            ...row,
+            address: tokenContract,
+            standard: row?.standard ?? row?.token_standard ?? row?.token?.standard ?? 'ERC-20',
+          });
+        }
+      }
+
+      const next = data?.page?.next ?? data?.next_cursor ?? data?.nextCursor ?? data?.data?.page?.next;
+      if (!next || rows.length === 0) break;
+      cursor = String(next);
+    } catch (error) {
+      console.warn('[GEN-0FI] Arc token log index unavailable:', error);
+      break;
+    }
+  }
+
+  return all;
+}
+
 function tokenStandard(row: any): string {
   return String(
     row?.standard ??
@@ -722,25 +774,45 @@ function tokenRawBalance(row: any): { raw: bigint; decimals?: number } | null {
 }
 
 async function readErc20Balance(contract: string, owner: string): Promise<{ raw: bigint; decimals?: number }> {
-  const ABI = [{
+  const balanceAbi = [{
     type: 'function',
     name: 'balanceOf',
     stateMutability: 'view',
     inputs: [{ name: 'owner', type: 'address' }],
     outputs: [{ name: 'balance', type: 'uint256' }],
   }] as const;
+  const decimalsAbi = [{
+    type: 'function',
+    name: 'decimals',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: 'decimals', type: 'uint8' }],
+  }] as const;
 
-  try {
-    const raw = await arcClient.readContract({
-      address: contract as `0x${string}`,
-      abi: ABI,
-      functionName: 'balanceOf',
-      args: [owner as `0x${string}`],
-    });
-    return { raw };
-  } catch {
-    return { raw: 0n };
+  for (const client of [arcClient, arcScanClient]) {
+    try {
+      const raw = await client.readContract({
+        address: contract as `0x${string}`,
+        abi: balanceAbi,
+        functionName: 'balanceOf',
+        args: [owner as `0x${string}`],
+      });
+
+      let decimals: number | undefined;
+      try {
+        const value = await client.readContract({
+          address: contract as `0x${string}`,
+          abi: decimalsAbi,
+          functionName: 'decimals',
+        });
+        decimals = Number(value);
+      } catch {}
+
+      return { raw, decimals };
+    } catch {}
   }
+
+  return { raw: 0n };
 }
 
 async function readErc721Balance(contract: string, owner: string): Promise<bigint> {
@@ -837,9 +909,12 @@ export async function fetchWalletAssetSummary(address: string): Promise<{
     return { tokenHoldings: 0, coinHoldings: 0, nftHoldings: 0, fungibleHoldings: 0, historyStatus: 'unavailable', coins: [], nfts: [] };
   }
 
-  const indexedRows = await fetchAddressTokenBalances(address);
-  const transferRows = await fetchTokenTransferCandidates(address);
-  const candidates = [...indexedRows, ...transferRows];
+  const [indexedRows, transferRows, logRows] = await Promise.all([
+    fetchAddressTokenBalances(address),
+    fetchTokenTransferCandidates(address),
+    fetchTokenLogCandidates(address),
+  ]);
+  const candidates = [...indexedRows, ...transferRows, ...logRows];
 
   const coinContracts = new Set<string>();
   for (const row of candidates) {
