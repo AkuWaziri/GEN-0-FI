@@ -3,9 +3,9 @@ import { Logo } from './Logo';
 import { NetworkBadge } from './NetworkBadge';
 import { AddressBadge } from './AddressBadge';
 import { useWallet } from '../../context/WalletContext';
-import { LayoutDashboard, History, Wallet, ArrowLeftRight, Trophy, Flame, Send, Sparkles, PiggyBank } from 'lucide-react';
+import { LayoutDashboard, History, Wallet, ArrowLeftRight, Trophy, Flame, Send, Sparkles, PiggyBank, BookUser, Zap } from 'lucide-react';
 
-export type TabType = 'overview'  | 'swap' | 'wallet' | 'savings' | 'gm' | 'boundnft' | 'activity' | 'points';
+export type TabType = 'overview' | 'gm' | 'gateway' | 'swap' | 'wallet' | 'savings' | 'addressbook' | 'boundnft' | 'activity' | 'points';
 
 interface SidebarProps {
   activeTab: TabType;
@@ -19,9 +19,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, onOpen
   const navItems = [
     { id: 'overview' as TabType, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'gm' as TabType, label: 'GM Streak', icon: Flame },
+    { id: 'gateway' as TabType, label: 'Circle Gateway', icon: Zap },
     { id: 'swap' as TabType, label: 'Swap & Bridge', icon: ArrowLeftRight },
     { id: 'wallet' as TabType, label: 'Send & Receive', icon: Send },
     { id: 'savings' as TabType, label: 'Lend', icon: PiggyBank },
+    { id: 'addressbook' as TabType, label: 'Address Book', icon: BookUser },
     { id: 'boundnft' as TabType, label: 'GEN-0 Bound NFT', icon: Sparkles },
     { id: 'points' as TabType, label: 'Leaderboard', icon: Trophy },
     { id: 'activity' as TabType, label: 'Activity', icon: History },
