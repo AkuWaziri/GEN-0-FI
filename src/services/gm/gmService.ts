@@ -1,4 +1,4 @@
-import { createPublicClient, http, isAddress, keccak256, toHex } from 'viem';
+import { createPublicClient, fallback, http, isAddress, keccak256, toHex } from 'viem';
 import { ARC_MAINNET_RPC_URL, arcChain } from '../../config/arc';
 import { GM_CONTRACT_ADDRESS } from '../../config/gmContract';
 
@@ -39,16 +39,18 @@ export const getGMStreakPoints = (streak: number): number => {
   return streak >= 14 ? GM_STREAK_DAILY_CAP : streak * 10;
 };
 
-const publicClients = [
-  createPublicClient({
-    chain: arcChain,
-    transport: http(ARC_MAINNET_RPC_URL, { timeout: 8_000 }),
-  }),
-  createPublicClient({
-    chain: arcChain,
-    transport: http('https://rpc.arc-scan.org', { timeout: 8_000 }),
-  }),
-];
+// Arcscan's public RPC is a mainnet-only failover gateway. Put it first so a
+// transient failure from the primary Arc RPC cannot surface as a generic
+// "HTTP request failed" in the GM flow. Neither endpoint can sign transactions.
+const GM_READ_TRANSPORT = fallback([
+  http('https://rpc.arc-scan.org', { timeout: 10_000 }),
+  http(ARC_MAINNET_RPC_URL, { timeout: 10_000 }),
+], { rank: { interval: 3_000, sampleCount: 2 } });
+
+const publicClient = createPublicClient({
+  chain: arcChain,
+  transport: GM_READ_TRANSPORT,
+});
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -134,7 +136,8 @@ export async function waitForConfirmedGM(
   const started = Date.now();
 
   while (Date.now() - started < timeoutMs) {
-    for (const client of publicClients) {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const client = publicClient;
       try {
         const receipt = await client.getTransactionReceipt({
           hash: txHash as `0x${string}`,
