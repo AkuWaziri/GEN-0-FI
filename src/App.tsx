@@ -32,6 +32,7 @@ const AppContent: React.FC = () => {
   const [isIdentityModalOpen, setIsIdentityModalOpen] = useState(false);
   const [walletMode, setWalletMode] = useState<'send' | 'receive'>('send');
   const [prefilledRecipient, setPrefilledRecipient] = useState('');
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   useEffect(() => {
     const cleanup = initGlobalClickSound();
@@ -49,6 +50,10 @@ const AppContent: React.FC = () => {
     }
   }, [isConnected, address, pendingTab]);
 
+  useEffect(() => {
+    setIsMobileNavOpen(false);
+  }, [activeTab]);
+
   if (!isConnected || !address) {
     return (
       <>
@@ -65,7 +70,7 @@ const AppContent: React.FC = () => {
       {showWelcomeOverlay && <WelcomeOnboarding onDismiss={dismissWelcomeOverlay} />}
       <Sidebar activeTab={activeTab} onSelectTab={setActiveTab} onOpenConnect={() => setIsIdentityModalOpen(true)} />
       <div className="flex-1 flex flex-col min-w-0 bg-[#0f1012]">
-        <Header activeTab={activeTab} onSelectTab={setActiveTab} onOpenConnect={() => setIsIdentityModalOpen(true)} />
+        <Header activeTab={activeTab} onSelectTab={setActiveTab} onOpenConnect={() => setIsIdentityModalOpen(true)} onOpenMobileNav={() => setIsMobileNavOpen(true)} />
         <main className="flex-1 overflow-y-auto flex flex-col justify-between">
           <div>
             {activeTab === 'overview' && (
@@ -92,7 +97,7 @@ const AppContent: React.FC = () => {
           <Footer />
         </main>
       </div>
-      <MobileNav activeTab={activeTab} onSelectTab={setActiveTab} />
+      <MobileNav activeTab={activeTab} onSelectTab={setActiveTab} isOpen={isMobileNavOpen} onToggle={() => setIsMobileNavOpen((open) => !open)} />
       <WalletIdentityModal isOpen={isIdentityModalOpen} onClose={() => setIsIdentityModalOpen(false)} />
       <ConnectWalletModal isOpen={isConnectModalOpen} onClose={() => setIsConnectModalOpen(false)} />
     </div>
