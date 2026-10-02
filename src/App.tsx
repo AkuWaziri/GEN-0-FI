@@ -64,7 +64,7 @@ const AppContent: React.FC = () => {
     <div className="min-h-screen bg-[#090a0c] text-zinc-100 flex flex-col md:flex-row antialiased selection:bg-white selection:text-black">
       {showWelcomeOverlay && <WelcomeOnboarding onDismiss={dismissWelcomeOverlay} />}
       <Sidebar activeTab={activeTab} onSelectTab={setActiveTab} onOpenConnect={() => setIsIdentityModalOpen(true)} />
-      <div className="flex-1 flex flex-col min-w-0 pb-20 md:pb-0 bg-[#0f1012]">
+      <div className="flex-1 flex flex-col min-w-0 bg-[#0f1012]">
         <Header activeTab={activeTab} onSelectTab={setActiveTab} onOpenConnect={() => setIsIdentityModalOpen(true)} />
         <main className="flex-1 overflow-y-auto flex flex-col justify-between">
           <div>
