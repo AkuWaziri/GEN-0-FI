@@ -1,15 +1,17 @@
 import React from 'react';
 import { TabType } from './Sidebar';
-import { LayoutDashboard, History, ArrowLeftRight, Trophy, Send, PiggyBank } from 'lucide-react';
+import { LayoutDashboard, History, ArrowLeftRight, Trophy, Send, PiggyBank, BookUser, Zap } from 'lucide-react';
 
 interface MobileNavProps { activeTab: TabType; onSelectTab: (tab: TabType) => void; }
 
 export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, onSelectTab }) => {
   const navItems = [
     { id: 'overview' as TabType, label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'gateway' as TabType, label: 'Gateway', icon: Zap },
     { id: 'swap' as TabType, label: 'Swap', icon: ArrowLeftRight },
     { id: 'wallet' as TabType, label: 'Wallet', icon: Send },
     { id: 'savings' as TabType, label: 'Lend', icon: PiggyBank },
+    { id: 'addressbook' as TabType, label: 'Address Book', icon: BookUser },
     { id: 'points' as TabType, label: 'Leaderboard', icon: Trophy },
     { id: 'activity' as TabType, label: 'Activity', icon: History },
   ];
