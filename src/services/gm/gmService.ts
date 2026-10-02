@@ -129,17 +129,31 @@ export async function getGMLeaderboard(limit = 20): Promise<GMLeaderboardRow[]> 
   return data.leaderboard || [];
 }
 
+async function fetchExplorerTransaction(txHash: string): Promise<{ status: string; timestamp?: string | null } | null> {
+  try {
+    const response = await fetch(
+      `https://explorer.arc.io/api/v2/transactions/${txHash}`,
+      { headers: { Accept: 'application/json' }, cache: 'no-store' },
+    );
+    if (!response.ok) return null;
+    const data = await response.json() as { status?: string; timestamp?: string | null };
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 export async function waitForConfirmedGM(
   txHash: string,
-  timeoutMs = 45_000,
+  timeoutMs = 90_000,
 ): Promise<{ receipt: any; checkinDate: string | null }> {
   const started = Date.now();
 
   while (Date.now() - started < timeoutMs) {
+    // Primary: canonical Arc JSON-RPC receipt.
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      const client = publicClient;
       try {
-        const receipt = await client.getTransactionReceipt({
+        const receipt = await publicClient.getTransactionReceipt({
           hash: txHash as `0x${string}`,
         });
 
@@ -148,32 +162,23 @@ export async function waitForConfirmedGM(
         }
 
         let checkinDate: string | null = null;
-
         for (const log of receipt.logs) {
           if (String(log.address).toLowerCase() !== GM_CONTRACT_ADDRESS.toLowerCase()) continue;
-
           try {
             const topics = Array.isArray(log.topics) ? log.topics : [];
-            if (topics.length < 3) continue;
-            if (String(topics[0]).toLowerCase() !== GM_EVENT_TOPIC0.toLowerCase()) continue;
-
-            // GMCheckedIn has wallet/day indexed. The timestamp is the first
-            // 32-byte word in the non-indexed event data.
+            if (topics.length < 3 || String(topics[0]).toLowerCase() !== GM_EVENT_TOPIC0.toLowerCase()) continue;
             const data = String(log.data || '');
             if (!/^0x[a-fA-F0-9]{64,}$/.test(data)) continue;
             const timestamp = BigInt(`0x${data.slice(2, 66)}`);
             checkinDate = getUtcDate(timestamp);
             break;
-          } catch {
-            // Ignore unrelated logs from the same receipt.
-          }
+          } catch {}
         }
 
         if (!checkinDate) {
-          const block = await client.getBlock({ blockNumber: receipt.blockNumber });
+          const block = await publicClient.getBlock({ blockNumber: receipt.blockNumber });
           checkinDate = getUtcDate(block.timestamp);
         }
-
         return { receipt, checkinDate };
       } catch (error: any) {
         const message = String(error?.message || '');
@@ -181,10 +186,26 @@ export async function waitForConfirmedGM(
       }
     }
 
+    // Secondary: Arc's canonical explorer (Blockscout) can know the
+    // transaction before an RPC provider's receipt endpoint catches up.
+    const explorerTx = await fetchExplorerTransaction(txHash);
+    if (explorerTx?.status) {
+      const normalized = explorerTx.status.toLowerCase();
+      if (normalized === 'ok' || normalized === 'success' || normalized === 'confirmed') {
+        return {
+          receipt: { status: 'success', hash: txHash },
+          checkinDate: explorerTx.timestamp ? explorerTx.timestamp.slice(0, 10) : todayKey(),
+        };
+      }
+      if (/error|fail|revert/.test(normalized)) {
+        throw new Error('GM transaction reverted on Arc Mainnet.');
+      }
+    }
+
     await sleep(1_000);
   }
 
-  throw new Error('Arc Mainnet did not return a confirmed GM receipt within 45 seconds.');
+  throw new Error('Arc Mainnet did not return a confirmed GM receipt within 90 seconds.');
 }
 
 export function statsWithOptimisticDay(
