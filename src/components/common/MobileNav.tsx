@@ -1,6 +1,6 @@
 import React from 'react';
 import { TabType } from './Sidebar';
-import { LayoutDashboard, History, ArrowLeftRight, Trophy, Flame, Send, PiggyBank, BookUser, Sparkles, Zap, Menu, X } from 'lucide-react';
+import { LayoutDashboard, History, ArrowLeftRight, Trophy, Flame, Send, PiggyBank, BookUser, Sparkles, Zap, X } from 'lucide-react';
 
 interface MobileNavProps {
   activeTab: TabType;
@@ -30,23 +30,8 @@ export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, onSelectTab, is
 
   return (
     <>
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-label={isOpen ? 'Close navigation' : 'Open navigation'}
-        aria-expanded={isOpen}
-        className="md:hidden fixed left-3 top-[4.25rem] z-[60] flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-800 bg-[#08090b]/95 text-zinc-300 shadow-lg backdrop-blur-md transition-colors hover:border-zinc-700 hover:text-white"
-      >
-        {isOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-      </button>
-
       {isOpen && (
-        <button
-          type="button"
-          aria-label="Close navigation overlay"
-          onClick={onToggle}
-          className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-[1px]"
-        />
+        <button type="button" aria-label="Close navigation overlay" onClick={onToggle} className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-[1px]" />
       )}
 
       <aside
@@ -60,7 +45,6 @@ export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, onSelectTab, is
             <X className="h-4 w-4" />
           </button>
         </div>
-
         <nav className="space-y-1.5" role="tablist">
           {navItems.map((item) => {
             const Icon = item.icon;
