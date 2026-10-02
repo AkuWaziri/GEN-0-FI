@@ -121,10 +121,14 @@ function decodeRow(log: any): GMOnchainRow | null {
     let dayValue = log.day ?? decodedArgs.day;
 
     if ((!isAddress(wallet, { strict: false }) || dayValue == null) && log.topics?.length) {
-      const decoded = decodeEventLog({
+      const topics = Array.isArray(log.topics)
+        ? [...log.topics] as [`0x${string}`, ...`0x${string}`[]]
+        : [];
+
+      const decoded: any = decodeEventLog({
         abi: GM_EVENT_ABI,
         data: (log.data || '0x') as `0x${string}`,
-        topics: (log.topics || []) as readonly `0x${string}`[],
+        topics,
       });
 
       if (decoded.eventName !== 'GMCheckedIn') return null;
