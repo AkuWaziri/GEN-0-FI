@@ -5,18 +5,6 @@ export const GM_CONTRACT_ADDRESS = '0xCb98496A4BbF6969bF6c8EfF2694992e819047AC' 
 export const ARC_CHAIN_ID = 5042;
 export const ARC_SCAN_API = 'https://api.arc-scan.org/v1';
 
-const GM_EVENT_ABI = [{
-  type: 'event',
-  name: 'GMCheckedIn',
-  anonymous: false,
-  inputs: [
-    { indexed: true, name: 'wallet', type: 'address' },
-    { indexed: true, name: 'day', type: 'uint256' },
-    { indexed: false, name: 'timestamp', type: 'uint256' },
-    { indexed: false, name: 'fee', type: 'uint256' },
-  ],
-}] as const;
-
 export const GM_EVENT_TOPIC0 = keccak256(
   toHex('GMCheckedIn(address,uint256,uint256,uint256)')
 );
