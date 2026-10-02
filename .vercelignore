@@ -1,1 +1,4 @@
 api/health.ts
+api/ai/summary.ts
+api/lifi/eurc-usdc-rate.ts
+api/nft/compile.ts
