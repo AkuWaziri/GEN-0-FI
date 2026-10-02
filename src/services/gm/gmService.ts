@@ -129,15 +129,53 @@ export async function getGMLeaderboard(limit = 20): Promise<GMLeaderboardRow[]> 
   return data.leaderboard || [];
 }
 
+async function fetchRpcReceipt(txHash: string): Promise<any | null> {
+  const endpoints = [
+    ARC_MAINNET_RPC_URL,
+    'https://rpc.arc-scan.org',
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'eth_getTransactionReceipt',
+          params: [txHash],
+        }),
+        cache: 'no-store',
+      });
+      if (!response.ok) continue;
+      const payload = await response.json() as { result?: any; error?: { message?: string } };
+      if (payload.result) return payload.result;
+    } catch {
+      // Try the next canonical Arc read endpoint.
+    }
+  }
+
+  return null;
+}
+
 async function fetchExplorerTransaction(txHash: string): Promise<{ status: string; timestamp?: string | null } | null> {
   try {
     const response = await fetch(
-      `https://explorer.arc.io/api/v2/transactions/${txHash}`,
+      `https://api.arc-scan.org/v1/txs/${txHash}`,
       { headers: { Accept: 'application/json' }, cache: 'no-store' },
     );
     if (!response.ok) return null;
-    const data = await response.json() as { status?: string; timestamp?: string | null };
-    return data;
+    const data = await response.json() as {
+      status?: string | number;
+      timestamp?: string | null;
+      block_timestamp?: string | null;
+      receipt?: { status?: string | number };
+    };
+    return {
+      status: String(data.status ?? data.receipt?.status ?? ''),
+      timestamp: data.timestamp ?? data.block_timestamp ?? null,
+    };
   } catch {
     return null;
   }
@@ -186,8 +224,35 @@ export async function waitForConfirmedGM(
       }
     }
 
-    // Secondary: Arc's canonical explorer (Blockscout) can know the
-    // transaction before an RPC provider's receipt endpoint catches up.
+    // Direct JSON-RPC fallback. This bypasses viem transport caching and
+    // asks Arc for the receipt exactly as the explorer does.
+    const rawReceipt = await fetchRpcReceipt(txHash);
+    if (rawReceipt?.status) {
+      const normalizedStatus = String(rawReceipt.status).toLowerCase();
+      if (normalizedStatus === '0x1' || normalizedStatus === '1') {
+        let checkinDate: string | null = null;
+        const logs = Array.isArray(rawReceipt.logs) ? rawReceipt.logs : [];
+        for (const log of logs) {
+          if (String(log.address).toLowerCase() !== GM_CONTRACT_ADDRESS.toLowerCase()) continue;
+          const topics = Array.isArray(log.topics) ? log.topics : [];
+          if (topics.length < 3 || String(topics[0]).toLowerCase() !== GM_EVENT_TOPIC0.toLowerCase()) continue;
+          const data = String(log.data || '');
+          if (/^0x[a-fA-F0-9]{64,}$/.test(data)) {
+            checkinDate = getUtcDate(BigInt(`0x${data.slice(2, 66)}`));
+            break;
+          }
+        }
+        return {
+          receipt: rawReceipt,
+          checkinDate: checkinDate || null,
+        };
+      }
+      if (normalizedStatus === '0x0' || normalizedStatus === '0') {
+        throw new Error('GM transaction reverted on Arc Mainnet.');
+      }
+    }
+
+    // Secondary: ArcScan's indexed transaction API.
     const explorerTx = await fetchExplorerTransaction(txHash);
     if (explorerTx?.status) {
       const normalized = explorerTx.status.toLowerCase();
