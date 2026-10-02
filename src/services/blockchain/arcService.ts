@@ -887,6 +887,59 @@ function nftTokenId(row: any): bigint | null {
   }
 }
 
+async function fetchNftTransfers(address: string): Promise<any[]> {
+  const all: any[] = [];
+  let cursor = '';
+
+  for (let page = 0; page < 50; page += 1) {
+    try {
+      const url = new URL(`${ARCSCAN_V1_BASE}/address/${address}/logs`);
+      url.searchParams.set('limit', '100');
+      if (cursor) url.searchParams.set('cursor', cursor);
+
+      const data = await fetchJson(url.toString());
+      const rows = [
+        data?.items,
+        data?.logs,
+        data?.result,
+        data?.data?.items,
+        data?.data?.logs,
+      ].find(Array.isArray) || [];
+
+      for (const row of rows) {
+        const topic0 = String(row?.topic0 ?? row?.topics?.[0] ?? '').toLowerCase();
+        const topics = Array.isArray(row?.topics) ? row.topics : [];
+        const contract = addressOf(
+          row?.address ??
+          row?.contract_address ??
+          row?.contractAddress ??
+          row?.token_address ??
+          row?.token?.address
+        );
+        if (!contract) continue;
+
+        // ERC-721 Transfer(address,address,uint256) has four topics.
+        if (topic0 === ERC20_TRANSFER_TOPIC && topics.length >= 4) {
+          all.push({
+            ...row,
+            address: contract,
+            standard: 'ERC-721',
+            token_id: row?.token_id ?? row?.tokenId ?? row?.topics?.[3],
+          });
+        }
+      }
+
+      const next = data?.page?.next ?? data?.next_cursor ?? data?.nextCursor ?? data?.data?.page?.next;
+      if (!next || rows.length === 0) break;
+      cursor = String(next);
+    } catch (error) {
+      console.warn('[GEN-0FI] Arc NFT transfer index unavailable:', error);
+      break;
+    }
+  }
+
+  return all;
+}
 async function fetchTokenMetadata(address: string, row: any): Promise<{ name: string; symbol: string; decimals?: number }> {
   const existing = {
     name: tokenName(row),
@@ -980,7 +1033,7 @@ export async function fetchWalletAssetSummary(address: string): Promise<{
   // Arcscan exposes NFT transfers but not a direct address NFT inventory.
   // Reconstruct current ownership from indexed transfer candidates, then verify
   // each contract's live balanceOf on Arc Mainnet. No guessed or fabricated NFTs.
-  const nftRows = await fetchNftTransfers(address);
+  const nftRows = await fetchNftTransfers(address).catch(() => []);
   const nftContracts = new Map<string, any[]>();
   for (const row of nftRows) {
     const contract = tokenAddress(row);
