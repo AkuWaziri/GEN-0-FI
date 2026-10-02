@@ -1003,6 +1003,27 @@ export async function fetchWalletAssetSummary(address: string): Promise<{
 
     const row = candidates.find((item) => tokenAddress(item).toLowerCase() === contract) || {};
     const metadata = await fetchTokenMetadata(contract, row);
+
+    // Arcscan's address token endpoint is the authoritative indexed inventory
+    // for this wallet. Prefer its reported live balance when present. This is
+    // necessary for Arc ERC-20s whose contracts do not expose a standard
+    // balanceOf/decimals read through the public RPC. For candidates discovered
+    // only from transfers/logs, verify ownership with the contract directly.
+    const indexed = tokenRawBalance(row);
+    if (indexed && indexed.raw > 0n) {
+      const decimals = indexed.decimals ?? metadata.decimals ?? 18;
+      coins.push({
+        address: contract,
+        name: metadata.name,
+        symbol: metadata.symbol,
+        balance: formatUnits(indexed.raw, decimals),
+        standard: 'ERC-20',
+        decimals,
+      });
+      seenCoins.add(contract);
+      continue;
+    }
+
     const live = await readErc20Balance(contract, address);
     if (live.raw <= 0n) continue;
 
