@@ -189,35 +189,57 @@ export async function fetchAllConfirmedGMEvents(): Promise<GMOnchainRow[]> {
     }
   };
 
-  // Arc RPC limits eth_getLogs to 10,000 blocks per request. Walk backwards
-  // in bounded chunks so the full verified GM history remains available.
+  // Keep GM reads cheap and resilient. Supabase stores only previously verified
+  // Arc Mainnet GMCheckedIn events. Refresh only the recent RPC window; never
+  // perform a full-chain scan on every dashboard load.
+  const supabase = getSupabase();
+  let cachedRows: GMOnchainRow[] = [];
+
+  if (supabase) {
+    const { data, error } = await supabase
+      .from('gm_checkins')
+      .select('wallet_address,checkin_date,tx_hash,chain_id')
+      .eq('chain_id', ARC_CHAIN_ID)
+      .limit(10000);
+
+    if (!error && Array.isArray(data)) {
+      cachedRows = data.map((row: any) => ({
+        wallet_address: String(row.wallet_address).toLowerCase(),
+        checkin_date: String(row.checkin_date),
+        tx_hash: row.tx_hash ? String(row.tx_hash).toLowerCase() : null,
+        chain_id: ARC_CHAIN_ID,
+      }));
+    }
+  }
+
   try {
     const latestHex = await request('eth_blockNumber', []);
     const latestBlock = BigInt(latestHex);
-    const chunkSize = 9_000n;
-    const rows: GMOnchainRow[] = [];
+    const recentWindow = 9_000n;
+    const fromBlock = latestBlock > recentWindow ? latestBlock - recentWindow : 0n;
 
-    for (let end = latestBlock; end >= 0n; end -= chunkSize) {
-      const start = end >= chunkSize - 1n ? end - (chunkSize - 1n) : 0n;
-      const logs = await request('eth_getLogs', [{
-        address: GM_CONTRACT_ADDRESS,
-        topics: [GM_EVENT_TOPIC0],
-        fromBlock: `0x${start.toString(16)}`,
-        toBlock: `0x${end.toString(16)}`,
-      }]);
+    const logs = await request('eth_getLogs', [{
+      address: GM_CONTRACT_ADDRESS,
+      topics: [GM_EVENT_TOPIC0],
+      fromBlock: `0x${fromBlock.toString(16)}`,
+      toBlock: `0x${latestBlock.toString(16)}`,
+    }]);
 
-      if (Array.isArray(logs)) {
-        rows.push(...logs.map(decodeRpcLog).filter(Boolean) as GMOnchainRow[]);
-      }
+    const recentRows = Array.isArray(logs)
+      ? logs.map(decodeRpcLog).filter(Boolean) as GMOnchainRow[]
+      : [];
 
-      if (start === 0n) break;
-    }
-
-    return [...new Map(
-      rows.map((row) => [`${row.wallet_address}:${row.checkin_date}`, row])
+    const merged = [...new Map(
+      [...cachedRows, ...recentRows]
+        .map((row) => [`${row.wallet_address}:${row.checkin_date}`, row])
     ).values()];
+
+    if (recentRows.length) await persistGMRows(recentRows);
+    return merged;
   } catch (error) {
-    console.warn('[GM] Chunked Arc RPC history unavailable; trying cached/indexed history:', error);
+    console.warn('[GM] Recent Arc RPC refresh unavailable; using verified cache:', error);
+
+    if (cachedRows.length) return cachedRows;
   }
 
   // Explorer data is only a recovery path. It is still real Arc Mainnet event
@@ -227,24 +249,6 @@ export async function fetchAllConfirmedGMEvents(): Promise<GMOnchainRow[]> {
     if (rows.length) return rows;
   } catch (error) {
     console.warn('[GM] Arcscan GM history unavailable:', error);
-  }
-
-  const supabase = getSupabase();
-  if (supabase) {
-    const { data, error } = await supabase
-      .from('gm_checkins')
-      .select('wallet_address,checkin_date,tx_hash,chain_id')
-      .eq('chain_id', ARC_CHAIN_ID)
-      .limit(10000);
-
-    if (!error && Array.isArray(data)) {
-      return data.map((row: any) => ({
-        wallet_address: String(row.wallet_address).toLowerCase(),
-        checkin_date: String(row.checkin_date),
-        tx_hash: row.tx_hash ? String(row.tx_hash).toLowerCase() : null,
-        chain_id: ARC_CHAIN_ID,
-      }));
-    }
   }
 
   throw new Error('No verified Arc Mainnet GM history source is currently available.');
