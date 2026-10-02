@@ -189,26 +189,35 @@ export async function fetchAllConfirmedGMEvents(): Promise<GMOnchainRow[]> {
     }
   };
 
-  // First ask the Arc Mainnet RPC for the complete event history. This is
-  // authoritative and does not depend on an explorer indexer being online.
+  // Arc RPC limits eth_getLogs to 10,000 blocks per request. Walk backwards
+  // in bounded chunks so the full verified GM history remains available.
   try {
-    const logs = await request('eth_getLogs', [{
-      address: GM_CONTRACT_ADDRESS,
-      topics: [GM_EVENT_TOPIC0],
-      fromBlock: '0x0',
-      toBlock: 'latest',
-    }]);
+    const latestHex = await request('eth_blockNumber', []);
+    const latestBlock = BigInt(latestHex);
+    const chunkSize = 9_000n;
+    const rows: GMOnchainRow[] = [];
 
-    if (Array.isArray(logs)) {
-      return [...new Map(
-        logs.map(decodeRpcLog).filter(Boolean).map((row: GMOnchainRow) => [
-          `${row.wallet_address}:${row.checkin_date}`,
-          row,
-        ])
-      ).values()];
+    for (let end = latestBlock; end >= 0n; end -= chunkSize) {
+      const start = end >= chunkSize - 1n ? end - (chunkSize - 1n) : 0n;
+      const logs = await request('eth_getLogs', [{
+        address: GM_CONTRACT_ADDRESS,
+        topics: [GM_EVENT_TOPIC0],
+        fromBlock: `0x${start.toString(16)}`,
+        toBlock: `0x${end.toString(16)}`,
+      }]);
+
+      if (Array.isArray(logs)) {
+        rows.push(...logs.map(decodeRpcLog).filter(Boolean) as GMOnchainRow[]);
+      }
+
+      if (start === 0n) break;
     }
+
+    return [...new Map(
+      rows.map((row) => [`${row.wallet_address}:${row.checkin_date}`, row])
+    ).values()];
   } catch (error) {
-    console.warn('[GM] Full Arc RPC log query unavailable; trying cached/indexed history:', error);
+    console.warn('[GM] Chunked Arc RPC history unavailable; trying cached/indexed history:', error);
   }
 
   // Explorer data is only a recovery path. It is still real Arc Mainnet event
