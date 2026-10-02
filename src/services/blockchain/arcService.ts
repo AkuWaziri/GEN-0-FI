@@ -9,6 +9,8 @@ const ARCSCAN_API_KEY = process.env.ARCSCAN_API_KEY || 'YourApiKeyToken';
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || process.env.ARCSCAN_API_KEY || '';
 const ETHERSCAN_V2_BASE = 'https://api.etherscan.io/v2/api';
 const ARCSCAN_RPC_URL = 'https://rpc.arc-scan.org';
+const BLOCKSCOUT_API_BASE = 'https://explorer.arc.io/api/v2';
+const BLOCKSCOUT_API_KEY = process.env.BLOCKSCOUT_API_KEY || process.env.EXPLORER_API_KEY || '';
 const NATIVE_DECIMALS = 18;
 const ERC20_USDC = '0x3600000000000000000000000000000000000000'.toLowerCase();
 const CACHE_TTL = 30_000;
@@ -86,6 +88,19 @@ async function fetchJson(url: string, timeoutMs = 15_000): Promise<any> {
   }
 
   throw lastError instanceof Error ? lastError : new Error('Arcscan request failed');
+}
+
+
+async function fetchJsonWithHeaders(url: string, headers?: HeadersInit, timeoutMs = 15_000): Promise<any> {
+  const response = await fetch(url, {
+    headers: {
+      ...requestHeaders(),
+      ...(headers || {}),
+    },
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
 }
 
 function scalarString(value: any, fallback = ''): string {
@@ -621,116 +636,64 @@ function collectTokenRows(value: any, depth = 0): any[] {
 }
 
 async function fetchAddressTokenBalances(address: string): Promise<any[]> {
-  const urls = [
-    `${ARCSCAN_V1_BASE}/address/${address}/tokens?sort=balance`,
-    (() => {
-      const url = new URL(ARCSCAN_API_BASE);
-      url.searchParams.set('module', 'account');
-      url.searchParams.set('action', 'addresstokenbalance');
-      url.searchParams.set('address', address);
-      return url.toString();
-    })(),
+  // Blockscout powers explorer.arc.io on Arc mainnet and exposes a direct
+  // address-token inventory. Prefer it over Arcscan here because the Arcscan
+  // public API can be edge-blocked from serverless regions. The data remains
+  // live Arc Mainnet indexed state; no mock or seeded balances are used.
+  const sources: Array<{ name: string; url: string; headers?: HeadersInit }> = [
+    {
+      name: 'Blockscout',
+      url: `${BLOCKSCOUT_API_BASE}/addresses/${address}/tokens?type=ERC-20`,
+      headers: {
+        Accept: 'application/json',
+        ...(BLOCKSCOUT_API_KEY ? { 'x-api-key': BLOCKSCOUT_API_KEY } : {}),
+      },
+    },
+    {
+      name: 'Arcscan',
+      url: `${ARCSCAN_V1_BASE}/address/${address}/tokens?sort=balance`,
+    },
+    {
+      name: 'Arcscan-compatible',
+      url: (() => {
+        const url = new URL(ARCSCAN_API_BASE);
+        url.searchParams.set('module', 'account');
+        url.searchParams.set('action', 'addresstokenbalance');
+        url.searchParams.set('address', address);
+        return url.toString();
+      })(),
+    },
   ];
 
   const all: any[] = [];
   const seen = new Set<string>();
-  for (const url of urls) {
+
+  for (const source of sources) {
     try {
-      const data = await fetchJson(url);
+      const data = await fetchJsonWithHeaders(source.url, source.headers);
       const rows = collectTokenRows(data);
       for (const row of rows) {
         const contract = tokenAddress(row).toLowerCase();
         if (!contract || seen.has(contract)) continue;
+
+        // Blockscout's token inventory is shaped as:
+        // { token: { address, name, symbol, decimals, type }, value }.
+        // Normalize it so the existing holdings pipeline can consume it.
+        if (row?.token && typeof row.token === 'object') {
+          row.address ??= row.token.address;
+          row.token_address ??= row.token.address;
+          row.name ??= row.token.name;
+          row.symbol ??= row.token.symbol;
+          row.decimals ??= row.token.decimals;
+          row.standard ??= row.token.type;
+          row.balance ??= row.value;
+        }
+
         seen.add(contract);
         all.push(row);
       }
     } catch (error) {
-      console.warn('[GEN-0FI] Arc token balance index unavailable:', error);
-    }
-  }
-  return all;
-}
-async function fetchTokenTransferCandidates(address: string): Promise<any[]> {
-  let cursor = '';
-  const all: any[] = [];
-
-  for (let page = 0; page < 50; page += 1) {
-    try {
-      const url = new URL(`${ARCSCAN_V1_BASE}/filter/token-transfers`);
-      url.searchParams.set('address', address);
-      url.searchParams.set('standard', 'ERC-20');
-      url.searchParams.set('limit', '100');
-      if (cursor) url.searchParams.set('cursor', cursor);
-
-      const data = await fetchJson(url.toString());
-      const rows = [
-        data?.items,
-        data?.transfers,
-        data?.result,
-        data?.data?.items,
-        data?.data?.transfers,
-      ].find(Array.isArray) || [];
-
-      all.push(...rows);
-
-      const next = data?.page?.next ?? data?.next_cursor ?? data?.nextCursor ?? data?.data?.page?.next;
-      if (!next || rows.length === 0) break;
-      cursor = String(next);
-    } catch (error) {
-      console.warn('[GEN-0FI] Arc token transfer index unavailable:', error);
-      break;
-    }
-  }
-
-  return all;
-}
-
-const ERC20_TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
-
-async function fetchTokenLogCandidates(address: string): Promise<any[]> {
-  let cursor = '';
-  const all: any[] = [];
-
-  for (let page = 0; page < 50; page += 1) {
-    try {
-      const url = new URL(`${ARCSCAN_V1_BASE}/address/${address}/logs`);
-      url.searchParams.set('topic0', ERC20_TRANSFER_TOPIC);
-      url.searchParams.set('limit', '100');
-      if (cursor) url.searchParams.set('cursor', cursor);
-
-      const data = await fetchJson(url.toString());
-      const rows = [
-        data?.items,
-        data?.logs,
-        data?.result,
-        data?.data?.items,
-        data?.data?.logs,
-      ].find(Array.isArray) || [];
-
-      for (const row of rows) {
-        const topic0 = String(row?.topic0 ?? row?.topics?.[0] ?? '').toLowerCase();
-        const tokenContract = addressOf(
-          row?.address ??
-          row?.contract_address ??
-          row?.contractAddress ??
-          row?.token_address ??
-          row?.token?.address
-        );
-        if (topic0 === ERC20_TRANSFER_TOPIC && tokenContract) {
-          all.push({
-            ...row,
-            address: tokenContract,
-            standard: row?.standard ?? row?.token_standard ?? row?.token?.standard ?? 'ERC-20',
-          });
-        }
-      }
-
-      const next = data?.page?.next ?? data?.next_cursor ?? data?.nextCursor ?? data?.data?.page?.next;
-      if (!next || rows.length === 0) break;
-      cursor = String(next);
-    } catch (error) {
-      console.warn('[GEN-0FI] Arc token log index unavailable:', error);
-      break;
+      console.warn(`[GEN-0FI] ${source.name} token balance index unavailable:`, error);
     }
   }
 
