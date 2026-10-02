@@ -148,13 +148,22 @@ export const GMStreakView: React.FC = () => {
     setPhase('wallet');
 
     try {
-      // The current Arc state is checked before opening the wallet.
-      // This prevents a duplicate daily transaction from being submitted.
-      const current = await getGMStatus(address);
-      if (current.stats.checkedInToday) {
-        setStats(current.stats);
+      // Read the contract's authoritative daily state before opening the wallet.
+      // Do not depend on the indexer for duplicate-day protection.
+      const lastCheckInDay = await publicClient.readContract({
+        address: GM_CONTRACT_ADDRESS as `0x${string}`,
+        abi: GM_CONTRACT_ABI,
+        functionName: 'lastCheckInDay',
+        args: [address as `0x${string}`],
+      });
+
+      const latestBlock = await publicClient.getBlock();
+      const currentDay = latestBlock.timestamp / 86400n;
+
+      if (lastCheckInDay === currentDay) {
         setConfirmedToday(true);
-        setTxHash(current.latestTxHash);
+        setStats((previous) => ({ ...previous, checkedInToday: true }));
+        setError('You already checked in today.');
         return;
       }
 
@@ -218,22 +227,19 @@ export const GMStreakView: React.FC = () => {
 
       if (/user rejected|user denied|rejected the request/i.test(message)) {
         setError('Rejected');
-      } else if (/already checked in today|already checked in|execution reverted|reverted/i.test(message)) {
-        try {
-          const status = await getGMStatus(address);
-          if (status.stats.checkedInToday) {
-            setStats(status.stats);
-            setConfirmedToday(true);
-            setTxHash(status.latestTxHash);
-            setError('You already checked in today.');
-          } else {
-            setError('GM transaction failed. No GM was recorded.');
-          }
-        } catch {
-          setError('GM transaction failed. No GM was recorded.');
-        }
+      } else if (/already checked in today|already checked in/i.test(message)) {
+        setConfirmedToday(true);
+        setStats((previous) => ({ ...previous, checkedInToday: true }));
+        setError('You already checked in today.');
+      } else if (/GM fee must be 0.01 USDC/i.test(message)) {
+        setError('GM fee mismatch. The transaction was not submitted.');
+      } else if (/fee transfer failed/i.test(message)) {
+        setError('GM fee transfer failed. The transaction was not submitted.');
+      } else if (/insufficient funds|exceeds the balance|not enough/i.test(message)) {
+        setError('Insufficient USDC for the GM fee and Arc gas.');
       } else {
-        setError('GM transaction failed. No GM was recorded.');
+        console.error('[GM] exact error:', message);
+        setError(message || 'GM transaction failed. No GM was recorded.');
       }
     } finally {
       setCheckingIn(false);
