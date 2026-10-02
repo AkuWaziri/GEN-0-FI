@@ -666,15 +666,15 @@ async function fetchAddressTokenBalances(address: string): Promise<any[]> {
   ];
 
   const all: any[] = [];
-  const seen = new Set<string>();
 
   for (const source of sources) {
     try {
       const data = await fetchJsonWithHeaders(source.url, source.headers);
       const rows = collectTokenRows(data);
-      for (const row of rows) {
-        const contract = tokenAddress(row).toLowerCase();
-        if (!contract || seen.has(contract)) continue;
+      for (const originalRow of rows) {
+        const row = originalRow && typeof originalRow === 'object'
+          ? { ...originalRow }
+          : originalRow;
 
         // Blockscout's token inventory is shaped as:
         // { token: { address, name, symbol, decimals, type }, value }.
@@ -689,7 +689,7 @@ async function fetchAddressTokenBalances(address: string): Promise<any[]> {
           row.balance ??= row.value;
         }
 
-        seen.add(contract);
+        if (!tokenAddress(row)) continue;
         all.push(row);
       }
     } catch (error) {
@@ -697,7 +697,29 @@ async function fetchAddressTokenBalances(address: string): Promise<any[]> {
     }
   }
 
-  return all;
+  // Merge sources only after normalization. A metadata-only or zero-balance
+  // Blockscout row must never hide a positive balance returned by Arcscan.
+  const merged = new Map<string, any>();
+  for (const row of all) {
+    const contract = tokenAddress(row).toLowerCase();
+    if (!contract) continue;
+
+    const existing = merged.get(contract);
+    if (!existing) {
+      merged.set(contract, row);
+      continue;
+    }
+
+    const currentBalance = tokenRawBalance(existing);
+    const nextBalance = tokenRawBalance(row);
+    if ((!currentBalance || currentBalance.raw <= 0n) && nextBalance && nextBalance.raw > 0n) {
+      merged.set(contract, row);
+    } else if (nextBalance && currentBalance && nextBalance.raw > currentBalance.raw) {
+      merged.set(contract, row);
+    }
+  }
+
+  return [...merged.values()];
 }
 
 function tokenStandard(row: any): string {
@@ -1041,11 +1063,13 @@ export async function fetchWalletAssetSummary(address: string): Promise<{
     seenCoins.add(contract);
   }
 
-  // Native Arc USDC is separate from the ERC-20 token index but is a real
-  // fungible holding and must always be represented when its balance is non-zero.
+  // Arc's native gas asset is USDC. Prefer the live native balance, then
+  // verify the canonical USDC contract directly if the native RPC is unavailable.
+  // Never let an upstream token-index failure erase the wallet's real USDC.
+  let nativeUsdcAdded = false;
   try {
     const native = await fetchBalanceFromArcRpc(address);
-    if (BigInt(native.raw) > 0n) {
+    if (native.isVerified && BigInt(native.raw) > 0n) {
       coins.unshift({
         address: ERC20_USDC,
         name: 'USD Coin',
@@ -1054,8 +1078,26 @@ export async function fetchWalletAssetSummary(address: string): Promise<{
         standard: 'NATIVE',
         decimals: NATIVE_DECIMALS,
       });
+      nativeUsdcAdded = true;
     }
   } catch {}
+
+  if (!nativeUsdcAdded) {
+    try {
+      const erc20Usdc = await readErc20Balance(ERC20_USDC, address);
+      if (erc20Usdc.raw > 0n) {
+        const decimals = erc20Usdc.decimals ?? NATIVE_DECIMALS;
+        coins.unshift({
+          address: ERC20_USDC,
+          name: 'USD Coin',
+          symbol: 'USDC',
+          balance: formatUnits(erc20Usdc.raw, decimals),
+          standard: 'ERC-20',
+          decimals,
+        });
+      }
+    } catch {}
+  }
 
   // Arcscan exposes NFT transfers but not a direct address NFT inventory.
   // Reconstruct current ownership from indexed transfer candidates, then verify
