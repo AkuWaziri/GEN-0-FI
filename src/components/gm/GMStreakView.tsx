@@ -153,35 +153,11 @@ export const GMStreakView: React.FC = () => {
     setPhase('wallet');
 
     try {
-      // Read the contract's authoritative daily state before opening the wallet.
-      // Do not depend on the indexer for duplicate-day protection.
-      const lastCheckInDay = await publicClient.readContract({
-        address: GM_CONTRACT_ADDRESS as `0x${string}`,
-        abi: GM_CONTRACT_ABI,
-        functionName: 'lastCheckInDay',
-        args: [address as `0x${string}`],
-      });
-
-      const latestBlock = await publicClient.getBlock();
-      const currentDay = latestBlock.timestamp / 86400n;
-
-      if (lastCheckInDay === currentDay) {
-        setConfirmedToday(true);
-        setStats((previous) => ({ ...previous, checkedInToday: true }));
-        setError('You already checked in today.');
-        return;
-      }
-
-      // Simulation is deliberately kept on the resilient read transport. If
-      // the public RPC is temporarily unavailable, the fallback handles it.
-      await publicClient.simulateContract({
-        address: GM_CONTRACT_ADDRESS as `0x${string}`,
-        abi: GM_CONTRACT_ABI,
-        functionName: 'checkIn',
-        value: GM_FEE_WEI,
-        account: address as `0x${string}`,
-      });
-
+      // Do not perform a browser-side RPC read or simulation before signing.
+      // The GM contract itself is authoritative: checkIn() enforces the daily
+      // duplicate rule and the exact 0.01 USDC fee. Extra preflight RPC calls
+      // were the source of the generic "HTTP request failed" path when an Arc
+      // public RPC was rate-limited or unavailable.
       const hash = await writeContractAsync({
         address: GM_CONTRACT_ADDRESS as `0x${string}`,
         abi: GM_CONTRACT_ABI,
