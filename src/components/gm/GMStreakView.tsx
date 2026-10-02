@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { CalendarDays, Check, ExternalLink, Flame, RefreshCw, Trophy } from 'lucide-react';
 import { useWallet } from '../../context/WalletContext';
-import { useWriteContract } from 'wagmi';
-import { createPublicClient, fallback, http } from 'viem';
+import { useSendTransaction } from 'wagmi';
+import { createPublicClient, encodeFunctionData, fallback, http } from 'viem';
 import {
   GM_CONTRACT_ABI,
   GM_CONTRACT_ADDRESS,
@@ -39,7 +39,7 @@ const emptyStats = (): GMStats => ({
 
 export const GMStreakView: React.FC = () => {
   const { address, isCorrectNetwork } = useWallet();
-  const { writeContractAsync } = useWriteContract();
+  const { sendTransactionAsync } = useSendTransaction();
 
   // Use two independent Arc Mainnet read endpoints. This path is read-only;
   // the wallet still signs and broadcasts the actual GM transaction.
@@ -158,13 +158,24 @@ export const GMStreakView: React.FC = () => {
       // duplicate rule and the exact 0.01 USDC fee. Extra preflight RPC calls
       // were the source of the generic "HTTP request failed" path when an Arc
       // public RPC was rate-limited or unavailable.
-      const hash = await writeContractAsync({
-        address: GM_CONTRACT_ADDRESS as `0x${string}`,
+      // Send a fully encoded EVM transaction instead of relying on the
+      // wallet's contract-write/estimation path. Some browser wallets,
+      // especially WalletConnect/Zerion providers, reject that higher-level
+      // request on custom chains even though a normal eth_sendTransaction
+      // works. An explicit gas limit also avoids wallet-side gas estimation
+      // differences on Arc.
+      const data = encodeFunctionData({
         abi: GM_CONTRACT_ABI,
         functionName: 'checkIn',
+      });
+
+      const hash = await sendTransactionAsync({
+        to: GM_CONTRACT_ADDRESS as `0x${string}`,
+        data,
         value: GM_FEE_WEI,
+        gas: 100_000n,
         chainId: ARC_CHAIN_ID,
-      } as any);
+      });
 
       setTxHash(hash);
       window.localStorage.setItem(PENDING_GM_TX_KEY, hash);
