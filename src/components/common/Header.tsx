@@ -33,6 +33,15 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onSelectTab, onOpenCo
   return (
     <header id="main-app-header" className="sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6 lg:px-8 py-2.5 bg-[#000000]/90 backdrop-blur-md border-b border-zinc-900 select-none h-14 w-full">
       <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onOpenMobileNav}
+          aria-label="Open navigation"
+          title="Open navigation"
+          className="md:hidden flex items-center justify-center w-9 h-9 rounded-lg border border-zinc-800 bg-[#0d0f12] text-zinc-300 hover:text-white hover:border-zinc-700 transition-colors cursor-pointer"
+        >
+          <Menu className="w-4 h-4" />
+        </button>
         <div className="md:hidden flex items-center gap-2"><Logo size="sm" showText={true} /></div>
         <div className="hidden md:flex items-center gap-3">
           <span className="text-xs font-semibold text-white font-mono tracking-tight">{getTabTitle()}</span>
@@ -45,13 +54,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onSelectTab, onOpenCo
         {isConnected && address ? <div className="flex items-center"><AddressBadge address={address} shortAddress={shortAddress} onClick={onOpenConnect} /></div> :
           <button id="btn-header-connect" onClick={onOpenConnect} className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg bg-white hover:bg-zinc-200 text-xs font-bold text-black glow-blue-cta cursor-pointer whitespace-nowrap"><Wallet className="w-3.5 h-3.5" /><span>Connect</span></button>}
       </div>
-      <button
-        type="button"
-        onClick={toggleSound}
-        aria-label={isMuted ? 'Turn sound on' : 'Turn sound off'}
-        title={isMuted ? 'Sound off' : 'Sound on'}
-        className="fixed right-4 bottom-20 md:bottom-5 z-50 flex items-center justify-center w-9 h-9 rounded-full border border-zinc-800 bg-[#0d0f12]/95 backdrop-blur-md text-zinc-400 hover:text-white hover:border-zinc-700 shadow-lg transition-all cursor-pointer"
-      >
+      <button type="button" onClick={toggleSound} aria-label={isMuted ? 'Turn sound on' : 'Turn sound off'} title={isMuted ? 'Sound off' : 'Sound on'} className="fixed right-4 bottom-20 md:bottom-5 z-50 flex items-center justify-center w-9 h-9 rounded-full border border-zinc-800 bg-[#0d0f12]/95 backdrop-blur-md text-zinc-400 hover:text-white hover:border-zinc-700 shadow-lg transition-all cursor-pointer">
         {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
       </button>
     </header>
