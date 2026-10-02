@@ -12,7 +12,6 @@ import { GMStreakView } from './components/gm/GMStreakView';
 import { WalletView } from './components/wallet/WalletView';
 import { Gen0BoundNFTView } from './components/nft/Gen0BoundNFTView';
 import { SavingsView } from './components/savings/SavingsView';
-import { PlaymemesView } from './components/playmemes/PlaymemesView';
 import { SettingsView } from './components/settings/SettingsView';
 import { PointsLeaderboardView } from './components/points/PointsLeaderboardView';
 import { SwapView } from './components/swap/SwapView';
@@ -76,7 +75,6 @@ const AppContent: React.FC = () => {
                 }}
               />
             )}
-            {activeTab === 'playmemes' && <PlaymemesView />}
             {activeTab === 'swap' && <SwapView />}
             {activeTab === 'wallet' && <WalletView initialMode={walletMode} />}
             {activeTab === 'savings' && <SavingsView />}
