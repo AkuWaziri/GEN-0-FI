@@ -583,6 +583,214 @@ async function fetchGasAndValueFallback(address: string, transactions: Normalize
   return { received, sent, gas };
 }
 
+async function fetchAddressTokenBalances(address: string): Promise<any[]> {
+  const urls = [
+    (() => {
+      const url = new URL(ARCSCAN_API_BASE);
+      url.searchParams.set('module', 'account');
+      url.searchParams.set('action', 'addresstokenbalance');
+      url.searchParams.set('address', address);
+      url.searchParams.set('apikey', ARCSCAN_API_KEY);
+      return url.toString();
+    })(),
+    `${ARCSCAN_V1_BASE}/address/${address}/tokens`,
+  ];
+
+  for (const url of urls) {
+    try {
+      const data = await fetchJson(url);
+      const rows =
+        Array.isArray(data?.result) ? data.result :
+        Array.isArray(data?.items) ? data.items :
+        Array.isArray(data?.tokens) ? data.tokens :
+        Array.isArray(data?.balances) ? data.balances :
+        [];
+      if (rows.length > 0) return rows;
+    } catch (error) {
+      console.warn('[GEN-0FI] Arc token balance index unavailable:', error);
+    }
+  }
+
+  return [];
+}
+
+async function fetchNftTransfers(address: string): Promise<any[]> {
+  let cursor = '';
+  const all: any[] = [];
+
+  try {
+    for (let page = 0; page < 20; page += 1) {
+      const url = new URL(`${ARCSCAN_V1_BASE}/filter/token-transfers`);
+      url.searchParams.set('address', address);
+      url.searchParams.set('standard', 'ERC-721');
+      url.searchParams.set('limit', '100');
+      if (cursor) url.searchParams.set('cursor', cursor);
+
+      const data = await fetchJson(url.toString());
+      const rows =
+        Array.isArray(data?.items) ? data.items :
+        Array.isArray(data?.transfers) ? data.transfers :
+        Array.isArray(data?.result) ? data.result :
+        [];
+      all.push(...rows);
+
+      const next = data?.page?.next ?? data?.next_cursor ?? data?.nextCursor;
+      if (!next || rows.length === 0) break;
+      cursor = String(next);
+    }
+  } catch (error) {
+    console.warn('[GEN-0FI] Arc NFT transfer index unavailable:', error);
+  }
+
+  return all;
+}
+
+function tokenStandard(row: any): string {
+  return String(
+    row?.standard ??
+    row?.token_standard ??
+    row?.token?.standard ??
+    row?.type ??
+    ''
+  ).toUpperCase().replace(/_/g, '-');
+}
+
+function tokenAddress(row: any): string {
+  return addressOf(
+    row?.address ??
+    row?.token_address ??
+    row?.tokenAddress ??
+    row?.contract_address ??
+    row?.contractAddress ??
+    row?.token?.address
+  ) || '';
+}
+
+function tokenName(row: any): string {
+  return String(row?.name ?? row?.token_name ?? row?.token?.name ?? 'Unknown asset');
+}
+
+function tokenSymbol(row: any): string {
+  return String(row?.symbol ?? row?.token_symbol ?? row?.token?.symbol ?? '—');
+}
+
+function tokenDecimals(row: any): number | undefined {
+  const value = row?.decimals ?? row?.token_decimal ?? row?.token?.decimals;
+  const decimals = Number(value);
+  return Number.isInteger(decimals) && decimals >= 0 && decimals <= 255 ? decimals : undefined;
+}
+
+function tokenRawBalance(row: any): { raw: bigint; decimals?: number } | null {
+  const decimals = tokenDecimals(row);
+  const value = row?.balance ?? row?.tokenBalance ?? row?.token_balance ?? row?.amount ?? row?.quantity ?? row?.raw_balance;
+  if (value === undefined || value === null) return null;
+
+  if (typeof value === 'object') {
+    const raw = value.raw ?? value.value_raw ?? value.amount_raw;
+    const nestedDecimals = Number(value.decimals ?? decimals);
+    if (raw !== undefined && /^-?\\d+$/.test(String(raw))) {
+      return { raw: BigInt(String(raw)), decimals: Number.isInteger(nestedDecimals) ? nestedDecimals : decimals };
+    }
+    const formatted = value.formatted ?? value.display ?? value.value;
+    if (formatted !== undefined && decimals !== undefined && /^-?\\d+(?:\\.\\d+)?$/.test(String(formatted))) {
+      const negative = String(formatted).startsWith('-');
+      const unsigned = negative ? String(formatted).slice(1) : String(formatted);
+      const [whole, fraction = ''] = unsigned.split('.');
+      const padded = (fraction + '0'.repeat(decimals)).slice(0, decimals);
+      const rawValue = BigInt(whole || '0') * 10n ** BigInt(decimals) + BigInt(padded || '0');
+      return { raw: negative ? -rawValue : rawValue, decimals };
+    }
+    return null;
+  }
+
+  if (/^-?\\d+$/.test(String(value))) {
+    return { raw: BigInt(String(value)), decimals };
+  }
+
+  return null;
+}
+
+async function readErc721Balance(contract: string, owner: string): Promise<bigint> {
+  const ABI = [{
+    type: 'function',
+    name: 'balanceOf',
+    stateMutability: 'view',
+    inputs: [{ name: 'owner', type: 'address' }],
+    outputs: [{ name: 'balance', type: 'uint256' }],
+  }] as const;
+
+  for (const client of [arcClient, arcScanClient]) {
+    try {
+      return await client.readContract({
+        address: contract as `0x${string}`,
+        abi: ABI,
+        functionName: 'balanceOf',
+        args: [owner as `0x${string}`],
+      });
+    } catch {}
+  }
+
+  return 0n;
+}
+
+async function readErc1155Balance(contract: string, owner: string, tokenId: bigint): Promise<bigint> {
+  const ABI = [{
+    type: 'function',
+    name: 'balanceOf',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'account', type: 'address' },
+      { name: 'id', type: 'uint256' },
+    ],
+    outputs: [{ name: 'value', type: 'uint256' }],
+  }] as const;
+
+  for (const client of [arcClient, arcScanClient]) {
+    try {
+      return await client.readContract({
+        address: contract as `0x${string}`,
+        abi: ABI,
+        functionName: 'balanceOf',
+        args: [owner as `0x${string}`, tokenId],
+      });
+    } catch {}
+  }
+
+  return 0n;
+}
+
+function nftTokenId(row: any): bigint | null {
+  const value = row?.token_id ?? row?.tokenId ?? row?.tokenID ?? row?.id;
+  if (value === undefined || value === null) return null;
+  try {
+    const text = String(value);
+    return /^\\d+$/.test(text) ? BigInt(text) : BigInt(text.startsWith('0x') ? text : '');
+  } catch {
+    return null;
+  }
+}
+
+async function fetchTokenMetadata(address: string, row: any): Promise<{ name: string; symbol: string; decimals?: number }> {
+  const existing = {
+    name: tokenName(row),
+    symbol: tokenSymbol(row),
+    decimals: tokenDecimals(row),
+  };
+  if (existing.name !== 'Unknown asset' && existing.symbol !== '—' && existing.decimals !== undefined) return existing;
+
+  try {
+    const data = await fetchJson(`${ARCSCAN_V1_BASE}/tokens/${address}`, 10_000);
+    const token = data?.token ?? data?.result ?? data;
+    return {
+      name: String(token?.name ?? token?.token_name ?? existing.name),
+      symbol: String(token?.symbol ?? token?.token_symbol ?? existing.symbol),
+      decimals: token?.decimals !== undefined ? Number(token.decimals) : existing.decimals,
+    };
+  } catch {
+    return existing;
+  }
+}
+
 export async function fetchWalletAssetSummary(address: string): Promise<{
   tokenHoldings: number;
   coinHoldings: number;
@@ -596,98 +804,110 @@ export async function fetchWalletAssetSummary(address: string): Promise<{
     return { tokenHoldings: 0, coinHoldings: 0, nftHoldings: 0, fungibleHoldings: 0, historyStatus: 'unavailable', coins: [], nfts: [] };
   }
 
-  const url = ARCSCAN_V1_BASE + '/address/' + address + '/tokens';
-  const data = await fetchJson(url);
-  const rows = Array.isArray(data?.items)
-    ? data.items
-    : Array.isArray(data?.tokens)
-      ? data.tokens
-      : Array.isArray(data?.result)
-        ? data.result
-        : [];
-
-  if (!Array.isArray(rows)) {
-    throw new Error('Arcscan token holdings unavailable');
-  }
-
+  const rows = await fetchAddressTokenBalances(address);
   const coins: Array<{ address: string; name: string; symbol: string; balance: string; standard: string; decimals?: number }> = [];
   const nfts: Array<{ address: string; name: string; symbol: string; balance: string; standard: string }> = [];
-
-  const displayBalance = (row: any): { value: string; decimals?: number } => {
-    const raw = row?.balance ?? row?.amount ?? row?.quantity ?? row?.raw_balance;
-    const decimalsCandidate = row?.decimals ?? row?.token?.decimals;
-    const decimals = Number.isFinite(Number(decimalsCandidate)) ? Number(decimalsCandidate) : undefined;
-    if (raw && typeof raw === 'object') {
-      const formatted = raw.formatted ?? raw.display ?? raw.value;
-      if (formatted !== undefined && formatted !== null) return { value: String(formatted), decimals };
-      const nestedRaw = raw.raw ?? raw.value_raw ?? raw.amount_raw;
-      if (nestedRaw !== undefined) {
-        try {
-          if (decimals !== undefined && /^-?\\d+$/.test(String(nestedRaw))) {
-            const exact = formatUnits(BigInt(String(nestedRaw)), decimals);
-            return { value: exact, decimals };
-          }
-          return { value: String(nestedRaw), decimals };
-        } catch {}
-      }
-    }
-    return { value: raw === undefined || raw === null ? '0' : String(raw), decimals };
-  };
-
-  let coinHoldings = 0;
-  let nftHoldings = 0;
+  const seenCoins = new Set<string>();
 
   for (const row of rows) {
-    const standard = String(
-      row?.standard ??
-      row?.token_standard ??
-      row?.type ??
-      row?.token?.standard ??
-      ''
-    ).toUpperCase();
-    const assetAddress = addressOf(
-      row?.address ?? row?.token_address ?? row?.tokenAddress ?? row?.token?.address ?? row?.contract_address ?? row?.contractAddress
-    ) || '';
-    const name = String(row?.name ?? row?.token_name ?? row?.token?.name ?? 'Unknown asset');
-    const symbol = String(row?.symbol ?? row?.token_symbol ?? row?.token?.symbol ?? '—');
-    const { value: balance, decimals } = displayBalance(row);
+    const standard = tokenStandard(row);
+    const assetAddress = tokenAddress(row);
+    if (!assetAddress) continue;
 
-    if (standard === 'ERC-721' || standard === 'ERC721' || standard === 'ERC-1155' || standard === 'ERC1155') {
-      nftHoldings++;
-      nfts.push({ address: assetAddress, name, symbol, balance, standard: standard || 'NFT' });
-    } else if (standard === 'ERC-20' || standard === 'ERC20') {
-      if (balance !== '0' && balance !== '0.0' && balance !== '0.00') {
-        coinHoldings++;
-        coins.push({ address: assetAddress, name, symbol, balance, standard: standard || 'ERC-20', decimals });
-      }
+    if (standard === 'ERC-20' || standard === 'ERC20' || !standard) {
+      const parsed = tokenRawBalance(row);
+      if (!parsed || parsed.raw <= 0n || seenCoins.has(assetAddress)) continue;
+      const metadata = await fetchTokenMetadata(assetAddress, row);
+      const decimals = parsed.decimals ?? metadata.decimals ?? 18;
+      coins.push({
+        address: assetAddress,
+        name: metadata.name,
+        symbol: metadata.symbol,
+        balance: formatUnits(parsed.raw, decimals),
+        standard: 'ERC-20',
+        decimals,
+      });
+      seenCoins.add(assetAddress);
     }
   }
 
-  // Native Arc USDC is the wallet's primary coin holding and is intentionally
-  // shown once, separately from the ERC-20 token index.
-  let nativeCoinCount = 0;
-  let nativeBalance = '0';
+  // Native Arc USDC is separate from the ERC-20 token index but is a real
+  // fungible holding and must always be represented when its balance is non-zero.
   try {
-    const { raw, formatted } = await fetchBalanceFromArcRpc(address);
-    if (BigInt(raw) > 0n) {
-      nativeCoinCount = 1;
-      nativeBalance = formatted;
+    const native = await fetchBalanceFromArcRpc(address);
+    if (BigInt(native.raw) > 0n) {
       coins.unshift({
         address: ERC20_USDC,
         name: 'USD Coin',
         symbol: 'USDC',
-        balance: formatted,
+        balance: native.formatted,
         standard: 'NATIVE',
         decimals: NATIVE_DECIMALS,
       });
     }
   } catch {}
 
+  // Arcscan exposes NFT transfers but not a direct address NFT inventory.
+  // Reconstruct current ownership from indexed transfer candidates, then verify
+  // each contract's live balanceOf on Arc Mainnet. No guessed or fabricated NFTs.
+  const nftRows = await fetchNftTransfers(address);
+  const nftContracts = new Map<string, any[]>();
+  for (const row of nftRows) {
+    const contract = tokenAddress(row);
+    if (!contract) continue;
+    const standard = tokenStandard(row);
+    if (standard === 'ERC-721' || standard === 'ERC721' || standard === 'ERC-1155' || standard === 'ERC1155') {
+      const list = nftContracts.get(contract) || [];
+      list.push(row);
+      nftContracts.set(contract, list);
+    }
+  }
+
+  for (const [contract, contractRows] of nftContracts) {
+    const standard = tokenStandard(contractRows[0]);
+    const metadata = await fetchTokenMetadata(contract, contractRows[0]);
+
+    if (standard === 'ERC-721' || standard === 'ERC721') {
+      const balance = await readErc721Balance(contract, address);
+      if (balance > 0n) {
+        nfts.push({
+          address: contract,
+          name: metadata.name,
+          symbol: metadata.symbol,
+          balance: balance.toString(),
+          standard: 'ERC-721',
+        });
+      }
+    } else {
+      const tokenIds = new Set<string>();
+      for (const row of contractRows) {
+        const id = nftTokenId(row);
+        if (id !== null) tokenIds.add(id.toString());
+      }
+      let total = 0n;
+      for (const id of tokenIds) {
+        total += await readErc1155Balance(contract, address, BigInt(id));
+      }
+      if (total > 0n) {
+        nfts.push({
+          address: contract,
+          name: metadata.name,
+          symbol: metadata.symbol,
+          balance: total.toString(),
+          standard: 'ERC-1155',
+        });
+      }
+    }
+  }
+
+  const coinHoldings = coins.length;
+  const nftHoldings = nfts.length;
+
   return {
-    tokenHoldings: coinHoldings + nftHoldings + nativeCoinCount,
-    coinHoldings: coinHoldings + nativeCoinCount,
+    tokenHoldings: coinHoldings + nftHoldings,
+    coinHoldings,
     nftHoldings,
-    fungibleHoldings: coinHoldings + nativeCoinCount,
+    fungibleHoldings: coinHoldings,
     historyStatus: 'complete',
     coins,
     nfts,
