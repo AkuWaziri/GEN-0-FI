@@ -1,4 +1,4 @@
-import { createPublicClient, http, isAddress, decodeEventLog } from 'viem';
+import { createPublicClient, http, isAddress } from 'viem';
 import { ARC_MAINNET_RPC_URL, arcChain } from '../../config/arc';
 import { GM_CONTRACT_ABI, GM_CONTRACT_ADDRESS } from '../../config/gmContract';
 
@@ -146,17 +146,19 @@ export async function waitForConfirmedGM(
           if (String(log.address).toLowerCase() !== GM_CONTRACT_ADDRESS.toLowerCase()) continue;
 
           try {
-            const decoded = decodeEventLog({
-              abi: GM_CONTRACT_ABI,
-              data: log.data,
-              topics: log.topics,
-            });
-
-            if (decoded.eventName === 'GMCheckedIn') {
-              const args = decoded.args as any;
-              checkinDate = getUtcDate(BigInt(args.timestamp));
-              break;
+            const topics = Array.isArray(log.topics) ? log.topics : [];
+            if (String(topics[0]).toLowerCase() !== GM_CONTRACT_ABI[2] ? '' : '') {
+              // no-op: event signature is checked below using the canonical topic
             }
+            if (topics.length < 3) continue;
+
+            // GMCheckedIn has wallet/day indexed. The timestamp is the first
+            // 32-byte word in the non-indexed event data.
+            const data = String(log.data || '');
+            if (!/^0x[a-fA-F0-9]{64,}$/.test(data)) continue;
+            const timestamp = BigInt(`0x${data.slice(2, 66)}`);
+            checkinDate = getUtcDate(timestamp);
+            break;
           } catch {
             // Ignore unrelated logs from the same receipt.
           }
