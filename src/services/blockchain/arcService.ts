@@ -583,9 +583,32 @@ async function fetchGasAndValueFallback(address: string, transactions: Normalize
   return { received, sent, gas };
 }
 
+function collectTokenRows(value: any, depth = 0): any[] {
+  if (depth > 5 || value === null || value === undefined) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value !== 'object') return [];
+
+  const rows: any[] = [];
+  const preferredKeys = ['items', 'tokens', 'balances', 'holdings', 'result', 'data', 'assets'];
+  for (const key of preferredKeys) {
+    if (value[key] !== undefined) {
+      const nested = collectTokenRows(value[key], depth + 1);
+      if (nested.length) rows.push(...nested);
+    }
+  }
+
+  for (const [key, nestedValue] of Object.entries(value)) {
+    if (isAddress(key, { strict: false }) && nestedValue !== null && typeof nestedValue !== 'object') {
+      rows.push({ address: key, balance: nestedValue });
+    }
+  }
+
+  return rows;
+}
+
 async function fetchAddressTokenBalances(address: string): Promise<any[]> {
   const urls = [
-    `${ARCSCAN_V1_BASE}/address/${address}/tokens`,
+    `${ARCSCAN_V1_BASE}/address/${address}/tokens?sort=balance`,
     (() => {
       const url = new URL(ARCSCAN_API_BASE);
       url.searchParams.set('module', 'account');
@@ -599,20 +622,8 @@ async function fetchAddressTokenBalances(address: string): Promise<any[]> {
   for (const url of urls) {
     try {
       const data = await fetchJson(url);
-      const candidates = [
-        data,
-        data?.data,
-        data?.result,
-        data?.items,
-        data?.tokens,
-        data?.balances,
-        data?.data?.items,
-        data?.data?.tokens,
-        data?.data?.balances,
-      ];
-      for (const value of candidates) {
-        if (Array.isArray(value) && value.length > 0) return value;
-      }
+      const rows = collectTokenRows(data);
+      if (rows.length) return rows;
     } catch (error) {
       console.warn('[GEN-0FI] Arc token balance index unavailable:', error);
     }
@@ -620,7 +631,6 @@ async function fetchAddressTokenBalances(address: string): Promise<any[]> {
 
   return [];
 }
-
 async function fetchTokenTransferCandidates(address: string): Promise<any[]> {
   let cursor = '';
   const all: any[] = [];
@@ -719,14 +729,16 @@ function tokenStandard(row: any): string {
 }
 
 function tokenAddress(row: any): string {
-  return addressOf(
+  const direct = typeof row === 'string' ? row : (
     row?.address ??
     row?.token_address ??
     row?.tokenAddress ??
     row?.contract_address ??
     row?.contractAddress ??
-    row?.token?.address
-  ) || '';
+    row?.token?.address ??
+    (typeof row?.token === 'string' ? row.token : undefined)
+  );
+  return addressOf(direct) || '';
 }
 
 function tokenName(row: any): string {
