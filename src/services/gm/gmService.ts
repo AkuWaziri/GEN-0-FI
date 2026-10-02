@@ -1,4 +1,4 @@
-import { createPublicClient, http, isAddress } from 'viem';
+import { createPublicClient, http, isAddress, keccak256, toHex } from 'viem';
 import { ARC_MAINNET_RPC_URL, arcChain } from '../../config/arc';
 import { GM_CONTRACT_ABI, GM_CONTRACT_ADDRESS } from '../../config/gmContract';
 
@@ -29,6 +29,10 @@ export interface GMStatusResponse {
 }
 
 export const GM_STREAK_DAILY_CAP = 300;
+
+const GM_EVENT_TOPIC0 = keccak256(
+  toHex('GMCheckedIn(address,uint256,uint256,uint256)')
+);
 
 export const getGMStreakPoints = (streak: number): number => {
   if (streak <= 0) return 0;
@@ -147,10 +151,8 @@ export async function waitForConfirmedGM(
 
           try {
             const topics = Array.isArray(log.topics) ? log.topics : [];
-            if (String(topics[0]).toLowerCase() !== GM_CONTRACT_ABI[2] ? '' : '') {
-              // no-op: event signature is checked below using the canonical topic
-            }
             if (topics.length < 3) continue;
+            if (String(topics[0]).toLowerCase() !== GM_EVENT_TOPIC0.toLowerCase()) continue;
 
             // GMCheckedIn has wallet/day indexed. The timestamp is the first
             // 32-byte word in the non-indexed event data.
