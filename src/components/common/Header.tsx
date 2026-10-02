@@ -3,13 +3,13 @@ import { Logo } from './Logo';
 import { AddressBadge } from './AddressBadge';
 import { TabType } from './Sidebar';
 import { useWallet } from '../../context/WalletContext';
-import { Wallet, Sun, Moon, Volume2, VolumeX } from 'lucide-react';
+import { Wallet, Sun, Moon, Volume2, VolumeX, Menu } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { soundEngine } from '../../utils/sound';
 
-interface HeaderProps { activeTab?: TabType; onSelectTab?: (tab: TabType) => void; onOpenConnect: () => void; }
+interface HeaderProps { activeTab?: TabType; onSelectTab?: (tab: TabType) => void; onOpenConnect: () => void; onOpenMobileNav?: () => void; }
 
-export const Header: React.FC<HeaderProps> = ({ activeTab, onSelectTab, onOpenConnect }) => {
+export const Header: React.FC<HeaderProps> = ({ activeTab, onSelectTab, onOpenConnect, onOpenMobileNav }) => {
   const { isConnected, address, shortAddress } = useWallet();
   const { theme, toggleTheme } = useTheme();
   const [isMuted, setIsMuted] = React.useState(soundEngine.getIsMuted());
@@ -20,9 +20,12 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onSelectTab, onOpenCo
       case 'playmemes': return 'Playmemes';
       case 'activity': return 'Activity';
       case 'swap': return 'Swap & Bridge';
+      case 'gateway': return 'Circle Gateway';
       case 'wallet': return 'Send & Receive';
-      case 'savings': return 'Savings';
+      case 'savings': return 'Lend';
       case 'gm': return 'GM Streak';
+      case 'addressbook': return 'Address Book';
+      case 'points': return 'Leaderboard';
       case 'boundnft': return 'GEN-0 Bound NFT';
       default: return 'Dashboard';
     }
