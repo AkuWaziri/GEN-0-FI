@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useWallet } from '../../context/WalletContext';
 import { Skeleton } from '../common/Skeleton';
 import { TabType } from '../common/Sidebar';
-import { Gen0BoundNFTView } from '../nft/Gen0BoundNFTView';
 import {
   Code2,
   Flame,
@@ -399,18 +398,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onSelectTab, onOpenC
         )}
       </section>
 
-      <section className="space-y-3">
-        <div className="flex items-end justify-between gap-3 px-1">
-          <div>
-            <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-blue-400">GEN-0 Services</p>
-            <h2 className="mt-1 text-sm font-bold text-white">Onchain utilities</h2>
-          </div>
-          <span className="text-[10px] text-zinc-600 font-mono">Arc Mainnet</span>
-        </div>
-        <div className="rounded-2xl border border-zinc-800 bg-[#0d0f12] overflow-hidden glow-blue-card-hover">
-          <Gen0BoundNFTView />
-        </div>
-      </section>
+
 
     </div>
   );
