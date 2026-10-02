@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AddressBook as AddressBookIcon, Check, Copy, Pencil, Plus, Search, Send, Trash2, X } from 'lucide-react';
+import { Contact as AddressBookIcon, Check, Copy, Pencil, Plus, Search, Send, Trash2, X } from 'lucide-react';
 import { isAddress } from 'viem';
 import { useWallet } from '../../context/WalletContext';
 type Contact = { id: string; name: string; address: string; note?: string };
