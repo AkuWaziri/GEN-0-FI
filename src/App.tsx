@@ -15,6 +15,8 @@ import { SavingsView } from './components/savings/SavingsView';
 import { SettingsView } from './components/settings/SettingsView';
 import { PointsLeaderboardView } from './components/points/PointsLeaderboardView';
 import { SwapView } from './components/swap/SwapView';
+import { GatewayView } from './components/gateway/GatewayView';
+import { AddressBookView } from './components/addressbook/AddressBookView';
 import { ConnectWalletModal } from './components/wallet/ConnectWalletModal';
 import { WrongNetworkView } from './components/wallet/WrongNetworkView';
 import { WelcomeOnboarding } from './components/wallet/WelcomeOnboarding';
@@ -29,6 +31,7 @@ const AppContent: React.FC = () => {
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
   const [isIdentityModalOpen, setIsIdentityModalOpen] = useState(false);
   const [walletMode, setWalletMode] = useState<'send' | 'receive'>('send');
+  const [prefilledRecipient, setPrefilledRecipient] = useState('');
 
   useEffect(() => {
     const cleanup = initGlobalClickSound();
@@ -75,9 +78,11 @@ const AppContent: React.FC = () => {
                 }}
               />
             )}
+            {activeTab === 'gateway' && <GatewayView />}
             {activeTab === 'swap' && <SwapView />}
-            {activeTab === 'wallet' && <WalletView initialMode={walletMode} />}
+            {activeTab === 'wallet' && <WalletView initialMode={walletMode} initialRecipient={prefilledRecipient} />}
             {activeTab === 'savings' && <SavingsView />}
+            {activeTab === 'addressbook' && <AddressBookView onSendTo={(recipient) => { setPrefilledRecipient(recipient); setWalletMode('send'); setActiveTab('wallet'); }} />}
             {activeTab === 'boundnft' && <Gen0BoundNFTView />}
             {activeTab === 'gm' && <GMStreakView />}
             {activeTab === 'activity' && <ActivityView />}
