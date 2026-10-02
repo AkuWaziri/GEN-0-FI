@@ -36,14 +36,14 @@ export default async function handler(req: any, res: any) {
   const normalizedAddress = getAddress(address);
 
   try {
-    const hasMinted = await arcClient.readContract({
+    const hasMinted = await (arcClient.readContract as any)({
       address: CONTRACT,
       abi: ABI,
       functionName: 'hasMinted',
       args: [normalizedAddress],
     });
 
-    const balance = await arcClient.readContract({
+    const balance = await (arcClient.readContract as any)({
       address: CONTRACT,
       abi: ABI,
       functionName: 'balanceOf',
