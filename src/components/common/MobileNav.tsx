@@ -1,6 +1,6 @@
 import React from 'react';
 import { TabType } from './Sidebar';
-import { LayoutDashboard, History, Settings, ArrowLeftRight, Trophy, Send, PiggyBank } from 'lucide-react';
+import { LayoutDashboard, History, ArrowLeftRight, Trophy, Send, PiggyBank } from 'lucide-react';
 
 interface MobileNavProps { activeTab: TabType; onSelectTab: (tab: TabType) => void; }
 
@@ -12,7 +12,6 @@ export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, onSelectTab }) 
     { id: 'savings' as TabType, label: 'Lend', icon: PiggyBank },
     { id: 'points' as TabType, label: 'Leaderboard', icon: Trophy },
     { id: 'activity' as TabType, label: 'Activity', icon: History },
-    { id: 'settings' as TabType, label: 'Settings', icon: Settings },
   ];
   return (
     <nav id="mobile-bottom-nav" role="tablist" aria-label="Mobile Navigation" className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#08090b]/95 backdrop-blur-lg border-t border-zinc-900 px-1 py-1.5 flex items-center overflow-x-auto select-none shadow-lg pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]">
