@@ -17,9 +17,10 @@ type Token = 'USDC' | 'EURC';
 
 interface WalletViewProps {
   initialMode?: Mode;
+  initialRecipient?: string;
 }
 
-export const WalletView: React.FC<WalletViewProps> = ({ initialMode = 'send' }) => {
+export const WalletView: React.FC<WalletViewProps> = ({ initialMode = 'send', initialRecipient = '' }) => {
   const { address, balanceUSDC, refreshData } = useWallet();
   const { chainId } = useAccount();
   const { data: walletClient } = useWalletClient();
@@ -33,7 +34,8 @@ export const WalletView: React.FC<WalletViewProps> = ({ initialMode = 'send' }) 
   const [token, setToken] = useState<Token>('USDC');
   const [tokenBalance, setTokenBalance] = useState('0.00');
   const [feeUsdc, setFeeUsdc] = useState(0);
-  const [recipient, setRecipient] = useState('');
+  const [recipient, setRecipient] = useState(initialRecipient);
+  React.useEffect(() => { if (initialRecipient) setRecipient(initialRecipient); }, [initialRecipient]);
   const [amount, setAmount] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
