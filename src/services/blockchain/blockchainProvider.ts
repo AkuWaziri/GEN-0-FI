@@ -117,87 +117,122 @@ export class ArcBlockchainProvider implements BlockchainProvider {
       // server cannot reach Arcscan's public API.
     }
 
-    // Vercel's server-side requests to Arcscan can be rejected at the edge
-    // while the same public endpoint is available to browsers. Use Arcscan's
-    // wallet token index directly as the authoritative fallback. Never invent
-    // a balance: only rows actually returned by Arcscan are displayed.
+    // Arcscan exposes the same holdings through both its typed API and its
+    // Etherscan-compatible account.addresstokenbalance route. The latter is
+    // useful as a second browser-safe fallback because it returns a flat
+    // result array with the token's exact on-chain decimal scale.
+    const normalizeRows = (data: any): any[] => {
+      const rows: any[] = [];
+      const visit = (value: any, depth = 0) => {
+        if (depth > 5 || value === null || value === undefined) return;
+        if (Array.isArray(value)) {
+          rows.push(...value);
+          return;
+        }
+        if (typeof value !== 'object') return;
+        const directKeys = ['tokens', 'items', 'balances', 'holdings', 'result', 'data', 'assets'];
+        for (const key of directKeys) visit(value[key], depth + 1);
+        if (
+          value.TokenAddress || value.token_address || value.contract_address ||
+          value.address || value.contractAddress
+        ) rows.push(value);
+      };
+      visit(data);
+      return rows;
+    };
+
+    const normalizeTokenRows = (rawRows: any[]): WalletAssetSummary['coins'] => {
+      const normalized = rawRows
+        .map((row: any) => {
+          const token = row?.token && typeof row.token === 'object' ? row.token : row;
+          const balanceObject = token?.balance && typeof token.balance === 'object' ? token.balance : null;
+          const addressValue =
+            token?.address ?? token?.token_address ?? token?.contract_address ??
+            token?.contractAddress ?? token?.TokenAddress;
+          const contract = typeof addressValue === 'string' ? addressValue : '';
+          const symbol = String(token?.symbol ?? token?.token_symbol ?? token?.TokenSymbol ?? '—');
+          const name = String(token?.name ?? token?.token_name ?? token?.TokenName ?? symbol);
+          const standard = String(token?.standard ?? token?.token_standard ?? token?.type ?? 'ERC-20')
+            .toUpperCase().replace(/_/g, '-');
+          const rawBalance =
+            balanceObject?.raw ?? token?.raw_balance ?? token?.rawBalance ??
+            token?.TokenQuantity ?? token?.balance;
+          const formatted =
+            balanceObject?.formatted ?? balanceObject?.display ?? balanceObject?.value ??
+            token?.formatted_balance ?? token?.formatted ?? token?.display ?? token?.quantity ?? token?.TokenQuantity;
+          const decimalsValue =
+            balanceObject?.decimals ?? token?.decimals ?? token?.token_decimal ?? token?.TokenDivisor;
+          const decimals = Number(decimalsValue);
+          const rawText = rawBalance === undefined || rawBalance === null ? '' : String(rawBalance);
+          const positive = rawText && /^\\d+$/.test(rawText)
+            ? BigInt(rawText) > 0n
+            : formatted !== undefined && formatted !== null && Number(formatted) > 0;
+          return {
+            address: contract,
+            name,
+            symbol,
+            balance: String(formatted ?? ''),
+            standard,
+            decimals: Number.isInteger(decimals) && decimals >= 0 && decimals <= 255 ? decimals : undefined,
+            positive,
+          };
+        })
+        .filter((row: any) =>
+          row.address &&
+          row.address.toLowerCase() !== '0x3600000000000000000000000000000000000000' &&
+          row.positive &&
+          (row.standard === 'ERC-20' || row.standard === 'ERC20' || row.standard === 'FUNGIBLE')
+        )
+        .map(({ positive, ...row }: any) => row);
+      const unique = new Map<string, any>();
+      for (const row of normalized) unique.set(row.address.toLowerCase(), row);
+      return Array.from(unique.values());
+    };
+
+    const mergeAndReturn = (rows: WalletAssetSummary['coins']): WalletAssetSummary | null => {
+      if (!rows?.length) return null;
+      const existingCoins = serverAssets?.coins ?? [];
+      const byAddress = new Map(existingCoins.map((coin) => [coin.address.toLowerCase(), coin]));
+      for (const row of rows) byAddress.set(row.address.toLowerCase(), row);
+      const coins = Array.from(byAddress.values());
+      const nfts = serverAssets?.nfts ?? [];
+      return {
+        tokenHoldings: coins.length + nfts.length,
+        coinHoldings: coins.length,
+        nftHoldings: nfts.length,
+        fungibleHoldings: coins.length,
+        historyStatus: 'complete',
+        coins,
+        nfts,
+      };
+    };
+
     try {
       const response = await fetch(
         `https://api.arc-scan.org/v1/address/${address}/tokens?sort=balance`,
         { cache: 'no-store', headers: { Accept: 'application/json' } }
       );
       if (response.ok) {
-        const data = await response.json();
-        const rawRows =
-          Array.isArray(data) ? data :
-          Array.isArray(data?.tokens) ? data.tokens :
-          Array.isArray(data?.items) ? data.items :
-          Array.isArray(data?.data) ? data.data :
-          Array.isArray(data?.result) ? data.result : [];
-
-        const rows = rawRows
-          .map((row: any) => {
-            const token = row?.token && typeof row.token === 'object' ? row.token : row;
-            const addressValue =
-              token?.address ??
-              token?.token_address ??
-              token?.contract_address ??
-              token?.contractAddress ??
-              token?.TokenAddress;
-            const contract = typeof addressValue === 'string' ? addressValue : '';
-            const symbol = String(token?.symbol ?? token?.token_symbol ?? token?.TokenSymbol ?? '—');
-            const name = String(token?.name ?? token?.token_name ?? token?.TokenName ?? symbol);
-            const standard = String(token?.standard ?? token?.token_standard ?? token?.type ?? 'ERC-20');
-            const balanceValue = token?.balance;
-            const formatted =
-              typeof balanceValue === 'object'
-                ? balanceValue?.formatted ?? balanceValue?.display ?? balanceValue?.value
-                : balanceValue ?? token?.formatted_balance ?? token?.quantity ?? token?.TokenQuantity;
-            const decimalsValue =
-              typeof balanceValue === 'object'
-                ? balanceValue?.decimals
-                : token?.decimals ?? token?.token_decimal ?? token?.TokenDivisor;
-            const decimals = Number(decimalsValue);
-            const isPositive = formatted !== undefined && formatted !== null && Number(formatted) > 0;
-            return {
-              address: contract,
-              name,
-              symbol,
-              balance: String(formatted ?? ''),
-              standard: standard.toUpperCase().replace(/_/g, '-'),
-              decimals: Number.isInteger(decimals) && decimals >= 0 && decimals <= 255 ? decimals : undefined,
-              isPositive,
-            };
-          })
-          .filter((row: any) =>
-            row.address &&
-            row.address.toLowerCase() !== '0x3600000000000000000000000000000000000000' &&
-            row.isPositive &&
-            (row.standard === 'ERC-20' || row.standard === 'ERC20' || row.standard === 'FUNGIBLE')
-          )
-          .map(({ isPositive, ...row }: any) => row);
-
-        if (rows.length) {
-          const existingCoins = serverAssets?.coins ?? [];
-          const byAddress = new Map(existingCoins.map((coin) => [coin.address.toLowerCase(), coin]));
-          for (const row of rows) {
-            byAddress.set(row.address.toLowerCase(), row);
-          }
-          const coins = Array.from(byAddress.values());
-          const nfts = serverAssets?.nfts ?? [];
-          return {
-            tokenHoldings: coins.length + nfts.length,
-            coinHoldings: coins.length,
-            nftHoldings: nfts.length,
-            fungibleHoldings: coins.length,
-            historyStatus: 'complete',
-            coins,
-            nfts,
-          };
-        }
+        const rows = normalizeTokenRows(normalizeRows(await response.json()));
+        const assets = mergeAndReturn(rows);
+        if (assets) return assets;
       }
     } catch (error) {
       console.warn('Direct Arcscan token holdings fallback unavailable:', error);
+    }
+
+    try {
+      const response = await fetch(
+        `https://api.arc-scan.org/api?module=account&action=addresstokenbalance&address=${address}`,
+        { cache: 'no-store', headers: { Accept: 'application/json' } }
+      );
+      if (response.ok) {
+        const rows = normalizeTokenRows(normalizeRows(await response.json()));
+        const assets = mergeAndReturn(rows);
+        if (assets) return assets;
+      }
+    } catch (error) {
+      console.warn('Arcscan account token holdings fallback unavailable:', error);
     }
 
     if (serverAssets?.historyStatus === 'complete') return serverAssets;
