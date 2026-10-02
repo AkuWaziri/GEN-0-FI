@@ -15,7 +15,6 @@ import { SavingsView } from './components/savings/SavingsView';
 import { SettingsView } from './components/settings/SettingsView';
 import { PointsLeaderboardView } from './components/points/PointsLeaderboardView';
 import { SwapView } from './components/swap/SwapView';
-import { ArcMainnetStatsView } from './components/arc/ArcMainnetStatsView';
 import { ConnectWalletModal } from './components/wallet/ConnectWalletModal';
 import { WrongNetworkView } from './components/wallet/WrongNetworkView';
 import { WelcomeOnboarding } from './components/wallet/WelcomeOnboarding';
@@ -66,7 +65,6 @@ const AppContent: React.FC = () => {
         <Header activeTab={activeTab} onSelectTab={setActiveTab} onOpenConnect={() => setIsIdentityModalOpen(true)} />
         <main className="flex-1 overflow-y-auto flex flex-col justify-between">
           <div>
-            {activeTab === 'arcstats' && <ArcMainnetStatsView />}
             {activeTab === 'overview' && (
               <OverviewView
                 onSelectTab={setActiveTab}
