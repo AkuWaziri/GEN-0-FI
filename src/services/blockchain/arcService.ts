@@ -586,12 +586,17 @@ async function fetchGasAndValueFallback(address: string, transactions: Normalize
 }
 
 function collectTokenRows(value: any, depth = 0): any[] {
-  if (depth > 5 || value === null || value === undefined) return [];
-  if (Array.isArray(value)) return value;
+  if (depth > 8 || value === null || value === undefined) return [];
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => {
+      const nested = collectTokenRows(item, depth + 1);
+      return nested.length ? nested : (item && typeof item === 'object' ? [item] : []);
+    });
+  }
   if (typeof value !== 'object') return [];
 
   const rows: any[] = [];
-  const preferredKeys = ['items', 'tokens', 'balances', 'holdings', 'result', 'data', 'assets'];
+  const preferredKeys = ['items', 'tokens', 'balances', 'holdings', 'assets', 'result', 'data', 'tokenBalances', 'token_balances'];
   for (const key of preferredKeys) {
     if (value[key] !== undefined) {
       const nested = collectTokenRows(value[key], depth + 1);
@@ -600,11 +605,18 @@ function collectTokenRows(value: any, depth = 0): any[] {
   }
 
   for (const [key, nestedValue] of Object.entries(value)) {
-    if (isAddress(key, { strict: false }) && nestedValue !== null && typeof nestedValue !== 'object') {
-      rows.push({ address: key, balance: nestedValue });
+    if (!isAddress(key, { strict: false }) || nestedValue === null || nestedValue === undefined) continue;
+    if (typeof nestedValue === 'object' && !Array.isArray(nestedValue)) {
+      const row = { ...(nestedValue as Record<string, any>) };
+      row.address ??= key;
+      row.token_address ??= key;
+      rows.push(row);
+    } else {
+      rows.push({ address: key, token_address: key, balance: nestedValue });
     }
   }
 
+  if (tokenAddress(value)) rows.push(value);
   return rows;
 }
 
@@ -616,22 +628,27 @@ async function fetchAddressTokenBalances(address: string): Promise<any[]> {
       url.searchParams.set('module', 'account');
       url.searchParams.set('action', 'addresstokenbalance');
       url.searchParams.set('address', address);
-      url.searchParams.set('apikey', ARCSCAN_API_KEY);
       return url.toString();
     })(),
   ];
 
+  const all: any[] = [];
+  const seen = new Set<string>();
   for (const url of urls) {
     try {
       const data = await fetchJson(url);
       const rows = collectTokenRows(data);
-      if (rows.length) return rows;
+      for (const row of rows) {
+        const contract = tokenAddress(row).toLowerCase();
+        if (!contract || seen.has(contract)) continue;
+        seen.add(contract);
+        all.push(row);
+      }
     } catch (error) {
       console.warn('[GEN-0FI] Arc token balance index unavailable:', error);
     }
   }
-
-  return [];
+  return all;
 }
 async function fetchTokenTransferCandidates(address: string): Promise<any[]> {
   let cursor = '';
@@ -724,7 +741,11 @@ function tokenStandard(row: any): string {
   return String(
     row?.standard ??
     row?.token_standard ??
+    row?.tokenStandard ??
     row?.token?.standard ??
+    row?.token?.token_standard ??
+    row?.asset?.standard ??
+    row?.asset?.token_standard ??
     row?.type ??
     ''
   ).toUpperCase().replace(/_/g, '-');
@@ -739,7 +760,13 @@ function tokenAddress(row: any): string {
     row?.contract_address ??
     row?.contractAddress ??
     row?.token?.address ??
-    row?.token ??
+    row?.token?.contract_address ??
+    row?.token?.contractAddress ??
+    row?.asset?.address ??
+    row?.asset?.contract_address ??
+    row?.asset?.contractAddress ??
+    row?.contract?.address ??
+    row?.contract?.contract_address ??
     (typeof row?.token === 'string' ? row.token : undefined)
   );
   return addressOf(direct) || '';
@@ -761,7 +788,19 @@ function tokenDecimals(row: any): number | undefined {
 
 function tokenRawBalance(row: any): { raw: bigint; decimals?: number } | null {
   const decimals = tokenDecimals(row);
-  const value = row?.balance ?? row?.tokenBalance ?? row?.token_balance ?? row?.TokenQuantity ?? row?.amount ?? row?.quantity ?? row?.raw_balance;
+  const value =
+    row?.balance ??
+    row?.tokenBalance ??
+    row?.token_balance ??
+    row?.TokenQuantity ??
+    row?.amount ??
+    row?.quantity ??
+    row?.raw_balance ??
+    row?.rawBalance ??
+    row?.balance_raw ??
+    row?.token?.balance ??
+    row?.token?.tokenBalance ??
+    row?.asset?.balance;
   if (value === undefined || value === null) return null;
 
   if (typeof value === 'object') {
