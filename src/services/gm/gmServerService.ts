@@ -161,34 +161,116 @@ function decodeRow(log: any): GMOnchainRow | null {
 }
 
 export async function fetchAllConfirmedGMEvents(): Promise<GMOnchainRow[]> {
+  const rpcUrl = process.env.ARC_MAINNET_RPC_URL || 'https://rpc.mainnet.arc.io';
+  const request = async (method: string, params: unknown[]) => {
+    const response = await fetch(rpcUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) throw new Error(`Arc RPC HTTP ${response.status}`);
+    const payload = await response.json();
+    if (payload?.error) throw new Error(String(payload.error.message || 'Arc RPC error'));
+    return payload?.result;
+  };
+
+  const decodeRpcLog = (log: any): GMOnchainRow | null => {
+    try {
+      const topics = Array.isArray(log?.topics) ? log.topics : [];
+      if (topics.length < 3 || String(topics[0]).toLowerCase() !== GM_EVENT_TOPIC0.toLowerCase()) return null;
+
+      const walletTopic = String(topics[1]);
+      const dayTopic = String(topics[2]);
+      if (!/^0x[a-fA-F0-9]{64}$/.test(walletTopic) || !/^0x[a-fA-F0-9]{64}$/.test(dayTopic)) return null;
+
+      const wallet = `0x${walletTopic.slice(-40)}`.toLowerCase();
+      if (!isAddress(wallet, { strict: false })) return null;
+
+      const day = BigInt(dayTopic);
+      const txHash = String(log?.transactionHash || '').toLowerCase();
+
+      return {
+        wallet_address: wallet,
+        checkin_date: new Date(Number(day) * 86400000).toISOString().slice(0, 10),
+        tx_hash: /^0x[a-f0-9]{64}$/.test(txHash) ? txHash : null,
+        chain_id: ARC_CHAIN_ID,
+      };
+    } catch {
+      return null;
+    }
+  };
+
+  // First ask the Arc Mainnet RPC for the complete event history. This is
+  // authoritative and does not depend on an explorer indexer being online.
+  try {
+    const logs = await request('eth_getLogs', [{
+      address: GM_CONTRACT_ADDRESS,
+      topics: [GM_EVENT_TOPIC0],
+      fromBlock: '0x0',
+      toBlock: 'latest',
+    }]);
+
+    if (Array.isArray(logs)) {
+      return [...new Map(
+        logs.map(decodeRpcLog).filter(Boolean).map((row: GMOnchainRow) => [
+          `${row.wallet_address}:${row.checkin_date}`,
+          row,
+        ])
+      ).values()];
+    }
+  } catch (error) {
+    console.warn('[GM] Full Arc RPC log query unavailable; trying cached/indexed history:', error);
+  }
+
+  // Explorer data is only a recovery path. It is still real Arc Mainnet event
+  // data and is never used to manufacture a successful GM.
+  try {
+    const rows = await fetchArcscanGMEvents();
+    if (rows.length) return rows;
+  } catch (error) {
+    console.warn('[GM] Arcscan GM history unavailable:', error);
+  }
+
+  const supabase = getSupabase();
+  if (supabase) {
+    const { data, error } = await supabase
+      .from('gm_checkins')
+      .select('wallet_address,checkin_date,tx_hash,chain_id')
+      .eq('chain_id', ARC_CHAIN_ID)
+      .limit(10000);
+
+    if (!error && Array.isArray(data)) {
+      return data.map((row: any) => ({
+        wallet_address: String(row.wallet_address).toLowerCase(),
+        checkin_date: String(row.checkin_date),
+        tx_hash: row.tx_hash ? String(row.tx_hash).toLowerCase() : null,
+        chain_id: ARC_CHAIN_ID,
+      }));
+    }
+  }
+
+  throw new Error('No verified Arc Mainnet GM history source is currently available.');
+}
+
+async function fetchArcscanGMEvents(): Promise<GMOnchainRow[]> {
   const rows: GMOnchainRow[] = [];
   let cursor: string | null = null;
   const seen = new Set<string>();
 
   for (let page = 0; page < 100; page += 1) {
-    const params = new URLSearchParams({
-      limit: '100',
-      topic0: GM_EVENT_TOPIC0,
-    });
+    const params = new URLSearchParams({ limit: '100', topic0: GM_EVENT_TOPIC0 });
     if (cursor) params.set('cursor', cursor);
 
     const response = await fetch(
       `${ARC_SCAN_API}/address/${GM_CONTRACT_ADDRESS}/logs?${params.toString()}`,
-      {
-        headers: { Accept: 'application/json' },
-        signal: AbortSignal.timeout(10_000),
-      }
+      { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(8_000) },
     );
 
-    if (!response.ok) {
-      throw new Error(`Arcscan GM logs request failed: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`Arcscan GM logs request failed: ${response.status}`);
 
     const payload = await response.json();
-    const pageRows = extractRows(payload)
-      .map(decodeRow)
-      .filter(Boolean) as GMOnchainRow[];
-
+    const pageRows = extractRows(payload).map(decodeRow).filter(Boolean) as GMOnchainRow[];
     rows.push(...pageRows);
 
     const next = extractCursor(payload);
@@ -198,10 +280,7 @@ export async function fetchAllConfirmedGMEvents(): Promise<GMOnchainRow[]> {
   }
 
   return [...new Map(
-    rows.map((row) => [
-      `${row.wallet_address}:${row.checkin_date}`,
-      row,
-    ])
+    rows.map((row) => [`${row.wallet_address}:${row.checkin_date}`, row])
   ).values()];
 }
 
