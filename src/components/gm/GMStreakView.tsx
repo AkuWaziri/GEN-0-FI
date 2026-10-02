@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { CalendarDays, Check, ExternalLink, Flame, RefreshCw, Trophy } from 'lucide-react';
 import { useWallet } from '../../context/WalletContext';
 import { useWriteContract } from 'wagmi';
-import { createPublicClient, http } from 'viem';
+import { createPublicClient, fallback, http } from 'viem';
 import {
   GM_CONTRACT_ABI,
   GM_CONTRACT_ADDRESS,
@@ -41,9 +41,14 @@ export const GMStreakView: React.FC = () => {
   const { address, isCorrectNetwork } = useWallet();
   const { writeContractAsync } = useWriteContract();
 
+  // Use two independent Arc Mainnet read endpoints. This path is read-only;
+  // the wallet still signs and broadcasts the actual GM transaction.
   const publicClient = createPublicClient({
     chain: arcChain,
-    transport: http(ARC_MAINNET_RPC_URL, { timeout: 8_000 }),
+    transport: fallback([
+      http('https://rpc.arc-scan.org', { timeout: 10_000 }),
+      http(ARC_MAINNET_RPC_URL, { timeout: 10_000 }),
+    ], { rank: { interval: 3_000, sampleCount: 2 } }),
   });
 
   const [stats, setStats] = useState<GMStats>(emptyStats());
@@ -167,6 +172,8 @@ export const GMStreakView: React.FC = () => {
         return;
       }
 
+      // Simulation is deliberately kept on the resilient read transport. If
+      // the public RPC is temporarily unavailable, the fallback handles it.
       await publicClient.simulateContract({
         address: GM_CONTRACT_ADDRESS as `0x${string}`,
         abi: GM_CONTRACT_ABI,
