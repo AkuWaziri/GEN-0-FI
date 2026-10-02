@@ -212,6 +212,8 @@ async function fetchAddressTransactions(address: string): Promise<any[]> {
       url.searchParams.set('page', String(page));
       url.searchParams.set('offset', String(offset));
       url.searchParams.set('sort', 'desc');
+      url.searchParams.set('page', '1');
+      url.searchParams.set('offset', '100');
       url.searchParams.set('apikey', ARCSCAN_API_KEY);
       const data = await fetchJson(url.toString());
       if (data?.status !== '1') {
@@ -733,31 +735,33 @@ function tokenAddress(row: any): string {
     row?.address ??
     row?.token_address ??
     row?.tokenAddress ??
+    row?.TokenAddress ??
     row?.contract_address ??
     row?.contractAddress ??
     row?.token?.address ??
+    row?.token ??
     (typeof row?.token === 'string' ? row.token : undefined)
   );
   return addressOf(direct) || '';
 }
 
 function tokenName(row: any): string {
-  return String(row?.name ?? row?.token_name ?? row?.token?.name ?? 'Unknown asset');
+  return String(row?.name ?? row?.token_name ?? row?.TokenName ?? row?.token?.name ?? 'Unknown asset');
 }
 
 function tokenSymbol(row: any): string {
-  return String(row?.symbol ?? row?.token_symbol ?? row?.token?.symbol ?? '—');
+  return String(row?.symbol ?? row?.token_symbol ?? row?.TokenSymbol ?? row?.token?.symbol ?? '—');
 }
 
 function tokenDecimals(row: any): number | undefined {
-  const value = row?.decimals ?? row?.token_decimal ?? row?.token?.decimals;
+  const value = row?.decimals ?? row?.token_decimal ?? row?.TokenDivisor ?? row?.token?.decimals;
   const decimals = Number(value);
   return Number.isInteger(decimals) && decimals >= 0 && decimals <= 255 ? decimals : undefined;
 }
 
 function tokenRawBalance(row: any): { raw: bigint; decimals?: number } | null {
   const decimals = tokenDecimals(row);
-  const value = row?.balance ?? row?.tokenBalance ?? row?.token_balance ?? row?.amount ?? row?.quantity ?? row?.raw_balance;
+  const value = row?.balance ?? row?.tokenBalance ?? row?.token_balance ?? row?.TokenQuantity ?? row?.amount ?? row?.quantity ?? row?.raw_balance;
   if (value === undefined || value === null) return null;
 
   if (typeof value === 'object') {
