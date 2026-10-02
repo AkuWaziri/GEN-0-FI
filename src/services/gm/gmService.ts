@@ -1,6 +1,6 @@
 import { createPublicClient, http, isAddress, keccak256, toHex } from 'viem';
 import { ARC_MAINNET_RPC_URL, arcChain } from '../../config/arc';
-import { GM_CONTRACT_ABI, GM_CONTRACT_ADDRESS } from '../../config/gmContract';
+import { GM_CONTRACT_ADDRESS } from '../../config/gmContract';
 
 export interface GMStats {
   currentStreak: number;
