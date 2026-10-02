@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { decodeEventLog, isAddress, keccak256, toHex } from 'viem';
+import { isAddress, keccak256, toHex } from 'viem';
 
 export const GM_CONTRACT_ADDRESS = '0xCb98496A4BbF6969bF6c8EfF2694992e819047AC' as const;
 export const ARC_CHAIN_ID = 5042;
@@ -121,20 +121,19 @@ function decodeRow(log: any): GMOnchainRow | null {
     let dayValue = log.day ?? decodedArgs.day;
 
     if ((!isAddress(wallet, { strict: false }) || dayValue == null) && log.topics?.length) {
-      const topics = Array.isArray(log.topics)
-        ? [...log.topics] as [`0x${string}`, ...`0x${string}`[]]
-        : [];
+      const topics = Array.isArray(log.topics) ? log.topics : [];
+      if (topics.length < 3) return null;
 
-      const decoded: any = decodeEventLog({
-        abi: GM_EVENT_ABI,
-        data: (log.data || '0x') as `0x${string}`,
-        topics,
-      });
+      // GMCheckedIn(address indexed wallet, uint256 indexed day, ...)
+      // topic[1] is the padded wallet address and topic[2] is the day.
+      const walletTopic = String(topics[1]);
+      const dayTopic = String(topics[2]);
+      if (!/^0x[a-fA-F0-9]{64}$/.test(walletTopic) || !/^0x[a-fA-F0-9]{64}$/.test(dayTopic)) {
+        return null;
+      }
 
-      if (decoded.eventName !== 'GMCheckedIn') return null;
-      const args = decoded.args as any;
-      wallet = String(args.wallet || '').toLowerCase();
-      dayValue = args.day;
+      wallet = `0x${walletTopic.slice(-40)}`.toLowerCase();
+      dayValue = BigInt(dayTopic);
     }
 
     if (!isAddress(wallet, { strict: false }) || dayValue == null) return null;
