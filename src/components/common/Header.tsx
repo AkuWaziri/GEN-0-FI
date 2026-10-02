@@ -3,12 +3,17 @@ import { Logo } from './Logo';
 import { AddressBadge } from './AddressBadge';
 import { TabType } from './Sidebar';
 import { useWallet } from '../../context/WalletContext';
-import { Wallet } from 'lucide-react';
+import { Wallet, Sun, Moon, Volume2, VolumeX } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
+import { soundEngine } from '../../utils/sound';
 
 interface HeaderProps { activeTab?: TabType; onSelectTab?: (tab: TabType) => void; onOpenConnect: () => void; }
 
 export const Header: React.FC<HeaderProps> = ({ activeTab, onSelectTab, onOpenConnect }) => {
   const { isConnected, address, shortAddress } = useWallet();
+  const { theme, toggleTheme } = useTheme();
+  const [isMuted, setIsMuted] = React.useState(soundEngine.getIsMuted());
+  const toggleSound = () => setIsMuted(soundEngine.toggleMute());
   const getTabTitle = () => {
     switch (activeTab) {
       case 'overview': return 'Dashboard';
@@ -19,7 +24,6 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onSelectTab, onOpenCo
       case 'savings': return 'Savings';
       case 'gm': return 'GM Streak';
       case 'boundnft': return 'GEN-0 Bound NFT';
-      case 'settings': return 'Settings';
       default: return 'Dashboard';
     }
   };
@@ -31,10 +35,22 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onSelectTab, onOpenCo
           <span className="text-xs font-semibold text-white font-mono tracking-tight">{getTabTitle()}</span>
         </div>
       </div>
-      <div className="flex items-center gap-2 sm:gap-2.5">
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        <button type="button" onClick={toggleTheme} aria-label={theme === 'light' ? 'Switch to Neon Core mode' : 'Switch to Light mode'} title={theme === 'light' ? 'Neon Core' : 'Light'} className="flex items-center justify-center w-8 h-8 rounded-lg border border-zinc-800 bg-[#0d0f12] text-zinc-300 hover:text-white hover:border-zinc-700 transition-colors cursor-pointer">
+          {theme === 'light' ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
+        </button>
         {isConnected && address ? <div className="flex items-center"><AddressBadge address={address} shortAddress={shortAddress} onClick={onOpenConnect} /></div> :
           <button id="btn-header-connect" onClick={onOpenConnect} className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg bg-white hover:bg-zinc-200 text-xs font-bold text-black glow-blue-cta cursor-pointer whitespace-nowrap"><Wallet className="w-3.5 h-3.5" /><span>Connect</span></button>}
       </div>
+      <button
+        type="button"
+        onClick={toggleSound}
+        aria-label={isMuted ? 'Turn sound on' : 'Turn sound off'}
+        title={isMuted ? 'Sound off' : 'Sound on'}
+        className="fixed right-4 bottom-20 md:bottom-5 z-50 flex items-center justify-center w-9 h-9 rounded-full border border-zinc-800 bg-[#0d0f12]/95 backdrop-blur-md text-zinc-400 hover:text-white hover:border-zinc-700 shadow-lg transition-all cursor-pointer"
+      >
+        {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+      </button>
     </header>
   );
 };
