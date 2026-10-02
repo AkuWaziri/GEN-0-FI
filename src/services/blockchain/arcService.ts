@@ -585,6 +585,7 @@ async function fetchGasAndValueFallback(address: string, transactions: Normalize
 
 async function fetchAddressTokenBalances(address: string): Promise<any[]> {
   const urls = [
+    `${ARCSCAN_V1_BASE}/address/${address}/tokens`,
     (() => {
       const url = new URL(ARCSCAN_API_BASE);
       url.searchParams.set('module', 'account');
@@ -593,19 +594,25 @@ async function fetchAddressTokenBalances(address: string): Promise<any[]> {
       url.searchParams.set('apikey', ARCSCAN_API_KEY);
       return url.toString();
     })(),
-    `${ARCSCAN_V1_BASE}/address/${address}/tokens`,
   ];
 
   for (const url of urls) {
     try {
       const data = await fetchJson(url);
-      const rows =
-        Array.isArray(data?.result) ? data.result :
-        Array.isArray(data?.items) ? data.items :
-        Array.isArray(data?.tokens) ? data.tokens :
-        Array.isArray(data?.balances) ? data.balances :
-        [];
-      if (rows.length > 0) return rows;
+      const candidates = [
+        data,
+        data?.data,
+        data?.result,
+        data?.items,
+        data?.tokens,
+        data?.balances,
+        data?.data?.items,
+        data?.data?.tokens,
+        data?.data?.balances,
+      ];
+      for (const value of candidates) {
+        if (Array.isArray(value) && value.length > 0) return value;
+      }
     } catch (error) {
       console.warn('[GEN-0FI] Arc token balance index unavailable:', error);
     }
@@ -614,32 +621,36 @@ async function fetchAddressTokenBalances(address: string): Promise<any[]> {
   return [];
 }
 
-async function fetchNftTransfers(address: string): Promise<any[]> {
+async function fetchTokenTransferCandidates(address: string): Promise<any[]> {
   let cursor = '';
   const all: any[] = [];
 
-  try {
-    for (let page = 0; page < 20; page += 1) {
+  for (let page = 0; page < 50; page += 1) {
+    try {
       const url = new URL(`${ARCSCAN_V1_BASE}/filter/token-transfers`);
       url.searchParams.set('address', address);
-      url.searchParams.set('standard', 'ERC-721');
+      url.searchParams.set('standard', 'ERC-20');
       url.searchParams.set('limit', '100');
       if (cursor) url.searchParams.set('cursor', cursor);
 
       const data = await fetchJson(url.toString());
-      const rows =
-        Array.isArray(data?.items) ? data.items :
-        Array.isArray(data?.transfers) ? data.transfers :
-        Array.isArray(data?.result) ? data.result :
-        [];
+      const rows = [
+        data?.items,
+        data?.transfers,
+        data?.result,
+        data?.data?.items,
+        data?.data?.transfers,
+      ].find(Array.isArray) || [];
+
       all.push(...rows);
 
-      const next = data?.page?.next ?? data?.next_cursor ?? data?.nextCursor;
+      const next = data?.page?.next ?? data?.next_cursor ?? data?.nextCursor ?? data?.data?.page?.next;
       if (!next || rows.length === 0) break;
       cursor = String(next);
+    } catch (error) {
+      console.warn('[GEN-0FI] Arc token transfer index unavailable:', error);
+      break;
     }
-  } catch (error) {
-    console.warn('[GEN-0FI] Arc NFT transfer index unavailable:', error);
   }
 
   return all;
@@ -708,6 +719,28 @@ function tokenRawBalance(row: any): { raw: bigint; decimals?: number } | null {
   }
 
   return null;
+}
+
+async function readErc20Balance(contract: string, owner: string): Promise<{ raw: bigint; decimals?: number }> {
+  const ABI = [{
+    type: 'function',
+    name: 'balanceOf',
+    stateMutability: 'view',
+    inputs: [{ name: 'owner', type: 'address' }],
+    outputs: [{ name: 'balance', type: 'uint256' }],
+  }] as const;
+
+  try {
+    const raw = await arcClient.readContract({
+      address: contract as `0x${string}`,
+      abi: ABI,
+      functionName: 'balanceOf',
+      args: [owner as `0x${string}`],
+    });
+    return { raw };
+  } catch {
+    return { raw: 0n };
+  }
 }
 
 async function readErc721Balance(contract: string, owner: string): Promise<bigint> {
@@ -804,31 +837,41 @@ export async function fetchWalletAssetSummary(address: string): Promise<{
     return { tokenHoldings: 0, coinHoldings: 0, nftHoldings: 0, fungibleHoldings: 0, historyStatus: 'unavailable', coins: [], nfts: [] };
   }
 
-  const rows = await fetchAddressTokenBalances(address);
+  const indexedRows = await fetchAddressTokenBalances(address);
+  const transferRows = await fetchTokenTransferCandidates(address);
+  const candidates = [...indexedRows, ...transferRows];
+
+  const coinContracts = new Set<string>();
+  for (const row of candidates) {
+    const standard = tokenStandard(row);
+    const contract = tokenAddress(row);
+    if (contract && (standard === 'ERC-20' || standard === 'ERC20' || !standard)) {
+      coinContracts.add(contract.toLowerCase());
+    }
+  }
+
   const coins: Array<{ address: string; name: string; symbol: string; balance: string; standard: string; decimals?: number }> = [];
   const nfts: Array<{ address: string; name: string; symbol: string; balance: string; standard: string }> = [];
   const seenCoins = new Set<string>();
 
-  for (const row of rows) {
-    const standard = tokenStandard(row);
-    const assetAddress = tokenAddress(row);
-    if (!assetAddress) continue;
+  for (const contract of coinContracts) {
+    if (contract === ERC20_USDC) continue;
 
-    if (standard === 'ERC-20' || standard === 'ERC20' || !standard) {
-      const parsed = tokenRawBalance(row);
-      if (!parsed || parsed.raw <= 0n || seenCoins.has(assetAddress)) continue;
-      const metadata = await fetchTokenMetadata(assetAddress, row);
-      const decimals = parsed.decimals ?? metadata.decimals ?? 18;
-      coins.push({
-        address: assetAddress,
-        name: metadata.name,
-        symbol: metadata.symbol,
-        balance: formatUnits(parsed.raw, decimals),
-        standard: 'ERC-20',
-        decimals,
-      });
-      seenCoins.add(assetAddress);
-    }
+    const row = candidates.find((item) => tokenAddress(item).toLowerCase() === contract) || {};
+    const metadata = await fetchTokenMetadata(contract, row);
+    const live = await readErc20Balance(contract, address);
+    if (live.raw <= 0n) continue;
+
+    const decimals = live.decimals ?? metadata.decimals ?? 18;
+    coins.push({
+      address: contract,
+      name: metadata.name,
+      symbol: metadata.symbol,
+      balance: formatUnits(live.raw, decimals),
+      standard: 'ERC-20',
+      decimals,
+    });
+    seenCoins.add(contract);
   }
 
   // Native Arc USDC is separate from the ERC-20 token index but is a real
