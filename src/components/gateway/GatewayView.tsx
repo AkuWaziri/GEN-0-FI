@@ -11,7 +11,7 @@ const ARC_GATEWAY_CHAIN = 'Arc';
 const DESTINATIONS = [{ id: 'Base', label: 'Base' }, { id: 'Ethereum', label: 'Ethereum' }, { id: 'Arbitrum', label: 'Arbitrum' }, { id: 'Optimism', label: 'Optimism' }, { id: 'Polygon', label: 'Polygon' }, { id: 'Avalanche', label: 'Avalanche' }, { id: 'Arc', label: 'Arc' }];
 const kit = new UnifiedBalanceKit();
 function cleanError(error: unknown) { const message = error instanceof Error ? error.message : String(error || 'Gateway request failed.'); if (/user rejected|user denied|rejected the request|4001/i.test(message)) return 'Rejected'; return message.replace(/^Error:\s*/i, '') || 'Gateway request failed.'; }
-function explorerFor(chain: string, hash?: string | null) { if (!hash) return null; if (chain === 'Arc') return \`${ARC_MAINNET_EXPLORER_URL}/tx/${hash}\`; return null; }
+function explorerFor(chain: string, hash?: string | null) { if (!hash) return null; if (chain === 'Arc') return `${ARC_MAINNET_EXPLORER_URL}/tx/${hash}`; return null; }
 export const GatewayView: React.FC = () => {
   const { address } = useWallet(); const { connector } = useAccount(); const chainId = useChainId(); const { switchChainAsync } = useSwitchChain();
   const [balance, setBalance] = useState('0.000000'); const [breakdown, setBreakdown] = useState<Array<{ chain: string; balance: string }>>([]);
