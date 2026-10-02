@@ -101,16 +101,107 @@ export class ArcBlockchainProvider implements BlockchainProvider {
   }
 
   async getWalletAssets(address: string): Promise<WalletAssetSummary> {
-    const response = await fetch(`/api/blockchain/arc/assets/${address}`, {
-      cache: 'no-store',
-      headers: { 'Cache-Control': 'no-cache' },
-    });
-    if (!response.ok) throw new Error('Arc Mainnet token holdings unavailable');
-    const data = await response.json();
-    if (!data?.assets || data.assets.historyStatus !== 'complete') {
-      throw new Error('Arc Mainnet token holdings unavailable');
+    let serverAssets: WalletAssetSummary | null = null;
+
+    try {
+      const response = await fetch(`/api/blockchain/arc/assets/${address}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data?.assets) serverAssets = data.assets;
+      }
+    } catch {
+      // Use the browser-accessible Arcscan endpoint below when the Vercel
+      // server cannot reach Arcscan's public API.
     }
-    return data.assets;
+
+    // Vercel's server-side requests to Arcscan can be rejected at the edge
+    // while the same public endpoint is available to browsers. Use Arcscan's
+    // wallet token index directly as the authoritative fallback. Never invent
+    // a balance: only rows actually returned by Arcscan are displayed.
+    try {
+      const response = await fetch(
+        `https://api.arc-scan.org/v1/address/${address}/tokens?sort=balance`,
+        { cache: 'no-store', headers: { Accept: 'application/json' } }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        const rawRows =
+          Array.isArray(data) ? data :
+          Array.isArray(data?.tokens) ? data.tokens :
+          Array.isArray(data?.items) ? data.items :
+          Array.isArray(data?.data) ? data.data :
+          Array.isArray(data?.result) ? data.result : [];
+
+        const rows = rawRows
+          .map((row: any) => {
+            const token = row?.token && typeof row.token === 'object' ? row.token : row;
+            const addressValue =
+              token?.address ??
+              token?.token_address ??
+              token?.contract_address ??
+              token?.contractAddress ??
+              token?.TokenAddress;
+            const contract = typeof addressValue === 'string' ? addressValue : '';
+            const symbol = String(token?.symbol ?? token?.token_symbol ?? token?.TokenSymbol ?? '—');
+            const name = String(token?.name ?? token?.token_name ?? token?.TokenName ?? symbol);
+            const standard = String(token?.standard ?? token?.token_standard ?? token?.type ?? 'ERC-20');
+            const balanceValue = token?.balance;
+            const formatted =
+              typeof balanceValue === 'object'
+                ? balanceValue?.formatted ?? balanceValue?.display ?? balanceValue?.value
+                : balanceValue ?? token?.formatted_balance ?? token?.quantity ?? token?.TokenQuantity;
+            const decimalsValue =
+              typeof balanceValue === 'object'
+                ? balanceValue?.decimals
+                : token?.decimals ?? token?.token_decimal ?? token?.TokenDivisor;
+            const decimals = Number(decimalsValue);
+            const isPositive = formatted !== undefined && formatted !== null && Number(formatted) > 0;
+            return {
+              address: contract,
+              name,
+              symbol,
+              balance: String(formatted ?? ''),
+              standard: standard.toUpperCase().replace(/_/g, '-'),
+              decimals: Number.isInteger(decimals) && decimals >= 0 && decimals <= 255 ? decimals : undefined,
+              isPositive,
+            };
+          })
+          .filter((row: any) =>
+            row.address &&
+            row.address.toLowerCase() !== '0x3600000000000000000000000000000000000000' &&
+            row.isPositive &&
+            (row.standard === 'ERC-20' || row.standard === 'ERC20' || row.standard === 'FUNGIBLE')
+          )
+          .map(({ isPositive, ...row }: any) => row);
+
+        if (rows.length) {
+          const existingCoins = serverAssets?.coins ?? [];
+          const byAddress = new Map(existingCoins.map((coin) => [coin.address.toLowerCase(), coin]));
+          for (const row of rows) {
+            byAddress.set(row.address.toLowerCase(), row);
+          }
+          const coins = Array.from(byAddress.values());
+          const nfts = serverAssets?.nfts ?? [];
+          return {
+            tokenHoldings: coins.length + nfts.length,
+            coinHoldings: coins.length,
+            nftHoldings: nfts.length,
+            fungibleHoldings: coins.length,
+            historyStatus: 'complete',
+            coins,
+            nfts,
+          };
+        }
+      }
+    } catch (error) {
+      console.warn('Direct Arcscan token holdings fallback unavailable:', error);
+    }
+
+    if (serverAssets?.historyStatus === 'complete') return serverAssets;
+    throw new Error('Arc Mainnet token holdings unavailable');
   }
 
   async getWalletSummary(address: string): Promise<WalletSummary> {
