@@ -15,7 +15,6 @@ import { SavingsView } from './components/savings/SavingsView';
 import { SettingsView } from './components/settings/SettingsView';
 import { PointsLeaderboardView } from './components/points/PointsLeaderboardView';
 import { SwapView } from './components/swap/SwapView';
-import { GatewayView } from './components/gateway/GatewayView';
 import { AddressBookView } from './components/addressbook/AddressBookView';
 import { ConnectWalletModal } from './components/wallet/ConnectWalletModal';
 import { WrongNetworkView } from './components/wallet/WrongNetworkView';
@@ -83,7 +82,6 @@ const AppContent: React.FC = () => {
                 }}
               />
             )}
-            {activeTab === 'gateway' && <GatewayView />}
             {activeTab === 'swap' && <SwapView />}
             {activeTab === 'wallet' && <WalletView initialMode={walletMode} initialRecipient={prefilledRecipient} />}
             {activeTab === 'savings' && <SavingsView />}
