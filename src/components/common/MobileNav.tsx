@@ -1,6 +1,6 @@
 import React from 'react';
 import { TabType } from './Sidebar';
-import { LayoutDashboard, History, ArrowLeftRight, Trophy, Flame, Send, PiggyBank, BookUser, Sparkles, Zap, X } from 'lucide-react';
+import { LayoutDashboard, History, ArrowLeftRight, Trophy, Flame, Send, PiggyBank, BookUser, Sparkles, X } from 'lucide-react';
 
 interface MobileNavProps {
   activeTab: TabType;
@@ -13,7 +13,6 @@ export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, onSelectTab, is
   const navItems = [
     { id: 'overview' as TabType, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'gm' as TabType, label: 'GM Streak', icon: Flame },
-    { id: 'gateway' as TabType, label: 'Circle Gateway', icon: Zap },
     { id: 'swap' as TabType, label: 'Swap & Bridge', icon: ArrowLeftRight },
     { id: 'wallet' as TabType, label: 'Send & Receive', icon: Send },
     { id: 'savings' as TabType, label: 'Lend', icon: PiggyBank },
